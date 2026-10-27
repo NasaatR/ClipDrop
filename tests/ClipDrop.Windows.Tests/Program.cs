@@ -21,6 +21,14 @@ internal static class Program
     public static int Main(string[] args)
     {
         if (args.Length == 2 && args[0] == "--paste-target") return PasteProbe.RunTarget(args[1]);
+        using var stackTimer = new System.Threading.Timer(_ => {
+            try {
+                var info = new System.Diagnostics.ProcessStartInfo("dotnet-stack") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+                info.ArgumentList.Add("report"); info.ArgumentList.Add("--process-id"); info.ArgumentList.Add(Environment.ProcessId.ToString());
+                using var process = System.Diagnostics.Process.Start(info);
+                if (process is not null) { var read = process.StandardOutput.ReadToEndAsync(); if (process.WaitForExit(10000)) Console.Error.WriteLine(read.GetAwaiter().GetResult()); else process.Kill(); }
+            } catch (Exception ex) { Console.Error.WriteLine("Stack capture: " + ex.Message); }
+        }, null, TimeSpan.FromSeconds(40), System.Threading.Timeout.InfiniteTimeSpan);
         using var watchdog = new System.Threading.Timer(_ => { Console.Error.WriteLine("Windows UI/clipboard checks stalled for 75 seconds."); Environment.Exit(2); }, null, TimeSpan.FromSeconds(75), System.Threading.Timeout.InfiniteTimeSpan);
         PasteProbe.PolicyChecks(Check);
         var root = Path.Combine(Path.GetTempPath(), "clipdrop-windows-tests-" + Guid.NewGuid().ToString("N"));
@@ -75,7 +83,7 @@ internal static class Program
             var layouts = 0;
             window.LayoutUpdated += (_, _) => { if (++layouts == 50) Console.WriteLine("CHECKPOINT repeated Library layout " + window.ActualWidth + "x" + window.ActualHeight + "\n" + Environment.StackTrace); };
             window.Show(); Console.WriteLine("CHECKPOINT Library shown");
-            ClipboardProbe.Run(root, Check);
+            ClipboardProbe.Run(root, Check); Console.WriteLine("CHECKPOINT native probe returned");
             Render(window, Path.Combine(output, "shelf-dark.png"));
             Console.WriteLine("CHECKPOINT dock creation");
             var dock = new DockWindow(window.Session, window.ShowShelf, window.OpenSettings);
@@ -125,7 +133,9 @@ internal static class Program
 
     private static void Render(Window window, string path)
     {
+        Console.WriteLine("CHECKPOINT render pump " + path);
         UiProbe.Pump(100);
+        Console.WriteLine("CHECKPOINT render layout " + path);
         window.UpdateLayout();
         var content = (FrameworkElement)window.Content;
         RenderElement(content, path, window.Background);
@@ -133,6 +143,7 @@ internal static class Program
     private static void RenderElement(FrameworkElement content, string path, Brush? background = null)
     {
         content.UpdateLayout();
+        Console.WriteLine("CHECKPOINT bitmap render " + path);
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
         var surface = new DrawingVisual();
         using (var drawing = surface.RenderOpen())
@@ -141,7 +152,9 @@ internal static class Program
             drawing.DrawRectangle(background, null, bounds);
             drawing.DrawRectangle(new VisualBrush(content), null, bounds);
         }
+        Console.WriteLine("CHECKPOINT bitmap submit " + path);
         bitmap.Render(surface);
+        Console.WriteLine("CHECKPOINT bitmap done " + path);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(path); encoder.Save(file);
     }

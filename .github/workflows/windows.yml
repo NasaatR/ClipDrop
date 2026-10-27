@@ -20,6 +20,8 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Core data and recovery checks
         run: dotnet run --project tests/ClipDrop.Core.Tests -c Release
+      - name: Install managed stack diagnostic tool
+        run: dotnet tool install --global dotnet-stack
       - name: Windows transfer, clipboard and WPF rendering checks
         run: dotnet run --project tests/ClipDrop.Windows.Tests -c Release -- artifacts/qa
       - uses: actions/upload-artifact@v4
