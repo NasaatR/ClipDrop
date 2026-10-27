@@ -38,6 +38,8 @@ try
     var isolated = new StateStore(Path.Combine(root, "isolated")); isolated.Load();
     File.WriteAllText(Path.Combine(isolated.Root, "shelf.json"), "invalid");
     Throws<InvalidDataException>(() => new StateStore(isolated.Root).Load(), "Unrecoverable corruption is never replaced with an empty shelf");
+    File.WriteAllText(Path.Combine(isolated.Root, "shelf.json"), "{}");
+    Throws<InvalidDataException>(() => new StateStore(isolated.Root).Load(), "An incomplete JSON object cannot masquerade as an empty saved shelf");
     var assets = new AssetStore(Path.Combine(root, "assets"));
     var exported = assets.ExportText(text);
     Check(File.ReadAllText(exported) == text.Content, "Exported text is lossless");

@@ -61,7 +61,21 @@ public sealed class StateStore
 
     private static ShelfState Read(string path)
     {
-        var state = JsonSerializer.Deserialize<ShelfState>(File.ReadAllText(path), Json)
+        var contents = File.ReadAllText(path);
+        using var document = JsonDocument.Parse(contents);
+        if (document.RootElement.ValueKind != JsonValueKind.Object ||
+            !document.RootElement.TryGetProperty("SchemaVersion", out _) ||
+            !document.RootElement.TryGetProperty("Items", out _) ||
+            !document.RootElement.TryGetProperty("Settings", out _))
+        {
+            // Still report future schemas explicitly even when their structure differs.
+            if (document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("SchemaVersion", out var version) &&
+                version.TryGetInt32(out var number) && number > ShelfState.CurrentSchema)
+                throw new NotSupportedException("This shelf requires a newer ClipDrop.");
+            throw new InvalidDataException("The saved shelf structure is incomplete.");
+        }
+        var state = JsonSerializer.Deserialize<ShelfState>(contents, Json)
             ?? throw new InvalidDataException("The saved shelf is empty.");
         // A newer schema must never silently fall back to an older backup.
         if (state.SchemaVersion > ShelfState.CurrentSchema)

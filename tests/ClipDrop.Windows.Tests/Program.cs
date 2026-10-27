@@ -40,7 +40,9 @@ internal static class Program
             var image = transfers.Import(incoming).Single();
             Check(image.Kind == ItemKind.Image && image.OwnedAsset, "Browser PNG wins over its accompanying URL");
             var exportedImage = transfers.Build(new[] { image });
-            var returned = ImageFiles.ReadStream((Stream)exportedImage.GetData("PNG", false));
+            var pngStream = exportedImage.GetData("PNG", false) as Stream
+                ?? throw new Exception("PNG stream missing from image output");
+            var returned = ImageFiles.ReadStream(pngStream);
             Check(returned.SequenceEqual(png), "Original PNG bytes survive import and export unchanged");
             var decoded = new PngBitmapDecoder(new MemoryStream(returned), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
             var converted = new FormatConvertedBitmap(decoded, PixelFormats.Bgra32, null, 0); var actual = new byte[8]; converted.CopyPixels(actual, 8, 0);
@@ -55,6 +57,8 @@ internal static class Program
             // A real OLE clipboard roundtrip on the Windows runner; no external app automation is implied.
             Clipboard.SetDataObject(textData, true);
             Check(Clipboard.GetText() == note.Content && Clipboard.ContainsFileDropList(), "System clipboard roundtrip preserves text and file formats");
+            Check(transfers.Import(Clipboard.GetDataObject() ?? throw new Exception("Clipboard unavailable")).Single().Content == note.Content,
+                "Copying and pasting a ClipDrop text card keeps it a text card");
             Clipboard.Clear();
             var store = new StateStore(root); var state = store.Load();
             state.Items.AddRange(new[] { note, image, file, ShelfItem.FromText("A long Cyrillic reference: Проверка очень длинного названия изображения для рабочего проекта") });

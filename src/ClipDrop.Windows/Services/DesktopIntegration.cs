@@ -24,7 +24,12 @@ public sealed class DesktopIntegration : IDisposable
     private int _lastX, _direction, _turns;
     private DateTime _lastTurn, _lastShow;
     public bool HotkeyAvailable { get; }
-    public bool ShakeEnabled { get; set; }
+    private bool _shakeEnabled;
+    public bool ShakeEnabled
+    {
+        get => _shakeEnabled;
+        set { _shakeEnabled = value; if (value) _shake.Start(); else _shake.Stop(); }
+    }
 
     public DesktopIntegration(Window owner, Action toggle, Action show, Action paste, Action quit)
     {
@@ -43,7 +48,6 @@ public sealed class DesktopIntegration : IDisposable
         _tray.DoubleClick += (_, _) => show();
         _shake = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
         _shake.Tick += (_, _) => Tick();
-        _shake.Start();
     }
 
     private Action Toggle { get; }

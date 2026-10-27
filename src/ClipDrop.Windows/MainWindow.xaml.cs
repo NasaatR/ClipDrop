@@ -44,6 +44,8 @@ public partial class MainWindow : Window
         _save.Tick += (_, _) => TrySave();
         Loaded += (_, _) => {
             RestorePosition();
+            LocationChanged += (_, _) => QueueGeometrySave();
+            SizeChanged += (_, _) => QueueGeometrySave();
             if (integration)
             {
                 _desktop = new DesktopIntegration(this, ToggleShelf, ShowShelf, () => { ShowShelf(); Paste(); }, Quit);
@@ -130,6 +132,14 @@ public partial class MainWindow : Window
     {
         _dirty = true; _storageStatus = "Saving"; SetStatus("Saving…");
         _save.Stop(); _save.Start(); Refresh();
+    }
+    private void QueueGeometrySave()
+    {
+        if (WindowState != WindowState.Normal) return;
+        _state.Settings.Width = Width; _state.Settings.Height = Height;
+        _state.Settings.Left = Left; _state.Settings.Top = Top;
+        _dirty = true; _storageStatus = "Saving";
+        _save.Stop(); _save.Start();
     }
     public bool TrySave()
     {

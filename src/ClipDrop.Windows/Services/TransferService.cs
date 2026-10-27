@@ -17,6 +17,9 @@ public sealed class TransferService
     public List<ShelfItem> Import(IDataObject data)
     {
         var result = new List<ShelfItem>();
+        if (data.GetDataPresent("NasaatR.ClipDrop.TextCard", false) &&
+            data.GetData(DataFormats.UnicodeText) is string ownText && !string.IsNullOrWhiteSpace(ownText))
+            return new List<ShelfItem> { ShelfItem.FromText(ownText) };
         if (data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths)
         {
             foreach (var path in paths) result.Add(ShelfItem.FromPath(path));
@@ -70,6 +73,7 @@ public sealed class TransferService
             if (item.Kind is ItemKind.Text or ItemKind.Link)
             {
                 data.SetText(item.Content, TextDataFormat.UnicodeText);
+                data.SetData("NasaatR.ClipDrop.TextCard", new MemoryStream(new byte[] { 1 }), false);
                 if (item.Kind == ItemKind.Link)
                 {
                     data.SetData("UniformResourceLocatorW", new MemoryStream(System.Text.Encoding.Unicode.GetBytes(item.Content.Trim() + "\0")), false);
@@ -82,11 +86,18 @@ public sealed class TransferService
                 if (info.Length <= ImageFiles.MaximumBytes)
                 {
                     var bytes = File.ReadAllBytes(item.FilePath);
-                    var image = ImageFiles.Load(bytes);
-                    var png = Path.GetExtension(item.FilePath).Equals(".png", StringComparison.OrdinalIgnoreCase)
-                        ? bytes : ImageFiles.Encode(image);
-                    data.SetData("PNG", new MemoryStream(png, false), false);
-                    data.SetImage(image);
+                    try
+                    {
+                        var image = ImageFiles.Load(bytes);
+                        var png = Path.GetExtension(item.FilePath).Equals(".png", StringComparison.OrdinalIgnoreCase)
+                            ? bytes : ImageFiles.Encode(image);
+                        data.SetData("PNG", new MemoryStream(png, false), false);
+                        data.SetImage(image);
+                    }
+                    catch (Exception ex) when (ex is NotSupportedException or ArgumentException or FileFormatException or InvalidDataException)
+                    {
+                        // An undecodable/oversized image still transfers intact as its original file.
+                    }
                 }
             }
         }
