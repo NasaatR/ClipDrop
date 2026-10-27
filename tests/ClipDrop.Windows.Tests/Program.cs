@@ -29,7 +29,9 @@ internal static class Program
         Directory.CreateDirectory(output);
         try
         {
-            var app = new ComponentApp(); app.InitializeComponent();
+            var app = new ComponentApp { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/ClipDrop;component/Theme.xaml", UriKind.Relative) });
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/ClipDrop;component/Icons.xaml", UriKind.Relative) });
             var assets = new AssetStore(Path.Combine(root, "assets"));
             var transfers = new TransferService(assets);
             var note = ShelfItem.FromText("Hello\r\nПривет — Bonjour 👋");

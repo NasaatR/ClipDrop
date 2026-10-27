@@ -7,7 +7,7 @@
  <SolidColorBrush x:Key="Ink" Color="#F2F3F5"/>
  <SolidColorBrush x:Key="Muted" Color="#AEB2BC"/>
  <SolidColorBrush x:Key="Selected" Color="#3B404B"/>
- <Style TargetType="Window"><Setter Property="Icon" Value="pack://application:,,,/Assets/ClipDrop.ico"/><Setter Property="Background" Value="{DynamicResource Surface}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="FontFamily" Value="Segoe UI"/><Setter Property="FontSize" Value="13"/></Style>
+ <Style TargetType="Window"><Setter Property="Icon" Value="pack://application:,,,/ClipDrop;component/Assets/ClipDrop.ico"/><Setter Property="Background" Value="{DynamicResource Surface}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="FontFamily" Value="Segoe UI"/><Setter Property="FontSize" Value="13"/></Style>
  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Style>
  <Style TargetType="Button">
   <Setter Property="local:Motion.Feedback" Value="True"/>

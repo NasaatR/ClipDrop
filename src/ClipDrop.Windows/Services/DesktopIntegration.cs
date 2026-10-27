@@ -42,7 +42,7 @@ public sealed class DesktopIntegration : IDisposable
         Library = library;
         HotkeyAvailable = RegisterHotKey(_source.Handle, 1, 0x0002 | 0x0001 | 0x4000, 0x20);
         LibraryHotkeyAvailable = RegisterHotKey(_source.Handle, 2, 0x0002 | 0x0001 | 0x4000, 0x4C);
-        using (var stream = Application.GetResourceStream(new Uri("pack://application:,,,/Assets/ClipDrop.ico")).Stream)
+        using (var stream = Application.GetResourceStream(new Uri("pack://application:,,,/ClipDrop;component/Assets/ClipDrop.ico")).Stream)
         using (var original = new System.Drawing.Icon(stream)) _icon = (System.Drawing.Icon)original.Clone();
         _tray = new Forms.NotifyIcon { Text = "ClipDrop · Ctrl+Alt+Space", Icon = _icon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
