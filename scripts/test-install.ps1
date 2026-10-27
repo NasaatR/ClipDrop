@@ -19,7 +19,7 @@ if (!(Test-Path "$target/ClipDrop.exe") -or !(Get-Item "$target/ClipDrop.exe").V
 $registrations = @(Get-ChildItem 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall' | Get-ItemProperty | Where-Object { $_.PSObject.Properties.Name -contains 'DisplayName' -and $_.DisplayName -eq 'ClipDrop' })
 if ($registrations.Count -ne 1) { throw "Expected one installed app, found $($registrations.Count)" }
 if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json')) -ne $fixture) { throw 'Installer changed saved user data' }
-$app = Start-Process "$target/ClipDrop.exe" -ArgumentList '--background' -PassThru
+$app = Start-Process "$target/ClipDrop.exe" -ArgumentList '--background', '--check-startup' -PassThru
 try {
     Start-Sleep -Seconds 2
     if ($app.HasExited) { throw 'Updated executable could not load previous data' }

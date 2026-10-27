@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using ClipDrop.Core;
@@ -22,7 +23,7 @@ public sealed class PreviewWindow : Window
             }
             catch (Exception) { Content = new TextBlock { Text = "Preview unavailable. The original file can still be transferred if it exists.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(20) }; }
         }
-        else Content = new TextBox { Text = item.FilePath ?? item.Content, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(12) };
+        else Content = new TextBox { Text = item.Kind == ItemKind.Clipboard ? "Original clipboard formats\n\n" + string.Join("\n", item.Clipboard?.Formats.Select(f => f.Name.Length > 0 ? f.Name : "Windows format " + f.StandardId) ?? Array.Empty<string>()) : item.FilePath ?? item.Content, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(12) };
         KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape) Close(); };
     }
 }

@@ -127,6 +127,7 @@ public partial class MainWindow : Window
         foreach (var button in new[] { AllFilter, PinnedFilter, TrashFilter }) button.SetResourceReference(BackgroundProperty, (string)button.Tag == _filter ? "Selected" : "Raised");
         ActiveActions.Visibility = ClearButton.Visibility = _filter == "Trash" ? Visibility.Collapsed : Visibility.Visible;
         RestoreButton.Visibility = _filter == "Trash" ? Visibility.Visible : Visibility.Collapsed;
+        if (_editing is not null && Session.State.Items.All(i => i.Id != _editing.Id)) { EditPanel.Visibility = Visibility.Collapsed; _editing = null; }
         CountLabel.Text = Session.State.Items.Count.ToString(); UpdateSelection();
     }
     private System.Collections.Generic.List<ShelfItem> Selected() => ItemList?.SelectedItems.Cast<ItemRow>().Select(r => r.Item).ToList() ?? new();
@@ -236,7 +237,7 @@ public partial class MainWindow : Window
         var item = row.Item;
         try
         {
-            if (item.Kind == ItemKind.Text) { new PreviewWindow(item) { Owner = this }.Show(); return; }
+            if (item.Kind is ItemKind.Text or ItemKind.Clipboard) { new PreviewWindow(item) { Owner = this }.Show(); return; }
             var target = item.FilePath ?? item.Content.Trim();
             if (item.Kind == ItemKind.Link && (!Uri.TryCreate(target, UriKind.Absolute, out var uri) || (uri.Scheme != "https" && uri.Scheme != "http"))) return;
             Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
@@ -253,6 +254,8 @@ public partial class MainWindow : Window
     }
     private void OnKey(object sender, KeyEventArgs e)
     {
+        if (_editing is not null && e.Key is Key.Enter or Key.Escape)
+        { if (e.Key == Key.Enter) OnSaveEdit(this, e); else OnCancelEdit(this, e); e.Handled = true; return; }
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
             if (e.Key == Key.V && Keyboard.FocusedElement is not TextBox) { Session.SaveClipboard(); e.Handled = true; }

@@ -21,14 +21,6 @@ internal static class Program
     public static int Main(string[] args)
     {
         if (args.Length == 2 && args[0] == "--paste-target") return PasteProbe.RunTarget(args[1]);
-        using var stackTimer = new System.Threading.Timer(_ => {
-            try {
-                var info = new System.Diagnostics.ProcessStartInfo("dotnet-stack") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-                info.ArgumentList.Add("report"); info.ArgumentList.Add("--process-id"); info.ArgumentList.Add(Environment.ProcessId.ToString());
-                using var process = System.Diagnostics.Process.Start(info);
-                if (process is not null) { var read = process.StandardOutput.ReadToEndAsync(); if (process.WaitForExit(10000)) Console.Error.WriteLine(read.GetAwaiter().GetResult()); else process.Kill(); }
-            } catch (Exception ex) { Console.Error.WriteLine("Stack capture: " + ex.Message); }
-        }, null, TimeSpan.FromSeconds(40), System.Threading.Timeout.InfiniteTimeSpan);
         using var watchdog = new System.Threading.Timer(_ => { Console.Error.WriteLine("Windows UI/clipboard checks stalled for 75 seconds."); Environment.Exit(2); }, null, TimeSpan.FromSeconds(75), System.Threading.Timeout.InfiniteTimeSpan);
         PasteProbe.PolicyChecks(Check);
         var root = Path.Combine(Path.GetTempPath(), "clipdrop-windows-tests-" + Guid.NewGuid().ToString("N"));
@@ -37,7 +29,7 @@ internal static class Program
         Directory.CreateDirectory(output);
         try
         {
-            var app = new App(); app.InitializeComponent();
+            var app = new ComponentApp(); app.InitializeComponent();
             var assets = new AssetStore(Path.Combine(root, "assets"));
             var transfers = new TransferService(assets);
             var note = ShelfItem.FromText("Hello\r\nПривет — Bonjour 👋");
@@ -130,6 +122,11 @@ internal static class Program
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
         finally { try { Directory.Delete(root, true); } catch (IOException) { } }
     }
+
+    // Component checks own their windows and data. Test the real startup separately
+    // with the published executable; Application otherwise queues it implicitly.
+    private sealed class ComponentApp : App
+    { protected override void OnStartup(StartupEventArgs e) { } }
 
     private static void Render(Window window, string path)
     {

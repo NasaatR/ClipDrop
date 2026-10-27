@@ -66,7 +66,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show("ClipDrop could not open. No saved library has been overwritten.\n\n" + ex.Message, "ClipDrop — Recovery", MessageBoxButton.OK, MessageBoxImage.Error);
+            Console.Error.WriteLine(ex);
+            if (Array.IndexOf(e.Args, "--check-startup") < 0) MessageBox.Show("ClipDrop could not open. No saved library has been overwritten.\n\n" + ex.Message, "ClipDrop — Recovery", MessageBoxButton.OK, MessageBoxImage.Error);
             IsQuitting = true; Shutdown(1);
         }
     }

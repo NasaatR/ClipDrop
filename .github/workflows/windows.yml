@@ -20,8 +20,6 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Core data and recovery checks
         run: dotnet run --project tests/ClipDrop.Core.Tests -c Release
-      - name: Install managed stack diagnostic tool
-        run: dotnet tool install --global dotnet-stack
       - name: Windows transfer, clipboard and WPF rendering checks
         run: dotnet run --project tests/ClipDrop.Windows.Tests -c Release -- artifacts/qa
       - uses: actions/upload-artifact@v4
@@ -36,10 +34,10 @@ jobs:
       - name: Published app startup and graceful shutdown
         shell: pwsh
         run: |
-          $app = Start-Process './artifacts/publish/ClipDrop.exe' -ArgumentList '--background' -PassThru
+          $app = Start-Process './artifacts/publish/ClipDrop.exe' -ArgumentList '--background', '--check-startup' -RedirectStandardError './artifacts/startup-errors.txt' -PassThru
           try {
             Start-Sleep -Seconds 2
-            if ($app.HasExited) { throw "Published app exited during startup: $($app.ExitCode)" }
+            if ($app.HasExited) { Get-Content './artifacts/startup-errors.txt'; throw "Published app exited during startup: $($app.ExitCode)" }
             $quit = Start-Process './artifacts/publish/ClipDrop.exe' -ArgumentList '--quit' -PassThru -Wait
             if ($quit.ExitCode -ne 0 -or !$app.WaitForExit(10000)) { throw 'Published app did not shut down through its command channel' }
             if ($app.ExitCode -ne 0) { throw "Published app failed: $($app.ExitCode)" }

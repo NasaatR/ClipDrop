@@ -28,7 +28,7 @@ public static class LibraryOperations
     }
     public static int UndoRemove(ShelfState state)
     {
-        var batch = state.Trash.OrderByDescending(t => t.DeletedUtc).FirstOrDefault()?.Batch;
+        var batch = state.Trash.LastOrDefault()?.Batch;
         return batch is null ? 0 : Restore(state, state.Trash.Where(t => t.Batch == batch).Select(t => t.Item.Id));
     }
     public static void Rename(ShelfItem item, string title, string group)
