@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-10-27
+
+- Replace mixed retro/emoji toolbar and clip glyphs with one flat vector icon family.
+- Add clip-scoped context menus in dock and Library, including persistent Trash and restore actions.
+- Add background Windows video thumbnails, visible fallback glyphs and a shared file-change-aware cache.
+- Add explicit muted video playback, pause/seek/time, codec/open timeout fallback and resource release on close.
+- Publish a staged roadmap separating everyday actions/media from two-monitor mirroring and later panel sets/history.
+
+
 ## 0.4.0 — 2026-10-27
 
 - Match WeavyClips dock structure: colored floppy Save, gear Settings, three-line Library, then clip icons; render the same DockStrip in Settings live preview.

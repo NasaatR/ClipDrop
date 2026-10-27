@@ -59,6 +59,8 @@ try
         "Named styles and detached/motion preferences survive restart");
     Check(AppearanceStyle.TryColor(" #ab09fF ", out var color) && color == "#AB09FF" && AppearanceStyle.TryColor("", out _) && !AppearanceStyle.TryColor("#GG0000", out _) && !AppearanceStyle.TryColor("red", out _),
         "Custom colors accept normalized RGB or automatic, reject invalid input");
+    Check(MediaFiles.IsVideo("C:\\Media\\clip.MP4") && MediaFiles.IsVideo("clip.mov") && MediaFiles.IsVideo("clip.webm") && !MediaFiles.IsVideo("notes.mp4.txt") && !MediaFiles.IsVideo(null),
+        "Video detection is case-insensitive without treating text files as movies");
     var trashStore = new StateStore(Path.Combine(root, "trash")); var trashState = trashStore.Load();
     var keep = ShelfItem.FromText("Keep me after restart"); trashState.Items.Add(keep);
     LibraryOperations.Rename(keep, "Saved reference", "Design");

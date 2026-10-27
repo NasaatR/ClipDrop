@@ -40,6 +40,39 @@ internal static class UiProbe
         }
         return Search(node) ?? throw new Exception("UI control not found: " + typeof(T).Name);
     }
+    public static void RightClick(FrameworkElement target)
+    {
+        var point = target.PointToScreen(new Point(target.ActualWidth / 2, target.ActualHeight / 2));
+        SetCursorPos((int)point.X, (int)point.Y); Pump(30);
+        var clicks = new[] { new Input { Type = 0, Data = new Union { Mouse = new Mouse { Flags = 8 } } }, new Input { Type = 0, Data = new Union { Mouse = new Mouse { Flags = 16 } } } };
+        if (SendInput(2, clicks, Marshal.SizeOf<Input>()) != 2) throw new Exception("Right mouse input blocked");
+        Pump();
+    }
+    public static void ContextActions(MainWindow library, DockWindow dock, string output, Action<bool, string> check, Action<FrameworkElement, string> render)
+    {
+        var list = (ListBox)library.FindName("ItemList"); library.Activate(); list.UpdateLayout();
+        list.SelectedIndex = 1;
+        var target = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+        var row = (ItemRow)target.DataContext;
+        RightClick(target);
+        var menu = list.ContextMenu ?? throw new Exception("Clip menu missing");
+        check(menu.IsOpen && list.SelectedItems.Count == 1 && ((ItemRow)list.SelectedItem).Item.Id == row.Item.Id,
+            "Real Library right click selects the clicked clip before opening its actions");
+        render(menu, System.IO.Path.Combine(output, "clip-menu.png"));
+        var other = list.Items.Cast<ItemRow>().First(r => r.Item.Id != row.Item.Id);
+        list.SelectedItem = other;
+        ((MenuItem)menu.Items.Cast<object>().OfType<MenuItem>().Single(i => i.Tag as string == "Copy")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Pump();
+        check(Clipboard.GetText() == row.Item.Content, "Context Copy stays bound to the clicked clip even if selection changes");
+        var pin = Find<Button>(dock.Pins, b => b.DataContext is ItemRow r && r.Item.Id == row.Item.Id);
+        RightClick(pin);
+        var pinMenu = pin.ContextMenu ?? throw new Exception("Dock clip menu missing");
+        check(pinMenu.IsOpen, "Dock pins expose their own context menu");
+        pinMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Trash").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); Pump();
+        check(library.Session.State.Trash.Single().Item.Id == row.Item.Id && library.Session.State.Items.Any(i => i.Id == other.Item.Id),
+            "Dock context removal moves only the targeted clip to persistent Trash");
+        library.Session.UndoRemove();
+    }
     public static void Drag(Window window, Point point, int dx, int dy)
     {
         var from = window.PointToScreen(point);

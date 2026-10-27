@@ -14,7 +14,7 @@ namespace ClipDrop.Windows.Views;
 public partial class DockStrip : UserControl
 {
     public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded;
-    public event MouseButtonEventHandler? PinDown, PinUp;
+    public event MouseButtonEventHandler? PinDown, PinUp, PinMenu;
     public event MouseEventHandler? PinMove;
     public DockStrip() { InitializeComponent(); }
     public void Apply(ShelfSettings settings)
@@ -44,6 +44,7 @@ public partial class DockStrip : UserControl
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(sender, e);
     private void OnPinLoaded(object sender, RoutedEventArgs e) => PinLoaded?.Invoke(sender, e);
     private void OnImageLoaded(object sender, RoutedEventArgs e) => ImageLoaded?.Invoke(sender, e);
+    private void OnPinMenu(object sender, MouseButtonEventArgs e) => PinMenu?.Invoke(sender, e);
     private void OnPinDown(object sender, MouseButtonEventArgs e) => PinDown?.Invoke(sender, e);
     private void OnPinUp(object sender, MouseButtonEventArgs e) => PinUp?.Invoke(sender, e);
     private void OnPinMove(object sender, MouseEventArgs e) => PinMove?.Invoke(sender, e);

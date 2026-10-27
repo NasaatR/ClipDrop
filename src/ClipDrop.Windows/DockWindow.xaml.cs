@@ -20,7 +20,8 @@ public partial class DockWindow : Window
     private Border DockBody => Strip.Body;
     private readonly Action _library;
     private readonly Action _settings;
-    private readonly ThumbnailCache _thumbnails = new();
+    private readonly Action<ClipDrop.Core.ShelfItem>? _edit;
+    private readonly ThumbnailCache _thumbnails = ThumbnailCache.Shared;
     private readonly HashSet<string> _knownPins = new();
     private readonly HashSet<string> _arrivingPins = new();
     private Point? _origin;
@@ -28,13 +29,13 @@ public partial class DockWindow : Window
     private bool _suppressClick;
     private readonly ToolTip _feedback = new() { Placement = PlacementMode.Top, StaysOpen = true };
     private readonly DispatcherTimer _feedbackTimer = new() { Interval = TimeSpan.FromSeconds(3) };
-    public DockWindow(ShelfSession session, Action library, Action settings)
+    public DockWindow(ShelfSession session, Action library, Action settings, Action<ClipDrop.Core.ShelfItem>? edit = null)
     {
-        Session = session; _library = library; _settings = settings;
+        Session = session; _library = library; _settings = settings; _edit = edit;
         InitializeComponent();
         Strip.SaveRequested += OnSave; Strip.SettingsRequested += OnSettings; Strip.LibraryRequested += OnLibrary;
         Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
-        Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove;
+        Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove; Strip.PinMenu += OnPinMenu;
         _ = new WindowDrag(this, () => { _feedback.IsOpen = false; }, () => {
             Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false);
         });
@@ -101,6 +102,14 @@ public partial class DockWindow : Window
         if (_suppressClick) { _suppressClick = false; return; }
         if (sender is Button { DataContext: ItemRow row }) Session.Paste(new[] { row.Item });
     }
+    private void OnPinMenu(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Button { DataContext: ItemRow row } button) return;
+        e.Handled = true; _origin = null; _dragButton = null; _feedback.IsOpen = false;
+        Session.Paster?.CaptureTarget();
+        button.ContextMenu = ClipMenu.Create(Session, new[] { row.Item }, this, true, edit: _edit);
+        ClipMenu.Show(button.ContextMenu, button);
+    }
     private void OnPinLoaded(object sender, RoutedEventArgs e)
     {
         if (sender is Button { DataContext: ItemRow row } button && _arrivingPins.Remove(row.Item.Id)) Motion.Arrive(button);
@@ -135,7 +144,7 @@ public partial class DockWindow : Window
     }
     private async void OnThumbnailLoaded(object sender, RoutedEventArgs e)
     {
-        if (sender is Image image && image.DataContext is ItemRow { Item.FilePath: string path })
+        if (sender is Image image && image.DataContext is ItemRow { Item.FilePath: string path } row && (row.Item.Kind == ClipDrop.Core.ItemKind.Image || row.IsVideo))
         { image.Source = null; var bitmap = await _thumbnails.Get(path); if (image.DataContext is ItemRow current && current.Item.FilePath == path) image.Source = bitmap; }
     }
 }

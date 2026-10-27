@@ -33,7 +33,7 @@ public partial class App : Application
             _paste = new DesktopPaste();
             _session = new ShelfSession(store, state) { Paster = _paste };
             var library = new MainWindow(_session);
-            var dock = new DockWindow(_session, library.ShowShelf, library.OpenSettings);
+            var dock = new DockWindow(_session, library.ShowShelf, library.OpenSettings, library.EditItem);
             library.AttachDock(dock);
             MainWindow = dock;
             _session.QuitRequested += () => {

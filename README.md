@@ -25,7 +25,7 @@ Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
 Transfers copy; originals and cards remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.4.0
+## Features in 0.5.0
 
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
@@ -42,7 +42,10 @@ from Trash, including after restarting.
   Process/owner-bound formats cannot always be persisted; partial captures are reported.
 - Original files remain file references, including TXT files; file-copy intent is copy-only.
 - Multi-selection, search, pinning, preview, editable names/groups and persistent Trash with restore/undo after restart.
-- WeavyClips-inspired colored Save/gear, three-line Library, shared live dock preview and grouped Settings. Custom application/installer/tray icon.
+- Consistent modern vector icons, shared live dock preview and grouped Settings.
+- Per-clip context menus in dock/Library, preserving the clicked target and multi-selection.
+- Video thumbnails from Windows, plus an explicit muted player with pause/seek and an open-in-app fallback.
+- Custom application/installer/tray icon.
 - Dark/light themes, text size, row spacing from 0, corner radius.
 - Coalesced autosave, atomic replacement, previous-save backup and corruption
   recovery without silently resetting unreadable/newer data.
@@ -126,5 +129,8 @@ Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals, clear
 cards on drag completion, or time-delete exported payloads.
 Research and manual acceptance: [foundation notes](docs/FOUNDATION.md).
+Incremental stages and the two-monitor mirror design: [roadmap](docs/ROADMAP.md).
+0.5.0 has one dock; mirrored docks and saved panel sets remain planned.
+Video frames/playback depend on installed Windows providers/codecs. No FFmpeg or codec installer is bundled.
 
 MIT · Maintained at <https://github.com/NasaatR/ClipDrop>.

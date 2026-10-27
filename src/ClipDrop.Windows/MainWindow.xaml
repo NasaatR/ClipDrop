@@ -5,10 +5,6 @@
  <Window.ContextMenu><ContextMenu>
   <MenuItem Header="Save clipboard" Click="OnPaste"/>
   <MenuItem Header="Add files…" Click="OnAddFiles"/>
-  <Separator/><MenuItem Header="Copy selected" Click="OnCopy"/>
-  <MenuItem Header="Copy as plain text" Click="OnCopyText"/>
-  <MenuItem Header="Pin / unpin selected" Click="OnPin"/>
-  <MenuItem Header="Remove selected" Click="OnRemove"/>
   <Separator/><MenuItem Header="Settings" Click="OnSettings"/>
   <MenuItem Header="Quit ClipDrop" Click="OnQuit"/>
  </ContextMenu></Window.ContextMenu>
@@ -20,11 +16,11 @@
    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="Library" FontWeight="SemiBold" FontSize="15"/><TextBlock x:Name="CountLabel" Margin="8,2,0,0" Foreground="{DynamicResource Muted}"/></StackPanel>
    <Button x:Name="AttachButton" Grid.Column="1" Style="{StaticResource IconButton}" Click="OnAttach" ToolTip="Attach Library to dock"><Path x:Name="AttachIcon" Style="{StaticResource LineIcon}" Data="{StaticResource LinkIcon}" Width="16" Height="16"/></Button>
    <Button Grid.Column="2" Style="{StaticResource IconButton}" Click="OnToggleTop" ToolTip="Keep above other windows" AutomationProperties.Name="Toggle always on top"><Path x:Name="TopIcon" Style="{StaticResource LineIcon}" Data="{StaticResource PinIcon}" Width="16" Height="16"/></Button>
-   <Button Grid.Column="3" Style="{StaticResource IconButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><Image Source="{StaticResource GearArtwork}" Width="18" Height="18"/></Button>
+   <Button Grid.Column="3" Style="{StaticResource IconButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><Path Style="{StaticResource LineIcon}" Data="{StaticResource SettingsIcon}"/></Button>
    <Button Grid.Column="4" Style="{StaticResource IconButton}" Click="OnHide" ToolTip="Hide Library" AutomationProperties.Name="Hide Library"><Path Style="{StaticResource LineIcon}" Data="{StaticResource CloseIcon}" Width="16" Height="16"/></Button>
   </Grid>
   <DockPanel Grid.Row="1" Margin="10,0,10,8" LastChildFill="True">
-   <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Click="OnPaste" ToolTip="Save clipboard · Ctrl+V" AutomationProperties.Name="Save clipboard"><Image Source="{StaticResource SaveArtwork}" Width="20" Height="20"/></Button>
+   <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Click="OnPaste" ToolTip="Save clipboard · Ctrl+V" AutomationProperties.Name="Save clipboard"><Path Style="{StaticResource LineIcon}" Data="{StaticResource SaveIcon}"/></Button>
    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Click="OnAddFiles" ToolTip="Add files · Ctrl+O" AutomationProperties.Name="Add files"><Path Style="{StaticResource LineIcon}" Data="{StaticResource PlusIcon}"/></Button>
    <Grid Margin="2">
     <TextBox x:Name="SearchBox" TextChanged="OnSearch" VerticalContentAlignment="Center" ToolTip="Search shelf · Ctrl+F" AutomationProperties.Name="Search shelf"/>
@@ -38,12 +34,13 @@
    <ComboBox x:Name="GroupFilter" Margin="5,2,2,2" SelectionChanged="OnGroupFilter" ToolTip="Filter by group" AutomationProperties.Name="Group filter"/>
   </DockPanel>
   <Grid Grid.Row="3" Margin="12,0,12,4">
-   <ListBox x:Name="ItemList" SelectionMode="Extended" PreviewMouseLeftButtonDown="OnItemDown" PreviewMouseLeftButtonUp="OnItemUp" PreviewMouseMove="OnItemMove" SelectionChanged="OnSelection" MouseDoubleClick="OnOpen"
+   <ListBox x:Name="ItemList" SelectionMode="Extended" PreviewMouseLeftButtonDown="OnItemDown" PreviewMouseLeftButtonUp="OnItemUp" PreviewMouseMove="OnItemMove" SelectionChanged="OnSelection" MouseDoubleClick="OnOpen" PreviewMouseRightButtonDown="OnItemRightDown" ContextMenuOpening="OnClipMenu"
     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Shelf items">
+    <ListBox.ContextMenu><ContextMenu/></ListBox.ContextMenu>
     <ListBox.ItemTemplate><DataTemplate><Grid ToolTip="{Binding Help}">
      <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <Image Width="28" Height="28" Stretch="Uniform" Visibility="{Binding ImageVisible}" Loaded="OnThumbnailLoaded"/>
-     <TextBlock Text="{Binding DockGlyph}" FontFamily="Segoe UI Emoji" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IconVisible}"/>
+     <Image x:Name="Thumbnail" Width="32" Height="32" Stretch="Uniform" Visibility="{Binding ImageVisible}" Loaded="OnThumbnailLoaded"/>
+     <Path Data="{Binding Glyph}"><Path.Style><Style TargetType="Path" BasedOn="{StaticResource LineIcon}"><Setter Property="Stroke" Value="{DynamicResource Muted}"/><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Source, ElementName=Thumbnail}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Path.Style></Path>
      <StackPanel Grid.Column="1" Margin="7,0,4,0"><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxHeight="24"/><TextBlock Text="{Binding Details}" Foreground="{DynamicResource Muted}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/></StackPanel>
      <Path Grid.Column="2" Width="10" Height="12" Stretch="Uniform" Stroke="{DynamicResource Muted}" StrokeThickness="1.4" Visibility="{Binding Pinned}" Data="M1,1 L9,1 M3,1 L3,5 L1,8 L9,8 L7,5 L7,1 M5,8 L5,12"/>
     </Grid></DataTemplate></ListBox.ItemTemplate>
@@ -68,7 +65,7 @@
     <Button x:Name="PasteButton" Click="OnPasteSelected" ToolTip="Paste selected into previous app · Enter" AutomationProperties.Name="Paste selection"><StackPanel Orientation="Horizontal"><Path Style="{StaticResource LineIcon}" Data="{StaticResource PasteIcon}" Width="15" Height="15" Margin="0,0,7,0"/><TextBlock Text="Paste"/></StackPanel></Button>
     <Button x:Name="CopyButton" Style="{StaticResource IconButton}" Click="OnCopy" ToolTip="Copy selection · Ctrl+C" AutomationProperties.Name="Copy selection"><Path Style="{StaticResource LineIcon}" Data="{StaticResource CopyIcon}" Width="16" Height="16"/></Button>
     <Button x:Name="PinButton" Style="{StaticResource IconButton}" Click="OnPin" ToolTip="Pin selection" AutomationProperties.Name="Pin selection"><Path x:Name="PinActionIcon" Style="{StaticResource LineIcon}" Data="{StaticResource PinIcon}" Width="16" Height="16"/></Button>
-    <Button x:Name="EditButton" Style="{StaticResource IconButton}" Click="OnEdit" ToolTip="Rename / group · F2" AutomationProperties.Name="Edit item"><TextBlock Text="✎" FontSize="18"/></Button>
+    <Button x:Name="EditButton" Style="{StaticResource IconButton}" Click="OnEdit" ToolTip="Rename / group · F2" AutomationProperties.Name="Edit item"><Path Style="{StaticResource LineIcon}" Data="{StaticResource EditIcon}" Width="16" Height="16"/></Button>
     <Button x:Name="RemoveButton" Style="{StaticResource IconButton}" Click="OnRemove" ToolTip="Remove cards · Delete" AutomationProperties.Name="Remove selection"><Path Style="{StaticResource LineIcon}" Data="{StaticResource TrashIcon}" Width="16" Height="16"/></Button>
    </WrapPanel>
   </DockPanel>

@@ -89,6 +89,9 @@ internal static class PasteProbe
             Until(() => File.Exists(received) && File.ReadAllText(received).Replace("\r\n", "\n") == expected.Replace("\r\n", "\n"), "External receiver did not receive the dock paste");
             check(true, "Clicking a dock pin pastes Unicode into a separate Windows process");
             check(GetForegroundWindow() == hwnd, "Dock click leaves the receiving editor focused");
+            UiProbe.RightClick(button);
+            check(button.ContextMenu?.IsOpen == true && File.ReadAllText(received).Replace("\r\n", "\n") == expected.Replace("\r\n", "\n"), "Right clicking a pin opens actions without triggering another paste");
+            button.ContextMenu!.IsOpen = false; UiProbe.Pump();
         }
         finally { dock.Session.Paster = null; if (!child.HasExited) { child.Kill(); child.WaitForExit(3000); } }
     }

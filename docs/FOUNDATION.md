@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.4.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.5.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -28,7 +28,7 @@ and corruption/newer-schema boundaries. Windows owns STA transfers, bounded
 virtual streams, PNG preference, lazy thumbnails, tray/hotkey. UI is compact,
 resizable, dark/light, with typography/spacing/radius controls and English labels.
 
-All cards persist. Clear removes unpinned cards. Undo is session-local.
+All cards persist. Clear moves unpinned cards to persistent Trash. Undo/Restore survives restart.
 Removal never deletes files. No telemetry, clipboard monitor or HTTP downloader.
 
 ## Verification
@@ -52,7 +52,7 @@ Manual acceptance remains open:
 
 ## Deferred
 
-Automatic edge docking; target-app compatibility from real reports; HTML/RTF;
+Automatic edge docking; target-app compatibility from real reports;
 configurable shortcut; explicit safe cache reclamation; more appearance overrides;
 ARM64; signing and authenticated recoverable updates. macOS needs a new native
 UI/adapter: WPF itself is not portable.
@@ -97,7 +97,7 @@ Dark/light dock, Library, minimum-width Library and Settings captures were
 visually inspected. Issued [0.2.0 assets](https://github.com/NasaatR/ClipDrop/releases/tag/v0.2.0)
 remain tied to that commit; later documentation changes do not replace them.
 
-Remaining user-feedback stages:
+Historical stage list from 0.2.0 (superseded by [ROADMAP.md](ROADMAP.md)):
 
 1. Appearance stage shipped in 0.3.1: presets, independent palettes, RGB overrides, live preview and bounded motion.
 2. Expanded reusable Library, naming/groups/content versions, persistent trash and backup UI.
@@ -179,3 +179,29 @@ files, text bytes or captured clipboard assets.
 
 Remaining stages: content editing/version history and backup UI; named panel
 sets and recently closed restoration; opt-in automatic clipboard history.
+
+
+## 0.5.0: actions and media, with bounded next stages
+
+The user's latest feedback replaces the retro colored/emoji icon direction with
+one modern vector family. Preserve the WeavyClips action model and shared dock
+preview, with context actions bound to the right-clicked clip and stable captured
+multi-selection. Video remains an ordinary original file for clipboard and drag;
+media classification changes its presentation, not its saved data type.
+
+Native thumbnail extraction uses IShellItemImageFactory on two dedicated STA
+workers, a bounded queue and a three-second caller timeout. HBITMAP ownership
+ends with DeleteObject; COM references are released on their owning worker.
+Frozen results are shared across dock/Library/preview, invalidated by file length
+and write time. Missing/unsupported frames have vector fallbacks, never blank pins.
+WPF MediaElement playback is explicit, muted and manually controlled; an eight-
+second open timeout exposes Open in app. No external decoder is bundled.
+
+Sources: [Microsoft shell image factory](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellitemimagefactory-getimage),
+[WPF multimedia](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/graphics-multimedia/multimedia-overview).
+Provider/codec availability is machine-dependent; test logs distinguish native
+success from the fallback path.
+
+Current and subsequent scope is in [ROADMAP.md](ROADMAP.md). Two-monitor mirroring
+is designed there, with common state, independent placements, reconnect policy,
+DPI acceptance and schema migration. It is not implemented or claimed by 0.5.0.

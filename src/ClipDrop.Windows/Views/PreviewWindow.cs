@@ -14,7 +14,13 @@ public sealed class PreviewWindow : Window
     {
         Title = item.Title; Width = 640; Height = 480; MinWidth = 300; MinHeight = 220;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        if (item.Kind == ItemKind.Image && item.FilePath is not null)
+        if (MediaFiles.IsVideo(item.FilePath) && item.FilePath is string video)
+        {
+            MinWidth = 520;
+            var preview = new VideoPreview(video); Content = preview;
+            Closed += (_, _) => preview.Dispose();
+        }
+        else if (item.Kind == ItemKind.Image && item.FilePath is not null)
         {
             try
             {

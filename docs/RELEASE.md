@@ -1,13 +1,11 @@
-WeavyClips-inspired design, source-format clipboard copying and persistent Library recovery.
+Clip actions and basic video preview, with a staged roadmap.
 
-- Colored floppy Save, gear Settings, three-line Library, then clip icons. The live Settings preview is the real dock component.
-- Grouped settings and original application, installer and tray icon.
-- Text/links stay text: no generated TXT/URL files. Original file copies stay original files.
-- Save retains native memory-backed clipboard formats, including Unicode, HTML/RTF, PNG/DIB and registered app formats. Copy/click-paste restores their bytes. Process/owner-bound formats are not universally portable; partial captures are reported.
-- Persistent Trash, restoration after restart, names/groups and group filters.
+- One modern flat vector icon family across dock, Library, menus and live preview.
+- Right-click clips for Paste, Copy, Preview, Open in app, Show in Explorer, Pin/Unpin, Rename/group and Move to Trash. Trash offers Restore. Menus keep their original target and selected group.
+- Video thumbnails use native Windows providers in a bounded background queue. Unsupported frames keep a visible video symbol.
+- Space/double-click/Preview opens video controls: explicit Play/Pause, seek, position/duration, muted start and default-player fallback. No autoplay or transcoding.
+- ROADMAP.md splits the current two steps from next-stage two-monitor mirroring, named/closed panels, backup/versioning and opt-in clipboard history. Mirrored docks are planned, not part of 0.5.0.
 
-The installer updates the existing installation and keeps data. Quit from the tray first. Portable ZIPs are extracted separately. Runtime included; unsigned Windows x64 preview.
+The installer upgrades the existing installation and keeps data. Quit from the tray first. Runtime included; unsigned Windows x64 preview. No new data schema in this release.
 
-Data schema 2 migrates existing schema-1 libraries with an untouched previous-save backup. Older builds refuse newer metadata; back up the data folder before manually rolling back. Original files remain untouched. Native snapshot limit: 128 formats / 64 MB. No automatic clipboard monitoring or cache deletion.
-
-CI exercises source-format roundtrips through restart, native click-paste/focus, background movement, Library restore and groups, schema migration, shared preview and WPF captures. Packaging checks upgrade from the actual 0.3.1 release, one installation, previous directory, kept data and uninstall. Photoshop/Figma app-specific objects and mixed-DPI monitor transitions still need manual testing. Saved/closed panel sets, automatic clipboard history, content editing/version history and backup UI remain future stages.
+Video support depends on installed Windows thumbnail providers/codecs; unsupported or stalled media exposes Open in app. No FFmpeg or codec installer is bundled. Original files and clipboard formats stay intact. CI checks native clip actions, transfer/focus, media fixture/fallback, recovery, WPF surfaces, published startup and previous-version upgrade. Physical two-monitor/DPI acceptance belongs to the next stage.

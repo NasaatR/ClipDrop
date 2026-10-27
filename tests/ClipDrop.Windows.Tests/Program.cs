@@ -85,6 +85,7 @@ internal static class Program
             PasteProbe.Run(dock, root, note.Content, Check);
             UiProbe.Placement(window, dock, Check);
             UiProbe.Library(window, Check);
+            UiProbe.ContextActions(window, dock, output, Check, (element, path) => RenderElement(element, path));
             var clipboardNote = ShelfItem.FromText("Shared session checkpoint");
             window.Session.Add(new[] { clipboardNote });
             Check(state.Items.Any(i => i.Id == clipboardNote.Id && i.IsPinned), "Dock and Library share one collection and pin new saves");
@@ -112,6 +113,9 @@ internal static class Program
             RenderElement((FrameworkElement)popup.Child, Path.Combine(output, "settings-preset-menu.png"));
             stylePicker.IsDropDownOpen = false;
             settings.Close();
+            MediaProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
+            Render(dock, Path.Combine(output, "dock-video.png"));
+            Render(window, Path.Combine(output, "library-video.png"));
             Check(window.ActualWidth >= 320 && window.ActualHeight >= 300, "Real WPF surface renders at its minimum supported size");
             dock.Hide();
             window.Session.TrySave(); window.Session.Dispose();

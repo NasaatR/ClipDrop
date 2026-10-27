@@ -19,7 +19,7 @@ public partial class MainWindow : Window
 {
     public ShelfSession Session { get; }
     private readonly ObservableCollection<ItemRow> _rows = new();
-    private readonly ThumbnailCache _thumbnails = new();
+    private readonly ThumbnailCache _thumbnails = ThumbnailCache.Shared;
     private Point? _origin;
     private ItemRow? _pendingSingle;
     private bool _dragging;
@@ -210,6 +210,27 @@ public partial class MainWindow : Window
         catch (Exception ex) { Session.Error("Drag", ex); }
         finally { _dragging = false; DropCue.Visibility = Visibility.Collapsed; }
     }
+    public void EditItem(ShelfItem item)
+    {
+        ShowShelf(); _filter = "All"; SearchBox.Clear(); GroupFilter.SelectedItem = "All groups"; Refresh();
+        var row = _rows.FirstOrDefault(r => r.Item.Id == item.Id);
+        if (row is null) return;
+        ItemList.SelectedItems.Clear(); ItemList.SelectedItem = row; ItemList.ScrollIntoView(row); OnEdit(this, new RoutedEventArgs());
+    }
+    private void OnItemRightDown(object sender, MouseButtonEventArgs e)
+    {
+        if (Container(e.OriginalSource as DependencyObject) is not { DataContext: ItemRow row } container) return;
+        if (!container.IsSelected) { ItemList.SelectedItems.Clear(); ItemList.SelectedItem = row; }
+    }
+    private void OnClipMenu(object sender, ContextMenuEventArgs e)
+    {
+        e.Handled = true;
+        var selected = Selected(); if (selected.Count == 0) return;
+        Session.Paster?.CaptureTarget();
+        var target = ItemList.ItemContainerGenerator.ContainerFromItem(ItemList.SelectedItem) as FrameworkElement ?? ItemList;
+        ItemList.ContextMenu = ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem);
+        ClipMenu.Show(ItemList.ContextMenu, target, e.CursorLeft < 0);
+    }
     private void OnFilter(object sender, RoutedEventArgs e)
     {
         _filter = sender is Button { Tag: string filter } ? filter : "All";
@@ -240,7 +261,7 @@ public partial class MainWindow : Window
         var item = row.Item;
         try
         {
-            if (item.Kind is ItemKind.Text or ItemKind.Clipboard) { new PreviewWindow(item) { Owner = this }.Show(); return; }
+            if (item.Kind is ItemKind.Text or ItemKind.Clipboard || MediaFiles.IsVideo(item.FilePath)) { new PreviewWindow(item) { Owner = this }.Show(); return; }
             var target = item.FilePath ?? item.Content.Trim();
             if (item.Kind == ItemKind.Link && (!Uri.TryCreate(target, UriKind.Absolute, out var uri) || (uri.Scheme != "https" && uri.Scheme != "http"))) return;
             Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
@@ -249,7 +270,7 @@ public partial class MainWindow : Window
     }
     private async void OnThumbnailLoaded(object sender, RoutedEventArgs e)
     {
-        if (sender is Image image && image.DataContext is ItemRow { Item.FilePath: string path })
+        if (sender is Image image && image.DataContext is ItemRow { Item.FilePath: string path } row && (row.Item.Kind == ItemKind.Image || row.IsVideo))
         {
             image.Source = null; var thumbnail = await _thumbnails.Get(path);
             if (image.DataContext is ItemRow current && current.Item.FilePath == path) image.Source = thumbnail;
