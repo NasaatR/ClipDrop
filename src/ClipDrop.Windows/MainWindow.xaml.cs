@@ -88,7 +88,10 @@ public partial class MainWindow : Window
         var existing = Application.Current.Windows.OfType<SettingsWindow>().FirstOrDefault();
         if (existing is not null) { existing.Activate(); return; }
         Session.Paster?.CaptureTarget();
-        new SettingsWindow(Session.State.Settings, () => Session.Change(), () => TrySave(), Session.Report, Session.Root) { Owner = IsVisible ? this : null, WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen }.Show();
+        var settings = new SettingsWindow(Session.State.Settings, () => Session.Change(), () => TrySave(), Session.Report, Session.Root) { Owner = IsVisible ? this : null, WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen };
+        void StorageStatus(string _) => settings.SetStorageStatus(Session.StorageStatus);
+        Session.StatusChanged += StorageStatus; settings.Closed += (_, _) => Session.StatusChanged -= StorageStatus;
+        settings.SetStorageStatus(Session.StorageStatus); settings.Show();
     }
     private static double Bound(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
     public void ApplyAppearance()

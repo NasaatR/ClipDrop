@@ -74,8 +74,6 @@ internal static class Program
             Console.WriteLine("CHECKPOINT Library creation");
             var window = new MainWindow(store, state, false);
             Console.WriteLine("CHECKPOINT Library constructed");
-            var layouts = 0;
-            window.LayoutUpdated += (_, _) => { if (++layouts == 50) Console.WriteLine("CHECKPOINT repeated Library layout " + window.ActualWidth + "x" + window.ActualHeight + "\n" + Environment.StackTrace); };
             window.Show(); Console.WriteLine("CHECKPOINT Library shown");
             ClipboardProbe.Run(root, Check); Console.WriteLine("CHECKPOINT native probe returned");
             Render(window, Path.Combine(output, "shelf-dark.png"));
@@ -132,9 +130,7 @@ internal static class Program
 
     private static void Render(Window window, string path)
     {
-        Console.WriteLine("CHECKPOINT render pump " + path);
         UiProbe.Pump(100);
-        Console.WriteLine("CHECKPOINT render layout " + path);
         window.UpdateLayout();
         var content = (FrameworkElement)window.Content;
         RenderElement(content, path, window.Background);
@@ -142,7 +138,6 @@ internal static class Program
     private static void RenderElement(FrameworkElement content, string path, Brush? background = null)
     {
         content.UpdateLayout();
-        Console.WriteLine("CHECKPOINT bitmap render " + path);
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
         var surface = new DrawingVisual();
         using (var drawing = surface.RenderOpen())
@@ -151,9 +146,7 @@ internal static class Program
             drawing.DrawRectangle(background, null, bounds);
             drawing.DrawRectangle(new VisualBrush(content), null, bounds);
         }
-        Console.WriteLine("CHECKPOINT bitmap submit " + path);
         bitmap.Render(surface);
-        Console.WriteLine("CHECKPOINT bitmap done " + path);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(path); encoder.Save(file);
     }

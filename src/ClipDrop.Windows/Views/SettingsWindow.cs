@@ -34,6 +34,12 @@ public sealed class SettingsWindow : Window
         Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Ink");
+        var buttons = new Style(typeof(Button), (Style)Application.Current.FindResource(typeof(Button)));
+        buttons.Setters.Add(new Setter(Control.BackgroundProperty, new DynamicResourceExtension("Control")));
+        buttons.Setters.Add(new Setter(Control.BorderBrushProperty, new DynamicResourceExtension("Stroke")));
+        buttons.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
+        buttons.Setters.Add(new Setter(Control.FontSizeProperty, 12d)); Resources[typeof(Button)] = buttons;
+        _notice.Text = "Changes apply instantly";
         FontFamily = new FontFamily("Segoe UI"); FontSize = 13;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         var layout = new DockPanel(); Content = layout;
@@ -57,6 +63,7 @@ public sealed class SettingsWindow : Window
             var title = new TextBlock { Text = name, FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 9) };
             _section.Children.Add(title);
             var jump = new Button { Content = name, Padding = new Thickness(9, 5, 9, 5), MinHeight = 28 };
+            jump.Background = Brushes.Transparent; jump.BorderThickness = new Thickness(0);
             jump.Click += (_, _) => block.BringIntoView(); nav.Children.Add(jump); return title;
         }
         Section("Style");
@@ -139,8 +146,13 @@ public sealed class SettingsWindow : Window
             var width = Math.Max(210, (scroll.ActualWidth - 36 - 28 - 24 - 10) / 2);
             foreach (var field in _fieldBoxes) field.Width = width;
         }
-        SizeChanged += (_, _) => FitFields(); Loaded += (_, _) => FitFields();
+        SizeChanged += (_, _) => FitFields(); Loaded += (_, _) => {
+            var area = WindowPlacement.WorkArea(this);
+            Width = Math.Max(MinWidth, Math.Min(Width, area.Width)); Height = Math.Max(MinHeight, Math.Min(Height, area.Height));
+            WindowPlacement.Clamp(this); FitFields();
+        };
     }
+    public void SetStorageStatus(string text) => _notice.Text = text;
     private void ApplyStyle(AppearanceStyle style)
     {
         _sync = true;

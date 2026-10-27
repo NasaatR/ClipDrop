@@ -16,7 +16,7 @@ if ($process.ExitCode -ne 0) { throw "Upgrade failed: $($process.ExitCode)" }
 [xml]$props = Get-Content Directory.Build.props
 $expected = $props.Project.PropertyGroup.VersionPrefix
 if (!(Test-Path "$target/ClipDrop.exe") -or !(Get-Item "$target/ClipDrop.exe").VersionInfo.FileVersion.StartsWith($expected)) { throw 'Previous directory was not updated to the expected version' }
-$registrations = @(Get-ChildItem 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall' | Get-ItemProperty | Where-Object { $_.PSObject.Properties.Name -contains 'DisplayName' -and $_.DisplayName -eq 'ClipDrop' })
+$registrations = @(Get-ChildItem 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall' | Get-ItemProperty | Where-Object { $_.PSChildName -eq '{657DCFD1-3CCB-46E7-9BB1-534F69B57C36}_is1' })
 if ($registrations.Count -ne 1) { throw "Expected one installed app, found $($registrations.Count)" }
 if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json')) -ne $fixture) { throw 'Installer changed saved user data' }
 $app = Start-Process "$target/ClipDrop.exe" -ArgumentList '--background', '--check-startup' -PassThru
