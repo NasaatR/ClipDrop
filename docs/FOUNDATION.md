@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.1.1. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.2.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -45,7 +45,7 @@ Manual acceptance remains open:
 | Explorer → shelf → Explorer | Copy all selected files; keep originals | Pending manual test |
 | Browser image → shelf → Photoshop | Image/alpha if provided by source | Pending manual test |
 | Browser image → shelf → Figma desktop/web | Supported image imported | Pending manual test |
-| Text → shelf → editor | Unicode/whitespace intact | Pending manual test |
+| Text → dock → editor | Unicode/whitespace intact; target keeps focus | Automated separate-process Windows receiver passed; user apps pending |
 | Escape / unsupported target | Cards and originals remain | Pending manual test |
 | Virtual attachment → shelf | Stream becomes a managed file | Pending manual test |
 | Mixed DPI / monitors / sleep | Shelf remains reachable | Pending manual test |
@@ -88,6 +88,14 @@ process, unchanged receiver focus, fallback policy, real clipboard formats and U
 renders. CI also starts/quits the published executable before installer checks.
 This does not establish Photoshop/Figma/browser-specific behavior; retain the
 manual matrix above.
+
+Verified build: [Windows run 40432637954](https://github.com/NasaatR/ClipDrop/actions/runs/40432637954),
+commit `b34ffa38986bf5695fed9e65f4a9b00987296571`: 18 core checks and 24 Windows
+checks passed, including a real dock click, external paste reception and focus
+preservation. Published startup/shutdown and installation/uninstallation passed.
+Dark/light dock, Library, minimum-width Library and Settings captures were
+visually inspected. Issued [0.2.0 assets](https://github.com/NasaatR/ClipDrop/releases/tag/v0.2.0)
+remain tied to that commit; later documentation changes do not replace them.
 
 Remaining user-feedback stages:
 
