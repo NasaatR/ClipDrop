@@ -69,7 +69,7 @@ public sealed class TransferService
         if (items.Count == 0) throw new InvalidOperationException("Select an item first.");
         var data = new DataObject();
         var files = new StringCollection();
-        foreach (var item in items.Where(i => i.FilePath is not null && (!i.OwnedAsset || items.Count > 1)))
+        foreach (var item in items.Where(i => i.FilePath is not null && (!i.OwnedAsset || i.Kind != ItemKind.Image || items.Count > 1)))
         {
             var path = item.FilePath!;
             if (!File.Exists(path) && !Directory.Exists(path)) throw new FileNotFoundException("An original file is unavailable. Restore it or remove its card.");

@@ -42,6 +42,9 @@ internal static class ClipboardProbe
         var service = new TransferService(new AssetStore(Path.Combine(folder, "assets")));
         var fileData = service.Build(new[] { ShelfItem.FromPath(path) });
         check(fileData.GetFileDropList().Cast<string>().Single() == path && !fileData.GetDataPresent(DataFormats.UnicodeText), "A copied TXT file remains the original file, without converting its contents");
+        var owned = ShelfItem.FromPath(path); owned.OwnedAsset = true;
+        check(service.Build(new[] { owned }).GetFileDropList().Cast<string>().Single() == path,
+            "Materialized virtual documents retain their file payload");
         Clipboard.Clear();
     }
 }

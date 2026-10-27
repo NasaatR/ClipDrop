@@ -39,7 +39,7 @@ internal static class PasteProbe
         {
             try { if (condition()) return; } catch (IOException) { }
             if (watch.ElapsedMilliseconds > milliseconds) throw new Exception(message);
-            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            UiProbe.Pump(15);
             Thread.Sleep(20);
         }
     }
@@ -70,7 +70,7 @@ internal static class PasteProbe
             var target = paste.CaptureTarget();
             check(target?.Window == hwnd, "Foreground tracker identifies the external receiver");
             dock.ShowDock(); dock.UpdateLayout();
-            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            UiProbe.Pump(15);
             check(GetForegroundWindow() == hwnd, "Showing the non-activating dock preserves receiver focus");
             var beforeDrag = dock.Left;
             UiProbe.Drag(dock, new Point(3, dock.ActualHeight / 2), 28, -20);

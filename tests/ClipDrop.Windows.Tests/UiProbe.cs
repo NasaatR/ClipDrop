@@ -22,8 +22,12 @@ internal static class UiProbe
     [StructLayout(LayoutKind.Sequential)] private struct Mouse { public int X, Y; public uint Data, Flags, Time; public UIntPtr Extra; }
     public static void Pump(int ms = 80)
     {
-        var watch = Stopwatch.StartNew();
-        do { Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle); Thread.Sleep(10); } while (watch.ElapsedMilliseconds < ms);
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(DispatcherPriority.Send) { Interval = TimeSpan.FromMilliseconds(ms) };
+        timer.Tick += (_, _) => frame.Continue = false;
+        timer.Start();
+        try { Dispatcher.PushFrame(frame); }
+        finally { timer.Stop(); }
     }
     public static T Find<T>(DependencyObject node, Func<T, bool> predicate) where T : DependencyObject
     {

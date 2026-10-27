@@ -98,7 +98,7 @@ public sealed class ShelfSession : IDisposable
             try { items = Transfer.Import(data); }
             catch (Exception ex) when (ex is NotSupportedException or FileFormatException or InvalidDataException)
             { items = new(); Diagnostics.Record("Clipboard preview", ex); }
-            var snapshot = data.GetDataPresent(DataFormats.FileDrop) ? null : _clipboard.Capture();
+            var snapshot = data.GetDataPresent(DataFormats.FileDrop) || data.GetDataPresent("FileGroupDescriptorW", false) || items.Any(i => i.Kind is ItemKind.File or ItemKind.Folder) ? null : _clipboard.Capture();
             if (NativeClipboard.GetClipboardSequenceNumber() != sequence) { Notify("Clipboard changed · save again"); return; }
             if (items.Count == 0 && snapshot is not null) items.Add(new ShelfItem { Kind = ItemKind.Clipboard, Title = "Clipboard item" });
             if (items.Count == 1) items[0].Clipboard = snapshot;

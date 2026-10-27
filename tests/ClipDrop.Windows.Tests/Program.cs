@@ -66,8 +66,6 @@ internal static class Program
             Check(transfers.Import(Clipboard.GetDataObject() ?? throw new Exception("Clipboard unavailable")).Single().Content == note.Content,
                 "Copying and pasting a ClipDrop text card keeps it a text card");
             Clipboard.Clear();
-            Console.WriteLine("CHECKPOINT native clipboard probe");
-            ClipboardProbe.Run(root, Check);
             var store = new StateStore(root); var state = store.Load();
             state.Items.AddRange(new[] { note, image, file, ShelfItem.FromText("A long Cyrillic reference: Проверка очень длинного названия изображения для рабочего проекта") });
             state.Items[0].IsPinned = true;
@@ -77,6 +75,7 @@ internal static class Program
             var layouts = 0;
             window.LayoutUpdated += (_, _) => { if (++layouts == 50) Console.WriteLine("CHECKPOINT repeated Library layout " + window.ActualWidth + "x" + window.ActualHeight + "\n" + Environment.StackTrace); };
             window.Show(); Console.WriteLine("CHECKPOINT Library shown");
+            ClipboardProbe.Run(root, Check);
             Render(window, Path.Combine(output, "shelf-dark.png"));
             Console.WriteLine("CHECKPOINT dock creation");
             var dock = new DockWindow(window.Session, window.ShowShelf, window.OpenSettings);
@@ -126,7 +125,7 @@ internal static class Program
 
     private static void Render(Window window, string path)
     {
-        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        UiProbe.Pump(100);
         window.UpdateLayout();
         var content = (FrameworkElement)window.Content;
         RenderElement(content, path, window.Background);
