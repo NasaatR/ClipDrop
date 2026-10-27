@@ -85,6 +85,8 @@ internal static class UiProbe
         state.DockPalette = "Light"; state.LibraryPalette = "Midnight"; library.Session.Change();
         check(((SolidColorBrush)dock.FindResource("Surface")).Color != ((SolidColorBrush)library.FindResource("Surface")).Color,
             "Dock and Library resolve independent live palettes");
+        check(settings.Background is SolidColorBrush background && background.Color == ((SolidColorBrush)Application.Current.FindResource("Surface")).Color && settings.Foreground is SolidColorBrush foreground && foreground.Color == ((SolidColorBrush)Application.Current.FindResource("Ink")).Color,
+            "Settings window background and foreground follow live app theme together");
         var button = (Button)dock.FindName("SaveButton"); Motion.Reveal(button); Motion.Arrive(button);
         check(!button.HasAnimatedProperties && button.Opacity == 1 && button.RenderTransform is ScaleTransform scale && !scale.HasAnimatedProperties,
             "Disabled motion leaves controls visible with no running entrance animations");

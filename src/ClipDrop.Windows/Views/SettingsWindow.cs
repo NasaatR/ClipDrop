@@ -28,8 +28,12 @@ public sealed class SettingsWindow : Window
     {
         _settings = settings; _changed = changed;
         Title = "ClipDrop settings"; Width = 440; Height = 690; MinWidth = 400; MinHeight = 430;
+        SetResourceReference(BackgroundProperty, "Surface");
+        SetResourceReference(ForegroundProperty, "Ink");
+        FontFamily = new FontFamily("Segoe UI"); FontSize = 13;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         var layout = new DockPanel(); Content = layout;
+        layout.SetResourceReference(Panel.BackgroundProperty, "Surface");
         var heading = new StackPanel { Margin = new Thickness(18, 14, 18, 12) };
         DockPanel.SetDock(heading, Dock.Top); layout.Children.Add(heading);
         heading.Children.Add(new TextBlock { Text = "Settings", FontSize = 20, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 10) });

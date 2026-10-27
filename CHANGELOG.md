@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 — 2026-10-27
+
+- Keep Settings background and foreground aligned during live theme changes; verify the actual dark surface and render its preset menu.
+
 ## 0.3.0 — 2026-10-27
 
 - Move dock and Library from empty backgrounds while preserving interactive controls and card transfers.

@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.3.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.3.1. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -99,7 +99,7 @@ remain tied to that commit; later documentation changes do not replace them.
 
 Remaining user-feedback stages:
 
-1. Appearance stage shipped in 0.3.0: presets, independent palettes, RGB overrides, live preview and bounded motion.
+1. Appearance stage shipped in 0.3.1: presets, independent palettes, RGB overrides, live preview and bounded motion.
 2. Expanded reusable Library, naming/groups/content versions, persistent trash and backup UI.
 3. Named panel sets, independent windows, persistent recently closed panels and restore.
 4. Opt-in clipboard history, pause, protected-format exclusions, deduplication and retention.
@@ -137,3 +137,7 @@ and app/Windows motion preferences disable the spatial effects. See
 and [WPF FillBehavior](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.animation.timeline.fillbehavior).
 This is native WPF adaptation of the restrained WeavyClips feedback, not copied
 browser CSS or a new rendering engine.
+
+The visual review found a Settings root background mismatch during live theme
+changes. 0.3.1 binds the window and content background explicitly and adds a
+regression assertion plus an open-preset-menu capture.

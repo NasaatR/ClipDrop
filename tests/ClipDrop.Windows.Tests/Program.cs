@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Automation;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -91,6 +93,11 @@ internal static class Program
             Render(dock, Path.Combine(output, "dock-independent.png"));
             Render(window, Path.Combine(output, "library-midnight.png"));
             Render(settings, Path.Combine(output, "settings-styles.png"));
+            var stylePicker = UiProbe.Find<ComboBox>(settings, c => AutomationProperties.GetName(c) == "Style preset");
+            stylePicker.IsDropDownOpen = true; UiProbe.Pump();
+            var popup = (Popup)stylePicker.Template.FindName("PART_Popup", stylePicker);
+            RenderElement((FrameworkElement)popup.Child, Path.Combine(output, "settings-preset-menu.png"));
+            stylePicker.IsDropDownOpen = false;
             settings.Close();
             Check(window.ActualWidth >= 320 && window.ActualHeight >= 300, "Real WPF surface renders at its minimum supported size");
             dock.Hide();
@@ -108,12 +115,17 @@ internal static class Program
         window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         window.UpdateLayout();
         var content = (FrameworkElement)window.Content;
+        RenderElement(content, path, window.Background);
+    }
+    private static void RenderElement(FrameworkElement content, string path, Brush? background = null)
+    {
+        content.UpdateLayout();
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
         var surface = new DrawingVisual();
         using (var drawing = surface.RenderOpen())
         {
             var bounds = new Rect(0, 0, content.ActualWidth, content.ActualHeight);
-            drawing.DrawRectangle(window.Background, null, bounds);
+            drawing.DrawRectangle(background, null, bounds);
             drawing.DrawRectangle(new VisualBrush(content), null, bounds);
         }
         bitmap.Render(surface);

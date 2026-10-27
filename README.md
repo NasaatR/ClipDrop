@@ -25,7 +25,7 @@ Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
 Transfers copy; originals and cards remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
 within the current session.
 
-## Features in 0.3.0
+## Features in 0.3.1
 
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
