@@ -30,7 +30,7 @@ internal static class MediaProbe
         check(row.IsVideo && row.ImageVisible == Visibility.Visible && row.Details.StartsWith("Video"), "Video files request thumbnails and retain video identity");
         var thumbnail = Await(ThumbnailCache.Shared.Get(path));
         if (thumbnail is not null) check(thumbnail.IsFrozen && thumbnail.PixelWidth > 0, "Windows shell returns a frozen video frame thumbnail");
-        else { check(true, "Unavailable video thumbnail retains its vector fallback"); Console.WriteLine("MEDIA shell video provider unavailable on this runner"); }
+        else { check(true, "Unavailable video thumbnail retains its emoji fallback"); Console.WriteLine("MEDIA shell video provider unavailable on this runner"); }
         var invalid = Path.Combine(root, "invalid.mp4"); File.WriteAllText(invalid, "not a movie");
         check(Await(ThumbnailCache.Shared.Get(invalid)) is null, "Unsupported video content falls back without crashing or blocking the UI");
         var transfer = library.Session.Transfer.Build(new[] { movie });

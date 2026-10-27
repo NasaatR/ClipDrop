@@ -12,6 +12,7 @@ void Throws<T>(Action action, string name) where T : Exception
 { try { action(); } catch (T) { Check(true, name); return; } throw new Exception("Expected failure: " + name); }
 try
 {
+    LayoutChecks.Run(root, Check);
     var store = new StateStore(root);
     var state = store.Load();
     Check(state.Items.Count == 0, "Empty installation starts with a real empty shelf");
@@ -71,7 +72,7 @@ try
     var legacyRoot = Path.Combine(root, "legacy-library"); Directory.CreateDirectory(legacyRoot);
     File.WriteAllText(Path.Combine(legacyRoot, "shelf.json"), "{\"SchemaVersion\":1,\"Items\":[],\"Settings\":{\"DockOpacity\":0,\"DockSpacing\":0}}");
     var legacyStore = new StateStore(legacyRoot); var migrated = legacyStore.Load(); legacyStore.Save(migrated);
-    Check(migrated.SchemaVersion == 2 && migrated.Trash.Count == 0 && migrated.Settings.DockOpacity == 0 && File.ReadAllText(Path.Combine(legacyRoot, "shelf.json.bak")).Contains("\"SchemaVersion\":1"), "Schema-1 upgrade retains explicit preferences and an untouched old backup");
+    Check(migrated.SchemaVersion == ShelfState.CurrentSchema && migrated.Trash.Count == 0 && migrated.Settings.DockOpacity == 0 && File.ReadAllText(Path.Combine(legacyRoot, "shelf.json.bak")).Contains("\"SchemaVersion\":1"), "Schema-1 upgrade retains explicit preferences and an untouched old backup");
     var assets = new AssetStore(Path.Combine(root, "assets"));
     var blobBytes = new byte[] { 0, 7, 128, 255 };
     var hash = assets.WriteBlob(blobBytes); var blob = new ClipboardFormatBlob { Name = "Test", Hash = hash, Length = 4 };

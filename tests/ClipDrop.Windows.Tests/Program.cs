@@ -113,6 +113,7 @@ internal static class Program
             RenderElement((FrameworkElement)popup.Child, Path.Combine(output, "settings-preset-menu.png"));
             stylePicker.IsDropDownOpen = false;
             settings.Close();
+            PanelProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MediaProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             Render(dock, Path.Combine(output, "dock-video.png"));
             Render(window, Path.Combine(output, "library-video.png"));

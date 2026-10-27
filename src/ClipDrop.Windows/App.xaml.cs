@@ -16,6 +16,7 @@ public partial class App : Application
     private DesktopIntegration? _desktop;
     private DesktopPaste? _paste;
     private ShelfSession? _session;
+    private DockCoordinator? _docks;
     public bool IsQuitting { get; private set; }
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -33,17 +34,15 @@ public partial class App : Application
             _paste = new DesktopPaste();
             _session = new ShelfSession(store, state) { Paster = _paste };
             var library = new MainWindow(_session);
-            var dock = new DockWindow(_session, library.ShowShelf, library.OpenSettings, library.EditItem);
-            library.AttachDock(dock);
-            MainWindow = dock;
+            _docks = new DockCoordinator(_session, library, state.Settings.StartHidden || Array.IndexOf(e.Args, "--background") >= 0);
+            MainWindow = library;
             _session.QuitRequested += () => {
                 if (!_session.TrySave()) { library.ShowShelf(); return; }
                 IsQuitting = true; Shutdown();
             };
-            _desktop = new DesktopIntegration(dock, dock.Toggle, dock.ShowDock, library.ShowShelf, _session.SaveClipboard, library.OpenSettings, _session.RequestQuit);
+            _desktop = new DesktopIntegration(_docks.ToggleTarget, _docks.ShowTarget, _docks.ShowLibrary, _session.SaveClipboard, library.OpenSettings, _session.RequestQuit, _docks.ShowAll, _docks.HideAll);
             _desktop.ShakeEnabled = state.Settings.ShakeToShow;
             _session.Changed += () => _desktop.ShakeEnabled = state.Settings.ShakeToShow;
-            if (!state.Settings.StartHidden && Array.IndexOf(e.Args, "--background") < 0) dock.ShowDock();
             if (!_desktop.HotkeyAvailable || !_desktop.LibraryHotkeyAvailable) _session.Notify("A shortcut is in use. Open dock or Library from the tray.");
             _stop = new CancellationTokenSource();
             var token = _stop.Token;
@@ -52,7 +51,7 @@ public partial class App : Application
                 while (true)
                 {
                     var command = WaitHandle.WaitAny(new WaitHandle[] { wake, quitSignal, token.WaitHandle });
-                    if (command == 0) Dispatcher.BeginInvoke(new Action(dock.ShowDock));
+                    if (command == 0) Dispatcher.BeginInvoke(new Action(_docks.ShowTarget));
                     else if (command == 1) { Dispatcher.BeginInvoke(new Action(_session.RequestQuit)); break; }
                     else break;
                 }
@@ -73,7 +72,7 @@ public partial class App : Application
     }
     protected override void OnExit(ExitEventArgs e)
     {
-        _stop?.Cancel(); _desktop?.Dispose(); _paste?.Dispose(); _session?.Dispose();
+        _stop?.Cancel(); _desktop?.Dispose(); _docks?.Dispose(); _paste?.Dispose(); _session?.Dispose();
         if (_ownsMutex) _mutex?.ReleaseMutex(); _mutex?.Dispose();
         base.OnExit(e);
     }

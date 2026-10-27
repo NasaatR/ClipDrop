@@ -15,6 +15,7 @@ public sealed class ShelfItem
     public string? FilePath { get; set; }
     public bool OwnedAsset { get; set; }
     public bool IsPinned { get; set; }
+    public long PinOrder { get; set; }
     public string Group { get; set; } = "";
     public ClipboardSnapshot? Clipboard { get; set; }
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
@@ -64,12 +65,15 @@ public sealed class ShelfSettings : AppearanceStyle
     public double? DockTop { get; set; }
     public bool LibraryFollowsDock { get; set; } = true;
     public bool AnimationsEnabled { get; set; } = true;
+    public bool MirrorDocks { get; set; }
+    public string HomeDisplayId { get; set; } = "";
+    public List<DockLayout> Docks { get; set; } = new();
     public List<SavedStyle> SavedStyles { get; set; } = new();
 }
 
 public sealed class ShelfState
 {
-    public const int CurrentSchema = 2;
+    public const int CurrentSchema = 3;
     public int SchemaVersion { get; set; } = CurrentSchema;
     public List<ShelfItem> Items { get; set; } = new();
     public List<TrashEntry> Trash { get; set; } = new();

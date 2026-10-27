@@ -30,7 +30,7 @@ public sealed class ShelfSession : IDisposable
 
     public ShelfSession(StateStore store, ShelfState state)
     {
-        _store = store; State = state;
+        _store = store; State = state; IconAssets.Initialize(Root);
         var assets = new AssetStore(Path.Combine(Root, "assets"));
         Transfer = new TransferService(assets); _clipboard = new NativeClipboard(assets);
         _save = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
@@ -76,11 +76,11 @@ public sealed class ShelfSession : IDisposable
             var existing = State.Items.FirstOrDefault(i => i.SameContent(item));
             if (existing is not null)
             {
-                if (pin && !existing.IsPinned) { existing.IsPinned = true; promoted = true; }
+                if (pin && !existing.IsPinned) { existing.IsPinned = true; existing.PinOrder = PinOrdering.Next(State); promoted = true; }
                 continue;
             }
             if (State.Items.Count >= 5000) { full = true; break; }
-            item.IsPinned = pin; State.Items.Add(item); added++;
+            item.IsPinned = pin; item.PinOrder = PinOrdering.Next(State); State.Items.Add(item); added++;
         }
         if (added > 0 || promoted) Change();
         if (full) Notify("Library limit reached. Some items were not added.");
@@ -122,7 +122,7 @@ public sealed class ShelfSession : IDisposable
     {
         if (items.Count == 0) return;
         var pin = !items.All(i => i.IsPinned);
-        foreach (var item in items) item.IsPinned = pin;
+        foreach (var item in items) { if (pin && !item.IsPinned) item.PinOrder = PinOrdering.Next(State); item.IsPinned = pin; }
         Change();
     }
 

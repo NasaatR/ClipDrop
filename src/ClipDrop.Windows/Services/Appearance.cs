@@ -6,11 +6,19 @@ using ClipDrop.Core;
 namespace ClipDrop.Windows.Services;
 public static class Appearance
 {
+    private sealed class Applied { public string Signature = ""; }
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ResourceDictionary, Applied> AppliedStyles = new();
     public static double Bound(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
     public static void Apply(ShelfSettings settings)
     {
         Motion.Enabled = settings.AnimationsEnabled;
         ApplyTo(Application.Current.Resources, settings, settings.Theme, "");
+        foreach (var role in Views.AppIcon.Roles)
+        {
+            settings.PngIcons.TryGetValue(role.Key, out var hash);
+            var key = "IconImage." + role.Key; var image = IconAssets.Get(hash);
+            if (!ReferenceEquals(Application.Current.Resources[key], image)) Application.Current.Resources[key] = image;
+        }
     }
     public static void Apply(ShelfSettings settings, FrameworkElement surface, bool dock = false)
     {
@@ -28,6 +36,10 @@ public static class Appearance
     private static Color Read(string value) => (Color)ColorConverter.ConvertFromString(value);
     private static void ApplyTo(ResourceDictionary resources, ShelfSettings settings, string palette, string custom)
     {
+        var signature = string.Join("|", palette, custom, settings.AccentColor, settings.CornerRadius);
+        var applied = AppliedStyles.GetOrCreateValue(resources);
+        if (applied.Signature == signature) return;
+        applied.Signature = signature;
         var bg = Read(palette == "Light" ? "#F5F5F7" : palette == "Midnight" ? "#141C2B" : "#1E1E1E");
         if (AppearanceStyle.TryColor(custom, out var normalized) && normalized.Length > 0) bg = Read(normalized);
         var light = Luminance(bg) > .179;

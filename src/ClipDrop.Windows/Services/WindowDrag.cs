@@ -18,7 +18,6 @@ public sealed class WindowDrag
     private readonly Action _completed;
     private Point? _start;
     private Point _position;
-    private Matrix _fromDevice;
     public bool IsMoving { get; private set; }
     public WindowDrag(Window window, Action started, Action completed)
     {
@@ -41,9 +40,8 @@ public sealed class WindowDrag
     private void Down(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left || e.ClickCount != 1 || !CanStart(e.OriginalSource as DependencyObject)) return;
-        _fromDevice = PresentationSource.FromVisual(_window)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
-        _start = _fromDevice.Transform(_window.PointToScreen(e.GetPosition(_window)));
-        _position = new Point(_window.Left, _window.Top);
+        _start = _window.PointToScreen(e.GetPosition(_window));
+        _position = WindowPlacement.PixelBounds(_window).Location;
         if (!_window.CaptureMouse()) _start = null;
         else e.Handled = true;
     }
@@ -51,14 +49,14 @@ public sealed class WindowDrag
     {
         if (_start is not Point start) return;
         if (e.LeftButton != MouseButtonState.Pressed) { Finish(); return; }
-        var current = _fromDevice.Transform(_window.PointToScreen(e.GetPosition(_window)));
+        var current = _window.PointToScreen(e.GetPosition(_window));
         var delta = current - start;
         if (!IsMoving)
         {
             if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
             IsMoving = true; _started();
         }
-        _window.Left = _position.X + delta.X; _window.Top = _position.Y + delta.Y;
+        WindowPlacement.MovePixels(_window, _position.X + delta.X, _position.Y + delta.Y);
         e.Handled = true;
     }
     private void Finish()

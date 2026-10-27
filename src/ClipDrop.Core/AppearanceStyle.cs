@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ClipDrop.Core;
 
 // Visual preferences only: applying a style never changes behavior, data or window positions.
 public class AppearanceStyle
 {
+    public Dictionary<string, string> PngIcons { get; set; } = new();
     public string Theme { get; set; } = "Dark";
     public string DockPalette { get; set; } = "Shared";
     public string LibraryPalette { get; set; } = "Shared";
@@ -26,6 +28,7 @@ public class AppearanceStyle
     }
     public void CopyTo(AppearanceStyle target)
     {
+        target.PngIcons = new Dictionary<string, string>(PngIcons);
         target.Theme = Theme; target.DockPalette = DockPalette; target.LibraryPalette = LibraryPalette;
         target.DockColor = DockColor; target.LibraryColor = LibraryColor; target.AccentColor = AccentColor;
         target.FontSize = FontSize; target.RowSpacing = RowSpacing; target.CornerRadius = CornerRadius;
@@ -33,6 +36,7 @@ public class AppearanceStyle
         target.DockRadius = DockRadius; target.DockOpacity = DockOpacity;
     }
     public bool EquivalentTo(AppearanceStyle other) =>
+        PngIcons.Count == other.PngIcons.Count && PngIcons.All(p => other.PngIcons.TryGetValue(p.Key, out var hash) && hash == p.Value) &&
         (Theme, DockPalette, LibraryPalette, DockColor, LibraryColor, AccentColor, FontSize, RowSpacing, CornerRadius, DockButtonSize, DockSpacing, DockRadius, DockOpacity) ==
         (other.Theme, other.DockPalette, other.LibraryPalette, other.DockColor, other.LibraryColor, other.AccentColor, other.FontSize, other.RowSpacing, other.CornerRadius, other.DockButtonSize, other.DockSpacing, other.DockRadius, other.DockOpacity);
     public static bool TryColor(string? input, out string color)

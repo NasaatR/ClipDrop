@@ -28,7 +28,7 @@ public sealed class SettingsWindow : Window
     private readonly List<FrameworkElement> _fieldBoxes = new();
     public DockStrip Preview { get; } = new();
 
-    public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot)
+    public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot, DockCoordinator? docks = null)
     {
         _settings = settings; _changed = () => { changed(); Preview.Apply(settings); }; _section = _panel;
         Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
@@ -107,6 +107,29 @@ public sealed class SettingsWindow : Window
         ColorField("Accent", () => settings.AccentColor, value => settings.AccentColor = value);
         Check("Animations", () => settings.AnimationsEnabled, value => settings.AnimationsEnabled = value, false);
         Hint("Windows animation preferences are respected. Colors and changes preview live.");
+        Section("Icons");
+        Hint("Emoji by default. Replace any role with your own PNG; image/video thumbnails remain real previews.");
+        var iconRole = new ComboBox { ItemsSource = AppIcon.Roles.Select(r => r.Label).ToArray(), SelectedIndex = 0 };
+        System.Windows.Automation.AutomationProperties.SetName(iconRole, "Icon role"); Row("Icon", iconRole);
+        var iconPreview = new AppIcon { Kind = "Save", Width = 36, Height = 36 };
+        var iconStatus = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(9, 0, 0, 0), TextWrapping = TextWrapping.Wrap };
+        var iconLine = new StackPanel { Orientation = Orientation.Horizontal }; iconLine.Children.Add(iconPreview); iconLine.Children.Add(iconStatus);
+        Row("Preview", iconLine);
+        string Role() => AppIcon.Roles[Math.Max(0, iconRole.SelectedIndex)].Key;
+        void SyncIcon() { iconPreview.Kind = Role(); iconStatus.Text = settings.PngIcons.ContainsKey(Role()) ? "Custom PNG · saved in ClipDrop" : "Emoji"; }
+        iconRole.SelectionChanged += (_, _) => SyncIcon(); _syncControls.Add(SyncIcon); SyncIcon();
+        var iconActions = new WrapPanel(); _section.Children.Add(iconActions);
+        var chooseIcon = new Button { Content = "Choose PNG…" }; iconActions.Children.Add(chooseIcon);
+        chooseIcon.Click += (_, _) => {
+            var picker = new Microsoft.Win32.OpenFileDialog { Filter = "PNG image|*.png", Title = "Choose an icon · up to 2048 × 2048" };
+            if (picker.ShowDialog(this) != true) return;
+            try { settings.PngIcons[Role()] = IconAssets.Import(picker.FileName); Change(); SyncIcon(); _notice.Text = "PNG saved · original file can be moved"; }
+            catch (Exception ex) when (ex is System.IO.FileFormatException or System.IO.IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
+            { _notice.Text = "Icon not changed · " + ex.Message; }
+        };
+        var resetIcon = new Button { Content = "Use emoji" }; iconActions.Children.Add(resetIcon);
+        resetIcon.Click += (_, _) => { settings.PngIcons.Remove(Role()); Change(); SyncIcon(); };
+        Hint("PNG limits: 5 MB, 2048 × 2048. Saved styles include icon choices. Reset appearance returns to emoji.");
         Section("Dock");
         Choice("Palette", () => settings.DockPalette, new[] { "Shared", "Dark", "Light", "Midnight" }, new[] { "App theme", "Graphite", "Paper", "Midnight" }, value => settings.DockPalette = value);
         ColorField("Background", () => settings.DockColor, value => settings.DockColor = value);
@@ -115,6 +138,11 @@ public sealed class SettingsWindow : Window
         Range("Corners", () => settings.DockRadius, 0, 24, value => settings.DockRadius = value);
         Range("Opacity", () => settings.DockOpacity, 0, 100, value => settings.DockOpacity = value);
         Hint("Opacity affects the dock background. Buttons and content stay readable.");
+        if (docks is not null)
+        {
+            Section("Screens"); var monitorSettings = new MonitorSettings(settings, docks, () => Change(false));
+            _section.Children.Add(monitorSettings); Closed += (_, _) => monitorSettings.Dispose();
+        }
         Section("Library");
         Check("Follow dock", () => settings.LibraryFollowsDock, value => settings.LibraryFollowsDock = value, false);
         Hint("Move Library to detach it. Use its link button to attach again.");

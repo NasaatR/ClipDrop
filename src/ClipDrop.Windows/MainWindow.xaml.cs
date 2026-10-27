@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private ItemRow? _pendingSingle;
     private bool _dragging;
     private DockWindow? _dock;
+    public DockCoordinator? Docks { get; set; }
     private bool _placing;
     private string _filter = "All";
     private bool _updatingGroups;
@@ -54,11 +55,20 @@ public partial class MainWindow : Window
     }
     public void AttachDock(DockWindow dock)
     {
+        if (ReferenceEquals(_dock, dock)) return;
+        if (_dock is not null) DetachDock(_dock);
         _dock = dock;
-        dock.LocationChanged += (_, _) => PositionNearDock();
-        dock.SizeChanged += (_, _) => PositionNearDock();
-        dock.IsVisibleChanged += (_, _) => PositionNearDock();
+        dock.LocationChanged += DockMoved; dock.SizeChanged += DockResized; dock.IsVisibleChanged += DockVisibility;
+        PositionNearDock();
     }
+    public void DetachDock(DockWindow dock)
+    {
+        if (!ReferenceEquals(_dock, dock)) return;
+        dock.LocationChanged -= DockMoved; dock.SizeChanged -= DockResized; dock.IsVisibleChanged -= DockVisibility; _dock = null;
+    }
+    private void DockMoved(object? sender, EventArgs e) => PositionNearDock();
+    private void DockResized(object sender, SizeChangedEventArgs e) => PositionNearDock();
+    private void DockVisibility(object sender, DependencyPropertyChangedEventArgs e) => PositionNearDock();
     private void PositionNearDock()
     {
         if (_placing || !IsVisible || _dock?.IsVisible != true || !Session.State.Settings.LibraryFollowsDock) return;
@@ -88,7 +98,7 @@ public partial class MainWindow : Window
         var existing = Application.Current.Windows.OfType<SettingsWindow>().FirstOrDefault();
         if (existing is not null) { existing.Activate(); return; }
         Session.Paster?.CaptureTarget();
-        var settings = new SettingsWindow(Session.State.Settings, () => Session.Change(), () => TrySave(), Session.Report, Session.Root) { Owner = IsVisible ? this : null, WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen };
+        var settings = new SettingsWindow(Session.State.Settings, () => Session.Change(), () => TrySave(), Session.Report, Session.Root, Docks) { Owner = IsVisible ? this : null, WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen };
         void StorageStatus(string _) => settings.SetStorageStatus(Session.StorageStatus);
         Session.StatusChanged += StorageStatus; settings.Closed += (_, _) => Session.StatusChanged -= StorageStatus;
         settings.SetStorageStatus(Session.StorageStatus); settings.Show();
@@ -268,8 +278,10 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { Session.Error("Open", ex); }
     }
+    private void OnThumbnailContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) OnThumbnailLoaded(sender, new RoutedEventArgs()); }
     private async void OnThumbnailLoaded(object sender, RoutedEventArgs e)
     {
+        if (sender is Image cleared) cleared.Source = null;
         if (sender is Image image && image.DataContext is ItemRow { Item.FilePath: string path } row && (row.Item.Kind == ItemKind.Image || row.IsVideo))
         {
             image.Source = null; var thumbnail = await _thumbnails.Get(path);

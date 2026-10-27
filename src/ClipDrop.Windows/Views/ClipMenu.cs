@@ -22,8 +22,7 @@ public static class ClipMenu
         System.Windows.Automation.AutomationProperties.SetName(menu, "Clip actions");
         void Add(string header, string id, string icon, Action run, bool enabled = true, string shortcut = "")
         {
-            var glyph = new System.Windows.Shapes.Path { Data = (Geometry)Application.Current.FindResource(icon), Width = 16, Height = 16, Stretch = Stretch.Uniform, StrokeThickness = 1.7, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round };
-            glyph.SetResourceReference(Shape.StrokeProperty, "Muted");
+            var glyph = new AppIcon { Kind = icon.Replace("Icon", ""), Width = 18, Height = 18 };
             var item = new MenuItem { Header = header, Tag = id, Icon = glyph, InputGestureText = shortcut, IsEnabled = enabled };
             item.Click += (_, _) => { menu.IsOpen = false; owner.Dispatcher.BeginInvoke(run, DispatcherPriority.Background); };
             menu.Items.Add(item);
@@ -37,7 +36,7 @@ public static class ClipMenu
         Add("Open in app", "Open", "RevealIcon", () => Open(selected[0], session), single && !new ItemRow(selected[0]).Missing && selected[0].Kind is not (ItemKind.Text or ItemKind.Clipboard));
         Add("Show in Explorer", "Reveal", "FolderIcon", () => Reveal(selected[0], session), single && selected[0].FilePath is not null && !new ItemRow(selected[0]).Missing);
         menu.Items.Add(new Separator());
-        if (trash) Add("Restore", "Restore", "PlusIcon", () => session.RestoreTrash(selected), selected.Length > 0);
+        if (trash) Add("Restore", "Restore", "RestoreIcon", () => session.RestoreTrash(selected), selected.Length > 0);
         else
         {
             var pinned = selected.Length > 0 && selected.All(i => i.IsPinned);

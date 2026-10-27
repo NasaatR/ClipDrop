@@ -33,10 +33,10 @@ public sealed class DesktopIntegration : IDisposable
         set { _shakeEnabled = value; if (value) _shake.Start(); else _shake.Stop(); }
     }
 
-    public DesktopIntegration(Window owner, Action toggle, Action show, Action library, Action save, Action settings, Action quit)
+    public DesktopIntegration(Action toggle, Action show, Action library, Action save, Action settings, Action quit, Action showAll, Action hideAll)
     {
         _show = show;
-        _source = HwndSource.FromHwnd(new WindowInteropHelper(owner).EnsureHandle());
+        _source = new HwndSource(new HwndSourceParameters("ClipDrop commands") { ParentWindow = new IntPtr(-3), WindowStyle = 0 });
         _source.AddHook(Hook);
         Toggle = toggle;
         Library = library;
@@ -46,7 +46,9 @@ public sealed class DesktopIntegration : IDisposable
         using (var original = new System.Drawing.Icon(stream)) _icon = (System.Drawing.Icon)original.Clone();
         _tray = new Forms.NotifyIcon { Text = "ClipDrop · Ctrl+Alt+Space", Icon = _icon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Show dock", null, (_, _) => show());
+        menu.Items.Add("Show dock here", null, (_, _) => show());
+        menu.Items.Add("Show all docks", null, (_, _) => showAll());
+        menu.Items.Add("Hide all docks", null, (_, _) => hideAll());
         menu.Items.Add("Library", null, (_, _) => library());
         menu.Items.Add("Save clipboard", null, (_, _) => save());
         menu.Items.Add("Settings", null, (_, _) => settings());
@@ -98,6 +100,6 @@ public sealed class DesktopIntegration : IDisposable
         _source.RemoveHook(Hook);
         _tray.Visible = false;
         _tray.ContextMenuStrip?.Dispose();
-        _tray.Dispose(); _icon.Dispose();
+        _tray.Dispose(); _icon.Dispose(); _source.Dispose();
     }
 }

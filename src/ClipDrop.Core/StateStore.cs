@@ -11,6 +11,8 @@ public sealed class StateStore
     private readonly string _path;
     private bool _recovered;
     private bool _loaded;
+    private int? _migrationVersion;
+    private string? _migrationSource;
     private readonly object _gate = new();
     private static readonly JsonSerializerOptions Json = new() {
         WriteIndented = true, Converters = { new JsonStringEnumConverter() }
@@ -35,7 +37,7 @@ public sealed class StateStore
                 _loaded = true;
                 return new ShelfState();
             }
-            try { var state = Read(_path); _loaded = true; return state; }
+            try { var state = LoadFile(_path); _loaded = true; return state; }
             catch (Exception ex) when (ex is JsonException or InvalidDataException)
             {
                 return Recover();
@@ -47,7 +49,7 @@ public sealed class StateStore
     {
         try
         {
-            var state = Read(_path + ".bak");
+            var state = LoadFile(_path + ".bak");
             _recovered = true;
             _loaded = true;
             RecoveryNotice = "Recovered the previous saved shelf. The damaged file will be kept for recovery.";
@@ -59,7 +61,14 @@ public sealed class StateStore
         }
     }
 
-    private static ShelfState Read(string path)
+    private ShelfState LoadFile(string path)
+    {
+        var state = Read(path, out var originalVersion);
+        if (originalVersion < ShelfState.CurrentSchema) { _migrationVersion = originalVersion; _migrationSource = path; }
+        return state;
+    }
+
+    private static ShelfState Read(string path, out int originalVersion)
     {
         var contents = File.ReadAllText(path);
         using var document = JsonDocument.Parse(contents);
@@ -80,14 +89,17 @@ public sealed class StateStore
         // A newer schema must never silently fall back to an older backup.
         if (state.SchemaVersion > ShelfState.CurrentSchema)
             throw new NotSupportedException("This shelf was saved by a newer ClipDrop. Install that version to open it.");
+        originalVersion = state.SchemaVersion;
         if (state.SchemaVersion == 1) state.SchemaVersion = ShelfState.CurrentSchema;
         else if (!document.RootElement.TryGetProperty("Trash", out _)) throw new InvalidDataException("The saved trash structure is incomplete.");
+        if (originalVersion is 1 or 2) state.SchemaVersion = ShelfState.CurrentSchema;
         if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null || state.Trash is null)
             throw new InvalidDataException("Invalid shelf structure.");
         if (state.Trash.Any(t => t is null || t.Item is null || !Guid.TryParse(t.Batch, out _))) throw new InvalidDataException("Invalid trash entry.");
         var all = state.Items.Concat(state.Trash.Select(t => t.Item)).ToArray();
         if (all.Any(i => i is null || !Guid.TryParse(i.Id, out _) || i.Title is null || i.Group is null || i.Group.Length > 40 || i.Content is null || !Enum.IsDefined(i.Kind)))
             throw new InvalidDataException("Invalid shelf item.");
+        if (originalVersion is 1 or 2) PinOrdering.Migrate(state);
         if (all.Select(i => i.Id).Distinct().Count() != all.Length) throw new InvalidDataException("Duplicate shelf identities.");
         foreach (var item in all.Where(i => i.Clipboard is not null))
         {
@@ -100,6 +112,14 @@ public sealed class StateStore
             state.Settings.SavedStyles.Any(s => s is null || !Guid.TryParse(s.Id, out _) || string.IsNullOrWhiteSpace(s.Name) || s.Name.Length > 40 || s.Style is null) ||
             state.Settings.SavedStyles.Select(s => s.Id).Distinct().Count() != state.Settings.SavedStyles.Count)
             throw new InvalidDataException("Invalid saved styles.");
+        if (state.Settings.Docks is null || state.Settings.Docks.Count > 64 || state.Settings.HomeDisplayId is null ||
+            state.Settings.Docks.Any(d => d is null || string.IsNullOrWhiteSpace(d.DisplayId) || d.DisplayId.Length > 1024 ||
+                d.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) || d.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000)) ||
+            state.Settings.Docks.Select(d => d.DisplayId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != state.Settings.Docks.Count)
+            throw new InvalidDataException("Invalid monitor layout.");
+        foreach (var style in state.Settings.SavedStyles.Select(s => s.Style).Prepend(state.Settings))
+            if (style.PngIcons is null || style.PngIcons.Count > 64 || style.PngIcons.Any(p => p.Key.Length is < 1 or > 40 || p.Value is null || p.Value.Length != 64 || !p.Value.All(Uri.IsHexDigit)))
+                throw new InvalidDataException("Invalid icon preferences.");
         return state;
     }
 
@@ -108,6 +128,13 @@ public sealed class StateStore
         lock (_gate)
         {
             if (!_loaded) throw new InvalidOperationException("Load the shelf before saving it.");
+            // Keep an immutable pre-migration copy; ordinary .bak rotates on every save.
+            if (_migrationVersion is int old && _migrationSource is string source)
+            {
+                var backup = _path + ".schema-" + old + "-before-v3.bak";
+                if (!File.Exists(backup)) File.Copy(source, backup, false);
+                _migrationVersion = null; _migrationSource = null;
+            }
             var bytes = JsonSerializer.SerializeToUtf8Bytes(state, Json);
             var temporary = _path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try

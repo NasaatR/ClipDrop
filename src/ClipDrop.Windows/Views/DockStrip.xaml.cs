@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Windows.Threading;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,11 +18,14 @@ public partial class DockStrip : UserControl
     public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded;
     public event MouseButtonEventHandler? PinDown, PinUp, PinMenu;
     public event MouseEventHandler? PinMove;
-    public DockStrip() { InitializeComponent(); }
+    private readonly ObservableCollection<ItemRow> _rows = new();
+    private double _slot = 40;
+    public DockStrip() { InitializeComponent(); PinnedItems.ItemsSource = _rows; }
     public void Apply(ShelfSettings settings)
     {
         Appearance.Apply(settings, this, true);
         Resources["DockSize"] = Appearance.Bound(settings.DockButtonSize, 30, 48, 36);
+        _slot = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
         Resources["DockGap"] = new Thickness(Appearance.Bound(settings.DockSpacing, 0, 12, 4) / 2);
         Resources["DockRadius"] = new CornerRadius(Appearance.Bound(settings.DockRadius, 0, 24, 11));
         var bg = ((SolidColorBrush)FindResource("Surface")).Color;
@@ -28,21 +33,45 @@ public partial class DockStrip : UserControl
         Resources["DockBackground"] = new SolidColorBrush(bg);
         var ink = ((SolidColorBrush)FindResource("Ink")).Color; ink.A = 28;
         Resources["DockOutline"] = new SolidColorBrush(ink);
-        Body.Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 16, ShadowDepth = 3.25, Direction = 270, Opacity = .38 };
+        Body.Effect ??= new DropShadowEffect { Color = Colors.Black, BlurRadius = 16, ShadowDepth = 3.25, Direction = 270, Opacity = .38 };
     }
     public void SetPins(IEnumerable<ShelfItem> pins, int capacity)
     {
         var all = pins.ToArray();
-        PinnedItems.ItemsSource = all.Take(capacity).Select(i => new ItemRow(i)).ToArray();
+        var ids = all.Select(i => i.Id).ToHashSet();
+        for (var i = _rows.Count - 1; i >= 0; i--) if (!ids.Contains(_rows[i].Item.Id)) _rows.RemoveAt(i);
+        var inserted = false;
+        for (var i = 0; i < all.Length; i++)
+        {
+            if (i < _rows.Count && _rows[i].Item.Id == all[i].Id) { _rows[i].Refresh(); continue; }
+            var existing = _rows.FirstOrDefault(r => r.Item.Id == all[i].Id);
+            if (existing is not null) _rows.Move(_rows.IndexOf(existing), i);
+            else { _rows.Insert(i, new ItemRow(all[i])); inserted = true; }
+        }
+        PinnedItems.Width = Math.Min(all.Length, capacity) * _slot;
+        PinnedItems.Height = _slot + 2;
+        if (inserted && _rows.Count > capacity)
+            Dispatcher.BeginInvoke(() => { if (_rows.Count > 0) PinnedItems.ScrollIntoView(_rows[^1]); }, DispatcherPriority.Loaded);
         EmptyHint.Visibility = all.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         OverflowButton.Visibility = all.Length > capacity ? Visibility.Visible : Visibility.Collapsed;
         OverflowButton.Content = "+" + (all.Length - capacity);
+    }
+    private void OnPinWheel(object sender, MouseWheelEventArgs e)
+    {
+        static ScrollViewer? Find(DependencyObject node)
+        {
+            if (node is ScrollViewer viewer) return viewer;
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) if (Find(VisualTreeHelper.GetChild(node, i)) is ScrollViewer child) return child;
+            return null;
+        }
+        if (Find(PinnedItems) is { ScrollableWidth: > 0 } scroll) { scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset - Math.Sign(e.Delta) * _slot * 2); e.Handled = true; }
     }
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(sender, e);
     private void OnSettings(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke(sender, e);
     private void OnLibrary(object sender, RoutedEventArgs e) => LibraryRequested?.Invoke(sender, e);
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(sender, e);
     private void OnPinLoaded(object sender, RoutedEventArgs e) => PinLoaded?.Invoke(sender, e);
+    private void OnImageContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) ImageLoaded?.Invoke(sender, new RoutedEventArgs()); }
     private void OnImageLoaded(object sender, RoutedEventArgs e) => ImageLoaded?.Invoke(sender, e);
     private void OnPinMenu(object sender, MouseButtonEventArgs e) => PinMenu?.Invoke(sender, e);
     private void OnPinDown(object sender, MouseButtonEventArgs e) => PinDown?.Invoke(sender, e);

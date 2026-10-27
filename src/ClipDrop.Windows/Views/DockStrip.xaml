@@ -1,4 +1,4 @@
-<UserControl x:Class="ClipDrop.Windows.Views.DockStrip" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Focusable="False" UseLayoutRounding="True" Background="#01000000">
+<UserControl x:Class="ClipDrop.Windows.Views.DockStrip" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="clr-namespace:ClipDrop.Windows.Views" Focusable="False" UseLayoutRounding="True" Background="#01000000">
  <UserControl.Resources>
   <Style x:Key="DockButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
    <Setter Property="Width" Value="{DynamicResource DockSize}"/><Setter Property="Height" Value="{DynamicResource DockSize}"/><Setter Property="MinHeight" Value="0"/><Setter Property="Margin" Value="{DynamicResource DockGap}"/><Setter Property="Padding" Value="0"/><Setter Property="Focusable" Value="False"/>
@@ -6,23 +6,24 @@
  </UserControl.Resources>
  <Border x:Name="Body" Margin="10" Background="{DynamicResource DockBackground}" BorderBrush="{DynamicResource DockOutline}" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}" Padding="12,8" ToolTipService.InitialShowDelay="600">
   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-   <Border Width="18" ToolTip="Drag any empty area to move"><Path Width="6" Height="14" Stretch="Uniform" Fill="{DynamicResource Muted}" Data="M0,0 H2 V2 H0 Z M4,0 H6 V2 H4 Z M0,6 H2 V8 H0 Z M4,6 H6 V8 H4 Z M0,12 H2 V14 H0 Z M4,12 H6 V14 H4 Z"/></Border>
-   <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" ToolTip="Save clipboard" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><Path Style="{StaticResource LineIcon}" Data="{StaticResource SaveIcon}"/></Button>
-   <Button x:Name="SettingsButton" Style="{StaticResource DockButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><Path Style="{StaticResource LineIcon}" Data="{StaticResource SettingsIcon}"/></Button>
-   <Button x:Name="LibraryButton" Style="{StaticResource DockButton}" Click="OnLibrary" ToolTip="Library · Ctrl+Alt+L" AutomationProperties.Name="Open Library"><Path Style="{StaticResource LineIcon}" Data="{StaticResource LibraryIcon}"/></Button>
+   <Border Width="18" ToolTip="Drag any empty area to move"><views:AppIcon Kind="Grip" Width="14" Height="20"/></Border>
+   <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" ToolTip="Save clipboard" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><views:AppIcon Kind="Save" /></Button>
+   <Button x:Name="SettingsButton" Style="{StaticResource DockButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><views:AppIcon Kind="Settings" /></Button>
+   <Button x:Name="LibraryButton" Style="{StaticResource DockButton}" Click="OnLibrary" ToolTip="Library · Ctrl+Alt+L" AutomationProperties.Name="Open Library"><views:AppIcon Kind="Library" /></Button>
    <Border Width="1" Background="{DynamicResource DockOutline}" Margin="6,7"/>
    <TextBlock x:Name="EmptyHint" Text="Drop here" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" Margin="8,0" FontSize="11" IsHitTestVisible="False"/>
-   <ItemsControl x:Name="PinnedItems"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-    <ItemsControl.ItemTemplate><DataTemplate>
+   <ListBox x:Name="PinnedItems" Background="Transparent" BorderThickness="0" Padding="0" Margin="0" Focusable="False" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" PreviewMouseWheel="OnPinWheel">
+   <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0"/><Setter Property="Focusable" Value="False"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value></Setter></Style></ListBox.ItemContainerStyle><ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+    <ListBox.ItemTemplate><DataTemplate>
      <Button Style="{StaticResource DockButton}" ToolTip="{Binding Title}" AutomationProperties.Name="{Binding Title}" Click="OnPin" PreviewMouseLeftButtonDown="OnPinDown" PreviewMouseLeftButtonUp="OnPinUp" PreviewMouseMove="OnPinMove" Loaded="OnPinLoaded" PreviewMouseRightButtonUp="OnPinMenu">
       <Grid>
-       <Path Data="{Binding Glyph}"><Path.Style><Style TargetType="Path" BasedOn="{StaticResource LineIcon}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Source, ElementName=Thumbnail}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Path.Style></Path>
-       <Image x:Name="Thumbnail" Width="26" Height="26" Stretch="Uniform" Visibility="{Binding ImageVisible}" Loaded="OnImageLoaded"/>
-       <Border Background="#DD141414" CornerRadius="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="2"><Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding IsVideo}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding Source, ElementName=Thumbnail}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style><Path Data="{StaticResource PlayIcon}" Fill="White" Width="6" Height="7" Stretch="Uniform"/></Border>
+       <views:AppIcon Kind="{Binding IconKey}" Width="24" Height="24"><views:AppIcon.Style><Style TargetType="views:AppIcon"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Source, ElementName=Thumbnail}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></views:AppIcon.Style></views:AppIcon>
+       <Image x:Name="Thumbnail" Width="26" Height="26" Stretch="Uniform" Visibility="{Binding ImageVisible}" Loaded="OnImageLoaded" DataContextChanged="OnImageContext"/>
+       <Border Background="#DD141414" CornerRadius="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="2"><Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding IsVideo}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding Source, ElementName=Thumbnail}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style><views:AppIcon Kind="Play" Width="6" Height="7"/></Border>
       </Grid>
      </Button>
-    </DataTemplate></ItemsControl.ItemTemplate>
-   </ItemsControl>
+    </DataTemplate></ListBox.ItemTemplate>
+   </ListBox>
    <Button x:Name="OverflowButton" Style="{StaticResource DockButton}" Click="OnLibrary" ToolTip="More pins in Library" AutomationProperties.Name="Show more pinned items" Visibility="Collapsed"/>
   </StackPanel>
  </Border>
