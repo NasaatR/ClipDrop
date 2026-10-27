@@ -24,6 +24,7 @@ public sealed class DesktopIntegration : IDisposable
     private int _lastX, _direction, _turns;
     private DateTime _lastTurn, _lastShow;
     public bool HotkeyAvailable { get; }
+    public bool LibraryHotkeyAvailable { get; }
     private bool _shakeEnabled;
     public bool ShakeEnabled
     {
@@ -31,17 +32,21 @@ public sealed class DesktopIntegration : IDisposable
         set { _shakeEnabled = value; if (value) _shake.Start(); else _shake.Stop(); }
     }
 
-    public DesktopIntegration(Window owner, Action toggle, Action show, Action paste, Action quit)
+    public DesktopIntegration(Window owner, Action toggle, Action show, Action library, Action save, Action settings, Action quit)
     {
         _show = show;
         _source = HwndSource.FromHwnd(new WindowInteropHelper(owner).EnsureHandle());
         _source.AddHook(Hook);
         Toggle = toggle;
+        Library = library;
         HotkeyAvailable = RegisterHotKey(_source.Handle, 1, 0x0002 | 0x0001 | 0x4000, 0x20);
+        LibraryHotkeyAvailable = RegisterHotKey(_source.Handle, 2, 0x0002 | 0x0001 | 0x4000, 0x4C);
         _tray = new Forms.NotifyIcon { Text = "ClipDrop · Ctrl+Alt+Space", Icon = System.Drawing.SystemIcons.Application, Visible = true };
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Show shelf", null, (_, _) => show());
-        menu.Items.Add("Paste into shelf", null, (_, _) => paste());
+        menu.Items.Add("Show dock", null, (_, _) => show());
+        menu.Items.Add("Library", null, (_, _) => library());
+        menu.Items.Add("Save clipboard", null, (_, _) => save());
+        menu.Items.Add("Settings", null, (_, _) => settings());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Quit ClipDrop", null, (_, _) => quit());
         _tray.ContextMenuStrip = menu;
@@ -51,9 +56,10 @@ public sealed class DesktopIntegration : IDisposable
     }
 
     private Action Toggle { get; }
+    private Action Library { get; }
     private IntPtr Hook(IntPtr hwnd, int message, IntPtr wparam, IntPtr lparam, ref bool handled)
     {
-        if (message == 0x0312 && wparam.ToInt32() == 1) { Toggle(); handled = true; }
+        if (message == 0x0312) { if (wparam.ToInt32() == 1) { Toggle(); handled = true; } else if (wparam.ToInt32() == 2) { Library(); handled = true; } }
         return IntPtr.Zero;
     }
 
@@ -85,6 +91,7 @@ public sealed class DesktopIntegration : IDisposable
     {
         _shake.Stop();
         UnregisterHotKey(_source.Handle, 1);
+        UnregisterHotKey(_source.Handle, 2);
         _source.RemoveHook(Hook);
         _tray.Visible = false;
         _tray.ContextMenuStrip?.Dispose();

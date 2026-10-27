@@ -22,10 +22,15 @@ public sealed class Diagnostics
         while (_events.Count > 30) _events.Dequeue();
     }
 
+    public void Note(string operation, string detail)
+    {
+        _events.Enqueue($"{DateTimeOffset.UtcNow:O} | {operation} | {detail}");
+        while (_events.Count > 30) _events.Dequeue();
+    }
     public string Report(int count, string state) =>
         $"ClipDrop {Version}\nMade by Nasaat\nOS: {RuntimeInformation.OSDescription}\n" +
         $"Architecture: {RuntimeInformation.ProcessArchitecture}\nRuntime: {RuntimeInformation.FrameworkDescription}\n" +
         $"Items: {count}\nStorage: {state}\nUTC: {DateTimeOffset.UtcNow:O}\n\n" +
-        "Recent errors (no clipboard or item contents are recorded):\n" + string.Join("\n", _events) +
+        "Recent events and errors (no clipboard or item contents are recorded):\n" + string.Join("\n", _events) +
         "\n\nReproduction steps: [add the actions that led to the issue]\n";
 }

@@ -13,6 +13,13 @@ public sealed class TransferService
 {
     private readonly AssetStore _assets;
     public TransferService(AssetStore assets) { _assets = assets; }
+    public static bool Supports(IDataObject data) => !data.GetDataPresent("NasaatR.ClipDrop.Internal") &&
+        data.GetFormats(false).Any(f => f is "FileDrop" or "PNG" or "Bitmap" or "UnicodeText" or "Text" or "FileGroupDescriptorW");
+
+    public DataObject BuildDrag(IReadOnlyList<ShelfItem> items)
+    {
+        var data = Build(items); data.SetData("NasaatR.ClipDrop.Internal", "1"); return data;
+    }
 
     public List<ShelfItem> Import(IDataObject data)
     {

@@ -34,7 +34,7 @@ public sealed class ShelfItem
     public static ShelfItem FromText(string text)
     {
         var trimmed = text.Trim();
-        var link = Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+        var link = !trimmed.Contains('\r') && !trimmed.Contains('\n') && Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
             && (uri.Scheme == "https" || uri.Scheme == "http");
         var title = trimmed.Replace('\r', ' ').Replace('\n', ' ');
         return new ShelfItem { Kind = link ? ItemKind.Link : ItemKind.Text,
@@ -61,6 +61,12 @@ public sealed class ShelfSettings
     public double Height { get; set; } = 500;
     public double? Left { get; set; }
     public double? Top { get; set; }
+    public double DockButtonSize { get; set; } = 36;
+    public double DockSpacing { get; set; } = 4;
+    public double DockRadius { get; set; } = 11;
+    public double DockOpacity { get; set; } = 100;
+    public double? DockLeft { get; set; }
+    public double? DockTop { get; set; }
 }
 
 public sealed class ShelfState

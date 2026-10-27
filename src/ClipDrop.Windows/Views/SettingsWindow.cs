@@ -52,8 +52,13 @@ public sealed class SettingsWindow : Window
         Range("Text size", settings.FontSize, 11, 18, value => settings.FontSize = value);
         Range("Row spacing", settings.RowSpacing, 0, 12, value => settings.RowSpacing = value);
         Range("Row corners", settings.CornerRadius, 0, 16, value => settings.CornerRadius = value);
+        panel.Children.Add(new TextBlock { Text = "Floating dock", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 22, 0, 4) });
+        Range("Button size", settings.DockButtonSize, 30, 48, value => settings.DockButtonSize = value);
+        Range("Button spacing", settings.DockSpacing, 0, 12, value => settings.DockSpacing = value);
+        Range("Dock corners", settings.DockRadius, 0, 24, value => settings.DockRadius = value);
+        Range("Background opacity", settings.DockOpacity, 0, 100, value => settings.DockOpacity = value);
         var reset = new Button { Content = "Reset appearance", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 16, 0, 8) };
-        reset.Click += (_, _) => { settings.Theme = "Dark"; settings.FontSize = 13; settings.RowSpacing = 4; settings.CornerRadius = 8; changed(); Close(); };
+        reset.Click += (_, _) => { settings.Theme = "Dark"; settings.FontSize = 13; settings.RowSpacing = 4; settings.CornerRadius = 8; settings.DockButtonSize = 36; settings.DockSpacing = 4; settings.DockRadius = 11; settings.DockOpacity = 100; changed(); Close(); };
         panel.Children.Add(reset);
         var retry = new Button { Content = "Save now / retry", HorizontalAlignment = HorizontalAlignment.Left };
         retry.Click += (_, _) => MessageBox.Show(save() ? "The current shelf is saved." : "Saving failed. Your changes remain open. Copy diagnostics before closing ClipDrop.", "ClipDrop");

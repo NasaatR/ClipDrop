@@ -18,6 +18,8 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--paste-target") return PasteProbe.RunTarget(args[1]);
+        PasteProbe.PolicyChecks(Check);
         var root = Path.Combine(Path.GetTempPath(), "clipdrop-windows-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         var output = Path.GetFullPath(args.FirstOrDefault() ?? "artifacts/qa");
@@ -65,13 +67,27 @@ internal static class Program
             state.Items[0].IsPinned = true;
             var window = new MainWindow(store, state, false); window.Show();
             Render(window, Path.Combine(output, "shelf-dark.png"));
+            var dock = new DockWindow(window.Session, window.ShowShelf, window.OpenSettings);
+            dock.ShowDock();
+            Render(dock, Path.Combine(output, "dock-dark.png"));
+            Check(dock.ActualHeight < 90, "The floating dock stays compact with real pins");
+            PasteProbe.Run(dock, root, note.Content, Check);
+            var clipboardNote = ShelfItem.FromText("Shared session checkpoint");
+            window.Session.Add(new[] { clipboardNote });
+            Check(state.Items.Any(i => i.Id == clipboardNote.Id && i.IsPinned), "Dock and Library share one collection and pin new saves");
+            window.Session.Remove(new System.Collections.Generic.List<ShelfItem> { clipboardNote });
+            window.Session.UndoRemove();
+            Check(state.Items.Any(i => i.Id == clipboardNote.Id), "Library removal remains undoable through the shared session");
             window.Width = 320; window.Height = 360;
             Render(window, Path.Combine(output, "shelf-narrow.png"));
-            state.Settings.Theme = "Light"; window.ApplyAppearance();
+            state.Settings.Theme = "Light"; window.Session.Change();
+            Render(dock, Path.Combine(output, "dock-light.png"));
             Render(window, Path.Combine(output, "shelf-light.png"));
             var settings = new SettingsWindow(state.Settings, () => window.ApplyAppearance(), () => true, () => "test report", root) { Owner = window };
             settings.Show(); Render(settings, Path.Combine(output, "settings-open.png")); settings.Close();
             Check(window.ActualWidth >= 320 && window.ActualHeight >= 300, "Real WPF surface renders at its minimum supported size");
+            dock.Hide();
+            window.Session.TrySave();
             app.Shutdown();
             Console.WriteLine($"{_passed} Windows checks passed. UI captures: {output}");
             return 0;

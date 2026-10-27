@@ -1,0 +1,136 @@
+using System;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
+using ClipDrop.Windows.Services;
+using ClipDrop.Windows.Views;
+
+namespace ClipDrop.Windows;
+
+public partial class DockWindow : Window
+{
+    public ShelfSession Session { get; }
+    private readonly Action _library;
+    private readonly Action _settings;
+    private readonly ThumbnailCache _thumbnails = new();
+    private Point? _origin;
+    private Button? _dragButton;
+    private bool _suppressClick;
+    private readonly ToolTip _feedback = new() { Placement = PlacementMode.Top, StaysOpen = true };
+    private readonly DispatcherTimer _feedbackTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+    public DockWindow(ShelfSession session, Action library, Action settings)
+    {
+        Session = session; _library = library; _settings = settings;
+        InitializeComponent();
+        SourceInitialized += (_, _) => NativePastePlatform.MakeNonActivating(this);
+        Loaded += (_, _) => {
+            var saved = Session.State.Settings;
+            if (saved.DockLeft is double x && saved.DockTop is double y && double.IsFinite(x) && double.IsFinite(y)) { Left = x; Top = y; }
+            else { var area = WindowPlacement.WorkArea(this); Left = area.Left + (area.Width - ActualWidth) / 2; Top = area.Bottom - ActualHeight - 24; }
+            WindowPlacement.Clamp(this);
+        };
+        SizeChanged += (_, _) => { if (IsLoaded) WindowPlacement.Clamp(this); };
+        Closing += (_, e) => { if (!Dispatcher.HasShutdownStarted && (Application.Current as App)?.IsQuitting != true) { e.Cancel = true; Hide(); } };
+        DragLeave += (_, e) => {
+            var point = e.GetPosition(this);
+            if (point.X < 0 || point.Y < 0 || point.X > ActualWidth || point.Y > ActualHeight) ApplySurface(false);
+        };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) { _feedback.IsOpen = false; _feedbackTimer.Stop(); } };
+        Session.Changed += Refresh; Session.Notification += ShowFeedback;
+        _feedback.PlacementTarget = DockBody;
+        _feedbackTimer.Tick += (_, _) => { _feedback.IsOpen = false; _feedbackTimer.Stop(); };
+        Refresh();
+    }
+    public void ShowDock() { Session.Paster?.CaptureTarget(); Show(); WindowPlacement.Clamp(this); }
+    public void Toggle() { if (IsVisible) Hide(); else ShowDock(); }
+    private void Refresh()
+    {
+        Appearance.Apply(Session.State.Settings);
+        var settings = Session.State.Settings;
+        Topmost = settings.AlwaysOnTop;
+        FontSize = Appearance.Bound(settings.FontSize, 11, 18, 13);
+        Resources["DockSize"] = Appearance.Bound(settings.DockButtonSize, 30, 48, 36);
+        Resources["DockIconSize"] = Math.Min(24, (double)Resources["DockSize"] - 12);
+        Resources["DockGap"] = new Thickness(Appearance.Bound(settings.DockSpacing, 0, 12, 4) / 2);
+        Resources["DockRadius"] = new CornerRadius(Appearance.Bound(settings.DockRadius, 0, 24, 11));
+        var pins = Session.State.Items.Where(i => i.IsPinned).OrderByDescending(i => i.CreatedUtc).ToArray();
+        var available = IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
+        var size = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
+        var fixedWidth = 41 + 76 + Appearance.Bound(settings.DockSpacing, 0, 12, 4) + 3 * size;
+        var slots = Math.Max(1, (int)((available - fixedWidth) / size));
+        if (pins.Length > slots) slots--;
+        var capacity = Math.Max(1, Math.Min(8, slots));
+        PinnedItems.ItemsSource = pins.Take(capacity).Select(i => new ItemRow(i)).ToArray();
+        EmptyHint.Visibility = pins.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        OverflowButton.Visibility = pins.Length > capacity ? Visibility.Visible : Visibility.Collapsed;
+        OverflowButton.Content = "+" + (pins.Length - capacity);
+        ApplySurface(false);
+    }
+    private void ApplySurface(bool dropping)
+    {
+        var key = dropping ? "Selected" : "Surface";
+        var color = ((SolidColorBrush)Application.Current.FindResource(key)).Color;
+        color.A = dropping ? (byte)255 : (byte)Math.Round(255 * Appearance.Bound(Session.State.Settings.DockOpacity, 0, 100, 100) / 100);
+        DockBody.Background = new SolidColorBrush(color);
+        DockBody.BorderBrush = (Brush)Application.Current.FindResource(dropping ? "Ink" : "Stroke");
+    }
+    private void ShowFeedback(string message)
+    {
+        if (!IsVisible) return;
+        _feedback.Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 320 };
+        _feedback.IsOpen = false; _feedback.IsOpen = true; _feedbackTimer.Stop(); _feedbackTimer.Start();
+    }
+    private void OnSave(object sender, RoutedEventArgs e) => Session.SaveClipboard();
+    private void OnLibrary(object sender, RoutedEventArgs e) => _library();
+    private void OnSettings(object sender, RoutedEventArgs e) => _settings();
+    private void OnHide(object sender, RoutedEventArgs e) { _feedback.IsOpen = false; Hide(); }
+    private void OnUseItem(object sender, RoutedEventArgs e)
+    {
+        if (_suppressClick) { _suppressClick = false; return; }
+        if (sender is Button { DataContext: ItemRow row }) Session.Paste(new[] { row.Item });
+    }
+    private void OnMove(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        try { _feedback.IsOpen = false; DragMove(); WindowPlacement.Clamp(this); }
+        catch (InvalidOperationException) { return; }
+        Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false);
+    }
+    private void OnItemDown(object sender, MouseButtonEventArgs e)
+    { _origin = e.GetPosition(this); _dragButton = sender as Button; _suppressClick = false; }
+    private void OnItemUp(object sender, MouseButtonEventArgs e) { _origin = null; _dragButton = null; }
+    private void OnItemMove(object sender, MouseEventArgs e)
+    {
+        if (_origin is not Point start || _dragButton?.DataContext is not ItemRow row || e.LeftButton != MouseButtonState.Pressed) return;
+        var point = e.GetPosition(this);
+        if (Math.Abs(point.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        var button = _dragButton; _origin = null; _dragButton = null; _suppressClick = true;
+        // Release the button's capture so ending an OLE drag cannot also invoke click-paste.
+        button.ReleaseMouseCapture();
+        try
+        {
+            var result = DragDrop.DoDragDrop(button, Session.Transfer.BuildDrag(new[] { row.Item }), DragDropEffects.Copy);
+            Session.Notify(result == DragDropEffects.None ? "Transfer cancelled · item kept" : "Transfer finished · item kept");
+        }
+        catch (Exception ex) { Session.Error("Drag", ex); }
+        finally { ApplySurface(false); }
+    }
+    private void OnDragOver(object sender, DragEventArgs e)
+    { var supported = TransferService.Supports(e.Data); ApplySurface(supported); e.Effects = supported ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
+    private void OnDrop(object sender, DragEventArgs e)
+    {
+        ApplySurface(false); e.Handled = true; e.Effects = DragDropEffects.None;
+        if (!TransferService.Supports(e.Data)) return;
+        try { if (Session.Capture(e.Data)) e.Effects = DragDropEffects.Copy; }
+        catch (Exception ex) { Session.Error("Drop", ex); }
+    }
+    private async void OnThumbnailLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Image image && image.DataContext is ItemRow { Item.FilePath: string path })
+        { image.Source = null; var bitmap = await _thumbnails.Get(path); if (image.DataContext is ItemRow current && current.Item.FilePath == path) image.Source = bitmap; }
+    }
+}

@@ -9,6 +9,18 @@ public sealed class ItemRow
 {
     public ShelfItem Item { get; }
     public string Title => Item.Title;
+    public string DockGlyph
+    {
+        get
+        {
+            if (Item.Kind == ItemKind.Folder) return "DIR";
+            if (Item.Kind is ItemKind.File) return Path.GetExtension(Item.FilePath ?? "").TrimStart('.').ToUpperInvariant()[..Math.Min(3, Path.GetExtension(Item.FilePath ?? "").TrimStart('.').Length)];
+            var text = Item.Content.Trim();
+            if (Item.Kind == ItemKind.Link && Uri.TryCreate(text, UriKind.Absolute, out var uri)) text = uri.Host.Replace("www.", "");
+            var elements = new System.Globalization.StringInfo(text);
+            return elements.LengthInTextElements == 0 ? "Aa" : elements.SubstringByTextElements(0, Math.Min(2, elements.LengthInTextElements));
+        }
+    }
     public string Details => Missing ? "Original unavailable" : Item.Kind switch {
         ItemKind.Text => $"Text · {Item.Content.Length:N0} characters",
         ItemKind.Link => "Link",

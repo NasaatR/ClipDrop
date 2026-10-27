@@ -18,14 +18,18 @@ Both include .NET. No developer tools or extra runtime installation required.
 These are unsigned previews; Windows may show a publisher/reputation prompt.
 Only download from this repository.
 
-Drop content into the shelf or click **Paste**. Switch to your destination and
-drag cards out. Ctrl/Shift selects several. Transfers copy; originals and cards
-remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
+The compact dock opens first. Click **Save** to capture the clipboard, or drop
+content onto it. New captures become pins. Click a pin to request paste into your
+previous app, or drag it out. **Library** opens the full searchable collection;
+Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
+Transfers copy; originals and cards remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
 within the current session.
 
-## Features in 0.1.0
+## Features in 0.2.0
 
-- Resizable always-on-top window, tray access, global Ctrl+Alt+Space toggle.
+- Compact non-activating dock plus resizable Library, shared state and tray access.
+- Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
+- Dock button size, spacing, corner radius and background-only opacity controls.
 - File/folder references, Unicode text, links, PNG/bitmap and virtual-file inputs.
 - Native multi-format output: text plus .txt, URL plus .url, images as original
   file / PNG / bitmap. The destination decides which format it accepts.
@@ -43,7 +47,9 @@ within the current session.
 
 | Shortcut | Action |
 | --- | --- |
-| Ctrl+Alt+Space | Global show/hide |
+| Ctrl+Alt+Space | Show/hide dock |
+| Ctrl+Alt+L | Open Library |
+| Enter | Paste Library selection into previous app |
 | Ctrl+V / Ctrl+C | Paste into shelf / copy selection, outside text fields |
 | Ctrl+O / Ctrl+F | Add files / search |
 | Ctrl+A | Select visible cards |
@@ -51,7 +57,7 @@ within the current session.
 | Delete / Ctrl+Z | Remove cards / undo removal |
 | Escape | Clear search, then hide |
 
-Double-click the tray icon to reopen. Its menu provides **Quit ClipDrop**.
+Double-click the tray icon to show the dock. Its menu also opens Library and Settings. Its menu provides **Quit ClipDrop**.
 Shortcut conflicts are reported; tray access still works.
 
 ## Compatibility and limits
@@ -65,7 +71,7 @@ format. Browsers that supply only an image URL add a link: no URL downloading or
 reuse of browser cookies. Bitmap-only sources may already have lost alpha.
 Internal Photoshop layers / Figma nodes are not kept as editable objects.
 Elevated apps, secure desktops and exclusive fullscreen have Windows restrictions.
-Edge docking and HTML/RTF retention are not included. Shake can also trigger
+Automatic edge docking, full appearance presets, named/closed panel sets, persistent trash, clipboard history and HTML/RTF retention are not included in this first dock stage. Shake can also trigger
 during left-button text selection or window movement.
 
 PNG/bitmap/virtual imports and inline image output: 64 MB. Decoded images:
@@ -98,7 +104,11 @@ Windows/native clipboard checks, renders dark/light/narrow/open-settings WPF
 views, builds self-contained packages, inspects the ZIP and smoke-tests silent
 installation/uninstallation before creating a new preview release. Check the
 [actual workflow result](https://github.com/NasaatR/ClipDrop/actions).
-These checks do not automate gestures into Photoshop/Figma/browser applications.
+Native tests deliver a physical dock click into a separate Windows editor process.
+They do not automate Photoshop/Figma/browser applications. The dock reports
+"Paste requested" because input submission cannot prove that every app consumed
+the content. It leaves the clipboard ready for manual Ctrl+V and never restores it
+on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals, clear

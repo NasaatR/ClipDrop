@@ -31,6 +31,17 @@ jobs:
       - name: Build runnable package
         shell: pwsh
         run: ./scripts/package.ps1
+      - name: Published app startup and graceful shutdown
+        shell: pwsh
+        run: |
+          $app = Start-Process './artifacts/publish/ClipDrop.exe' -ArgumentList '--background' -PassThru
+          try {
+            Start-Sleep -Seconds 2
+            if ($app.HasExited) { throw "Published app exited during startup: $($app.ExitCode)" }
+            $quit = Start-Process './artifacts/publish/ClipDrop.exe' -ArgumentList '--quit' -PassThru -Wait
+            if ($quit.ExitCode -ne 0 -or !$app.WaitForExit(10000)) { throw 'Published app did not shut down through its command channel' }
+            if ($app.ExitCode -ne 0) { throw "Published app failed: $($app.ExitCode)" }
+          } finally { if (!$app.HasExited) { Stop-Process -Id $app.Id -Force } }
       - name: Silent installer and uninstaller smoke check
         shell: pwsh
         run: |
