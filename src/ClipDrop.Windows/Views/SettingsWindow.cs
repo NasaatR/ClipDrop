@@ -15,7 +15,9 @@ public sealed class SettingsWindow : Window
         Title = "ClipDrop settings"; Width = 370; Height = 620; MinWidth = 340; MinHeight = 400;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         var panel = new StackPanel { Margin = new Thickness(20) };
-        Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var scroll = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        scroll.SetResourceReference(BackgroundProperty, "Surface");
+        Content = scroll;
         panel.Children.Add(new TextBlock { Text = "Settings", FontSize = 21, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 14) });
         void Check(string label, bool value, Action<bool> update)
         {
@@ -25,9 +27,10 @@ public sealed class SettingsWindow : Window
         }
         Check("Always on top", settings.AlwaysOnTop, value => settings.AlwaysOnTop = value);
         Check("Start hidden in the tray", settings.StartHidden, value => settings.StartHidden = value);
-        Check("Close button / Alt+F4 hides to tray", settings.CloseToTray, value => settings.CloseToTray = value);
+        Check("Alt+F4 hides to tray", settings.CloseToTray, value => settings.CloseToTray = value);
         Check("Shake to show (experimental)", settings.ShakeToShow, value => settings.ShakeToShow = value);
-        panel.Children.Add(new TextBlock { Text = "Shake detection watches left-button movement.\nThe global shortcut is Ctrl+Alt+Space.", TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.FindResource("Muted"), FontSize = 11, Margin = new Thickness(0, 2, 0, 12) });
+        var hint = new TextBlock { Text = "Shake detection watches left-button movement.\nThe global shortcut is Ctrl+Alt+Space.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 2, 0, 12) };
+        hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(hint);
         panel.Children.Add(new TextBlock { Text = "Appearance", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 8) });
         var themes = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var name in new[] { "Dark", "Light" })
@@ -64,7 +67,9 @@ public sealed class SettingsWindow : Window
         var folder = new Button { Content = "Open data folder", HorizontalAlignment = HorizontalAlignment.Left };
         folder.Click += (_, _) => { try { Process.Start(new ProcessStartInfo(dataRoot) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "ClipDrop"); } };
         panel.Children.Add(folder);
-        panel.Children.Add(new TextBlock { Text = "Assets and export files stay on disk for reliable transfers.\nNo clipboard monitoring, accounts or network requests.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 12, 0, 0), Foreground = (Brush)Application.Current.FindResource("Muted") });
-        panel.Children.Add(new TextBlock { Text = $"ClipDrop {Diagnostics.Version}\nMade by Nasaat", FontSize = 11, Margin = new Thickness(0, 16, 0, 0), Foreground = (Brush)Application.Current.FindResource("Muted") });
+        var privacy = new TextBlock { Text = "Assets and export files stay on disk for reliable transfers.\nNo clipboard monitoring, accounts or network requests.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 12, 0, 0) };
+        privacy.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(privacy);
+        var credit = new TextBlock { Text = $"ClipDrop {Diagnostics.Version}\nMade by Nasaat", FontSize = 11, Margin = new Thickness(0, 16, 0, 0) };
+        credit.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(credit);
     }
 }

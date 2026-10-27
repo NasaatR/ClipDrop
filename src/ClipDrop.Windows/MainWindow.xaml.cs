@@ -55,7 +55,11 @@ public partial class MainWindow : Window
             if (_store.RecoveryNotice is not null) SetStatus(_store.RecoveryNotice);
         };
         Closing += OnClosing;
-        DragLeave += (_, _) => DropCue.Visibility = Visibility.Collapsed;
+        DragLeave += (_, e) => {
+            var point = e.GetPosition(this);
+            if (point.X < 0 || point.Y < 0 || point.X > ActualWidth || point.Y > ActualHeight)
+                DropCue.Visibility = Visibility.Collapsed;
+        };
         ApplyAppearance();
         Refresh();
     }
@@ -208,6 +212,7 @@ public partial class MainWindow : Window
     }
     private void OnItemDown(object sender, MouseButtonEventArgs e)
     {
+        if (Container(e.OriginalSource as DependencyObject) is null) { _origin = null; _pendingSingle = null; return; }
         _origin = e.GetPosition(ItemList); _pendingSingle = null;
         if (Container(e.OriginalSource as DependencyObject) is { IsSelected: true, DataContext: ItemRow row } && ItemList.SelectedItems.Count > 1 && Keyboard.Modifiers == ModifierKeys.None)
         { _pendingSingle = row; e.Handled = true; }

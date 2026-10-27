@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.1.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.1.1. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources

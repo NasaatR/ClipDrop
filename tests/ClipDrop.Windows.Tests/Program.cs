@@ -86,7 +86,14 @@ internal static class Program
         window.UpdateLayout();
         var content = (FrameworkElement)window.Content;
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(content);
+        var surface = new DrawingVisual();
+        using (var drawing = surface.RenderOpen())
+        {
+            var bounds = new Rect(0, 0, content.ActualWidth, content.ActualHeight);
+            drawing.DrawRectangle(window.Background, null, bounds);
+            drawing.DrawRectangle(new VisualBrush(content), null, bounds);
+        }
+        bitmap.Render(surface);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(path); encoder.Save(file);
     }

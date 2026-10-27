@@ -66,6 +66,11 @@ jobs:
         run: |
           version=$(python3 -c 'import xml.etree.ElementTree as e; print(e.parse("Directory.Build.props").findtext(".//VersionPrefix"))')
           tag="v$version"
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "A newer main commit exists; skipping this superseded build."
+            exit 0
+          fi
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists; issued assets are preserved."
           else

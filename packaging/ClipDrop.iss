@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.0"
+  #error Supply MyAppVersion from Directory.Build.props through scripts/package.ps1
 #endif
 [Setup]
 AppId={{657DCFD1-3CCB-46E7-9BB1-534F69B57C36}
