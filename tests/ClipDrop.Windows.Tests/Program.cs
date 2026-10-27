@@ -72,7 +72,11 @@ internal static class Program
             state.Items.AddRange(new[] { note, image, file, ShelfItem.FromText("A long Cyrillic reference: Проверка очень длинного названия изображения для рабочего проекта") });
             state.Items[0].IsPinned = true;
             Console.WriteLine("CHECKPOINT Library creation");
-            var window = new MainWindow(store, state, false); window.Show();
+            var window = new MainWindow(store, state, false);
+            Console.WriteLine("CHECKPOINT Library constructed");
+            var layouts = 0;
+            window.LayoutUpdated += (_, _) => { if (++layouts == 50) Console.WriteLine("CHECKPOINT repeated Library layout " + window.ActualWidth + "x" + window.ActualHeight + "\n" + Environment.StackTrace); };
+            window.Show(); Console.WriteLine("CHECKPOINT Library shown");
             Render(window, Path.Combine(output, "shelf-dark.png"));
             Console.WriteLine("CHECKPOINT dock creation");
             var dock = new DockWindow(window.Session, window.ShowShelf, window.OpenSettings);

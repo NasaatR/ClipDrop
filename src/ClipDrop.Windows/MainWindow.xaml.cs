@@ -111,7 +111,8 @@ public partial class MainWindow : Window
         _updatingGroups = true;
         var group = GroupFilter.SelectedItem as string ?? "All groups";
         var groups = new[] { "All groups" }.Concat(Session.State.Items.Concat(Session.State.Trash.Select(t => t.Item)).Select(i => i.Group).Where(g => g.Length > 0).Distinct().OrderBy(g => g)).ToArray();
-        GroupFilter.ItemsSource = groups; GroupFilter.SelectedItem = groups.Contains(group) ? group : "All groups";
+        if (GroupFilter.ItemsSource is not string[] currentGroups || !currentGroups.SequenceEqual(groups))
+        { GroupFilter.ItemsSource = groups; GroupFilter.SelectedItem = groups.Contains(group) ? group : "All groups"; }
         _updatingGroups = false;
         group = GroupFilter.SelectedItem as string ?? "All groups";
         var source = _filter == "Trash" ? Session.State.Trash.OrderByDescending(t => t.DeletedUtc).Select(t => t.Item) : Session.State.Items.AsEnumerable();
