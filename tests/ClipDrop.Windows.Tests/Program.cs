@@ -21,6 +21,7 @@ internal static class Program
     public static int Main(string[] args)
     {
         if (args.Length == 2 && args[0] == "--paste-target") return PasteProbe.RunTarget(args[1]);
+        using var watchdog = new System.Threading.Timer(_ => { Console.Error.WriteLine("Windows UI/clipboard checks stalled for 75 seconds."); Environment.Exit(2); }, null, TimeSpan.FromSeconds(75), System.Threading.Timeout.InfiniteTimeSpan);
         PasteProbe.PolicyChecks(Check);
         var root = Path.Combine(Path.GetTempPath(), "clipdrop-windows-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -65,12 +66,15 @@ internal static class Program
             Check(transfers.Import(Clipboard.GetDataObject() ?? throw new Exception("Clipboard unavailable")).Single().Content == note.Content,
                 "Copying and pasting a ClipDrop text card keeps it a text card");
             Clipboard.Clear();
+            Console.WriteLine("CHECKPOINT native clipboard probe");
             ClipboardProbe.Run(root, Check);
             var store = new StateStore(root); var state = store.Load();
             state.Items.AddRange(new[] { note, image, file, ShelfItem.FromText("A long Cyrillic reference: Проверка очень длинного названия изображения для рабочего проекта") });
             state.Items[0].IsPinned = true;
+            Console.WriteLine("CHECKPOINT Library creation");
             var window = new MainWindow(store, state, false); window.Show();
             Render(window, Path.Combine(output, "shelf-dark.png"));
+            Console.WriteLine("CHECKPOINT dock creation");
             var dock = new DockWindow(window.Session, window.ShowShelf, window.OpenSettings);
             dock.ShowDock();
             Render(dock, Path.Combine(output, "dock-dark.png"));
@@ -89,6 +93,7 @@ internal static class Program
             state.Settings.Theme = "Light"; window.Session.Change();
             Render(dock, Path.Combine(output, "dock-light.png"));
             Render(window, Path.Combine(output, "shelf-light.png"));
+            Console.WriteLine("CHECKPOINT Settings creation");
             var settings = new SettingsWindow(state.Settings, () => window.Session.Change(), () => true, () => "test report", root) { Owner = window };
             settings.Show(); Render(settings, Path.Combine(output, "settings-open.png"));
             UiProbe.Styles(settings, window, dock, Check);

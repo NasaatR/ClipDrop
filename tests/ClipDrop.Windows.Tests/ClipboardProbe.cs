@@ -19,12 +19,15 @@ internal static class ClipboardProbe
             data.SetData("ClipDrop.Test.Opaque", new MemoryStream(new byte[] { 0, 1, 34, 255, 0, 7 }), false);
             Clipboard.SetDataObject(data, true);
             using var native = new NativeClipboard(new AssetStore(Path.Combine(folder, "assets")));
+            Console.WriteLine("CHECKPOINT native capture source");
             var original = native.Capture() ?? throw new Exception("Native clipboard snapshot missing");
+            Console.WriteLine("CHECKPOINT Save clipboard snapshot");
             session.SaveClipboard();
             check(state.Items.Count == 1 && state.Items[0].Clipboard?.Formats.Any(f => f.Name == "ClipDrop.Test.Opaque") == true, "Save captures original registered clipboard bytes alongside Unicode");
             session.TrySave();
             Clipboard.SetText("Replace clipboard");
             check(session.Copy(state.Items), "Copy restores a saved native clipboard item");
+            Console.WriteLine("CHECKPOINT native capture replay");
             var after = native.Capture() ?? throw new Exception("Restored snapshot missing");
             check(original.Formats.All(f => after.Formats.Any(a => a.Name == f.Name && a.StandardId == f.StandardId && a.Hash == f.Hash)), "Native copy preserves HTML, RTF, opaque bytes and text byte-for-byte");
             check(Clipboard.GetText() == "  Привет\r\nBonjour 👋  " && !Clipboard.ContainsFileDropList(), "Native copy keeps Unicode whitespace and never creates TXT output");
