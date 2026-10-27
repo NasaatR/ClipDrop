@@ -104,7 +104,14 @@ public sealed class DockCoordinator : IDisposable
     }
     private void Place(DockWindow view)
     {
-        if (view.Assignment is { } assignment) WindowPlacement.PlaceOnDisplay(view, assignment.Display, assignment.Layout);
+        if (view.Assignment is { } assignment)
+        {
+            WindowPlacement.PlaceOnDisplay(view, assignment.Display, assignment.Layout);
+            // Center only the first placement. Appending clips grows rightward
+            // from this stable anchor instead of re-centering the entire dock.
+            if (view.IsVisible && (assignment.Layout.OffsetX is null || assignment.Layout.OffsetY is null))
+            { CaptureGeometry(view); _session.Change(false); }
+        }
     }
     private void CaptureGeometry(DockWindow view)
     {
@@ -123,6 +130,7 @@ public sealed class DockCoordinator : IDisposable
     {
         if (_sync || _disposed || view.Assignment is not { } assignment) return;
         assignment.Layout.Visible = view.IsVisible; _session.Change(false);
+        if (view.IsVisible) QueuePlacement(view);
     }
     private DockWindow? Target()
     {

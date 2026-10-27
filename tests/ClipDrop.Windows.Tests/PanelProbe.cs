@@ -85,7 +85,9 @@ internal static class PanelProbe
             var libraryBefore = WindowPlacement.PixelBounds(library).Location;
             WindowPlacement.MovePixels(one, WindowPlacement.PixelBounds(one).Left + 20, WindowPlacement.PixelBounds(one).Top - 20); UiProbe.Pump();
             check(WindowPlacement.PixelBounds(library).Location == libraryBefore, "Library detaches event subscriptions from its previous dock anchor");
+            var anchorLeft = WindowPlacement.PixelBounds(two).Left;
             var mirrored = ShelfItem.FromText("Shared mirrored clip"); session.Add(new[] { mirrored }); UiProbe.Pump();
+            check(Math.Abs(WindowPlacement.PixelBounds(two).Left - anchorLeft) < 2, "Appending a clip keeps a managed dock's left anchor stable");
             check(coordinator.Views.All(v => v.Pins.Items.Cast<ItemRow>().Any(r => r.Item.Id == mirrored.Id)), "A save from the shared session updates both dock views once");
             session.Remove(new List<ShelfItem> { mirrored });
             check(session.State.Trash.Count(t => t.Item.Id == mirrored.Id) == 1 && coordinator.Views.All(v => v.Pins.Items.Cast<ItemRow>().All(r => r.Item.Id != mirrored.Id)),
