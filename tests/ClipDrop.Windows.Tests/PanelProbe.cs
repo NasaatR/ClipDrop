@@ -35,6 +35,14 @@ internal static class PanelProbe
         check(session.State.Items.Count(i => i.Content == added.Content) == 1, "Re-saving a duplicate does not move or duplicate the pin");
         session.TogglePin(new[] { first }); session.TogglePin(new[] { first });
         check(((ItemRow)dock.Pins.Items[dock.Pins.Items.Count - 1]).Item.Id == first.Id, "Re-pinning an existing clip appends it at the right");
+        var extra = Enumerable.Range(0, 16).Select(i => ShelfItem.FromText("Long row clip " + i)).ToArray();
+        session.Add(extra); UiProbe.Pump();
+        var tail = UiProbe.Find<Button>(dock.Pins, b => b.DataContext is ItemRow r && r.Item.Id == extra[^1].Id);
+        check(tail.IsVisible && tail.PointToScreen(new Point()).X >= WindowPlacement.PixelBounds(dock).Left && tail.PointToScreen(new Point(tail.ActualWidth, 0)).X <= WindowPlacement.PixelBounds(dock).Right,
+            "A full pin row scrolls to the newly appended rightmost clip");
+        var realized = Enumerable.Range(0, dock.Pins.Items.Count).Count(i => dock.Pins.ItemContainerGenerator.ContainerFromIndex(i) is not null);
+        check(realized < dock.Pins.Items.Count, "Long pin rows virtualize containers instead of rendering every card");
+        session.Remove(extra.ToList()); UiProbe.Pump();
         var emoji = UiProbe.Find<AppIcon>(dock.QuickSave, i => i.Kind == "Save");
         check(UiProbe.Find<Image>(emoji, _ => true).Source is DrawingImage || UiProbe.Find<TextBlock>(emoji, t => t.Text == "📥").Visibility == Visibility.Visible, "Dock actions use system emoji by default");
         var colorEmoji = UiProbe.Find<Image>(emoji, _ => true).Source as DrawingImage;
@@ -92,6 +100,8 @@ internal static class PanelProbe
             var screenSettings = new SettingsWindow(settings, () => session.Change(), session.TrySave, session.Report, session.Root, coordinator);
             screenSettings.Show(); UiProbe.Pump();
             var screens = UiProbe.Find<MonitorSettings>(screenSettings, _ => true); screens.BringIntoView(); UiProbe.Pump();
+            var homePicker = UiProbe.Find<ComboBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Main dock display");
+            check(homePicker.SelectedItem?.ToString() == "Test B", "Monitor picker displays a readable screen label without internal record fields");
             render((FrameworkElement)screenSettings.Content, Path.Combine(output, "settings-screens.png")); screenSettings.Close();
         }
         settings.HomeDisplayId = ""; settings.Docks.Clear(); settings.MirrorDocks = false; library.Docks = null; library.AttachDock(dock);

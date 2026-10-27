@@ -25,7 +25,7 @@ Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
 Transfers copy; originals and cards remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.5.0
+## Features in 0.6.0
 
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
@@ -42,7 +42,13 @@ from Trash, including after restarting.
   Process/owner-bound formats cannot always be persisted; partial captures are reported.
 - Original files remain file references, including TXT files; file-copy intent is copy-only.
 - Multi-selection, search, pinning, preview, editable names/groups and persistent Trash with restore/undo after restart.
-- Consistent modern vector icons, shared live dock preview and grouped Settings.
+- Emoji icons with actual Windows font colors, optional managed PNG replacements per role,
+  shared live dock preview and grouped Settings. Set them in Settings → Icons.
+- New pins append at the right; duplicates stay put. Existing button instances are reused,
+  with a virtualized horizontal row and wheel scrolling for longer shelves.
+- Linked monitor docks (preview): Settings → Screens enables selected displays,
+  shared clips, separate positions/visibility, display map, Show all / Hide all,
+  reconnect fallback and singleton Library/Settings.
 - Per-clip context menus in dock/Library, preserving the clicked target and multi-selection.
 - Video thumbnails from Windows, plus an explicit muted player with pause/seek and an open-in-app fallback.
 - Custom application/installer/tray icon.
@@ -59,7 +65,7 @@ from Trash, including after restarting.
 
 | Shortcut | Action |
 | --- | --- |
-| Ctrl+Alt+Space | Show/hide dock |
+| Ctrl+Alt+Space | Show/hide dock on the external app’s display, pointer fallback |
 | Ctrl+Alt+L | Open Library |
 | Enter | Paste Library selection into previous app |
 | Ctrl+V / Ctrl+C | Paste into shelf / copy selection, outside text fields |
@@ -69,7 +75,7 @@ from Trash, including after restarting.
 | Delete / Ctrl+Z | Remove cards / undo removal |
 | Escape | Clear search, then hide |
 
-Double-click the tray icon to show the dock. Its menu also opens Library and Settings. Its menu provides **Quit ClipDrop**.
+Double-click the tray icon to show the target dock. Its menu opens Library/Settings and provides **Show all docks**, **Hide all docks** and **Quit ClipDrop**.
 Shortcut conflicts are reported; tray access still works.
 
 ## Compatibility and limits
@@ -123,14 +129,18 @@ They do not automate Photoshop/Figma/browser applications. The dock reports
 the content. It leaves the clipboard ready for manual Ctrl+V and never restores it
 on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
 
-Metadata schema 2 migrates schema-1 libraries with a preserved previous-save backup; old releases refuse newer metadata instead of resetting it.
+Metadata schema 3 migrates schema-1/2 libraries and keeps an immutable `shelf.json.schema-<old>-before-v3.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals, clear
 cards on drag completion, or time-delete exported payloads.
 Research and manual acceptance: [foundation notes](docs/FOUNDATION.md).
 Incremental stages and the two-monitor mirror design: [roadmap](docs/ROADMAP.md).
-0.5.0 has one dock; mirrored docks and saved panel sets remain planned.
+Monitor mirroring is a preview. Native window checks and simulated topologies pass
+through CI; physical mixed-DPI dual-monitor, sleep/reconnect testing remains open.
+Drag a dock within its assigned display; choose a different display in Settings.
+Named and recently closed panel sets remain planned. PNG icons: ≤5 MB, ≤2048 × 2048;
+managed copies render at bounded size. Missing assets fall back to emoji.
 Video frames/playback depend on installed Windows providers/codecs. No FFmpeg or codec installer is bundled.
 
 MIT · Maintained at <https://github.com/NasaatR/ClipDrop>.

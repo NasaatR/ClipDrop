@@ -57,7 +57,7 @@ public sealed class MonitorSettings : StackPanel, IDisposable
         void ActionButton(string label, Action action) { var button = new Button { Content = label }; button.Click += (_, _) => action(); actions.Children.Add(button); }
         ActionButton("Show all", _docks.ShowAll); ActionButton("Hide all", _docks.HideAll); ActionButton("Refresh displays", _docks.RefreshDisplays);
         ActionButton("Reset positions", () => { foreach (var layout in _settings.Docks) { layout.OffsetX = null; layout.OffsetY = null; } Commit(); });
-        var hint = new TextBlock { Text = "Linked clips · independent positions and visibility. Ctrl+Alt+Space targets the active app's display. Drag stays on the assigned display. Reconnect restores enabled displays. Physical mixed-DPI testing is still needed.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 5, 0, 0) };
+        var hint = new TextBlock { Text = "Shared clips · separate positions and visibility. Ctrl+Alt+Space uses the active app's display. To move a dock to another screen, change Main dock on. Disconnected display layouts are kept.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 5, 0, 0) };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(hint);
         var offline = _settings.Docks.Count(d => !displays.Any(s => DockPlanning.Same(s.Id, d.DisplayId)));
         if (offline > 0) Children.Add(new TextBlock { Text = $"{offline} disconnected display layout(s) kept", FontSize = 11, Margin = new Thickness(0, 5, 0, 0) });

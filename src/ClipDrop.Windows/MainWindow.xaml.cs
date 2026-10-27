@@ -117,7 +117,7 @@ public partial class MainWindow : Window
     }
     private void Refresh()
     {
-        if (ItemList is null) return;
+        if (ItemList is null || IsLoaded && !IsVisible) return;
         ApplyAppearance();
         var selected = Selected().Select(i => i.Id).ToHashSet();
         var query = SearchBox.Text.Trim();

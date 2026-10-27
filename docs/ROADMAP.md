@@ -7,9 +7,10 @@ in FOUNDATION.md; those sections also document historical releases.
 
 | Stage | Scope | Boundary |
 | --- | --- | --- |
-| 1 · Daily actions | One modern vector icon language; per-clip right-click menus in dock and Library | Current 0.5 iteration |
-| 2 · Basic video | Background video thumbnails, explicit Play/Pause, seek, muted start, open-in-app fallback | Current 0.5 iteration, following stage 1 |
-| 3 · Two-monitor mirror | One linked dock per selected screen, common content, independent positions and visibility | Next implementation stage; design below |
+| 1 · Daily actions | Per-clip actions, modern compact surfaces | Delivered in 0.5; emoji/PNG revised in 0.6 |
+| 2 · Basic video | Background video thumbnails, explicit Play/Pause, seek, muted start, open-in-app fallback | Delivered in 0.5 |
+| 3a · Icons and linked monitors | Emoji/PNG roles, append-right pins, one linked dock per selected screen | 0.6 preview; automated acceptance below |
+| 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4 · Saved panels | Named panel sets, separate pin membership, recently closed and restore | After mirrored docks are reliable |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
@@ -17,8 +18,8 @@ in FOUNDATION.md; those sections also document historical releases.
 ## Stage 1: complete daily actions
 
 Use the WeavyClips interaction principles with a consistent current visual
-language: flat line icons, shared geometry/stroke, restrained surfaces, visible
-hover/focus and no mixed skeuomorphic/emoji toolbar. Keep existing themes,
+language: emoji by user request in 0.6, optional per-role PNG replacements, restrained
+surfaces and visible hover/focus. Keep existing themes,
 custom palettes, saved styles and the shared live preview.
 
 Right-click acts on the clicked clip. Right-clicking an unselected Library row
@@ -39,7 +40,7 @@ keyboard/focus, light/dark menus, narrow Library and existing saves intact.
 Identify videos by file type while retaining their original file representation.
 Request native Windows thumbnail providers off the dispatcher, with bounded
 workers/queue, request timeout, a frozen bitmap cache and file-change invalidation.
-Keep a vector video symbol if no frame is available. Image decode failures also
+Keep an emoji video symbol if no frame is available. Image decode failures also
 keep a visible fallback. Use the same preview pipeline in dock and Library.
 
 Space, double-click or Preview opens a player. Playback starts only on Play,
@@ -54,14 +55,26 @@ Verify original file bytes, no autoplay, close/release and missing/invalid input
 Codec-specific compatibility remains manual. Background provider timeouts must
 not replace hung workers with unlimited new threads.
 
-## Stage 3: two-monitor mirror — next
+## Stage 3a: icons, stable order and two-monitor mirror — 0.6 preview
 
 **Product choice:** a mirrored dock shows the same pinned clips on both screens.
 Saving/removing/pinning on either screen updates both. This is a shared shelf,
 not two separately saved libraries. Independent named panel contents belong to
 stage 4, so the two behaviors are not mixed.
 
-Implementation boundaries:
+Delivered implementation:
+
+- Emoji defaults in toolbar, menus and file/card fallbacks. System font COLR/CPAL
+  layers provide colors without bundling fonts or artwork. Missing layers use the
+  system text glyph. Settings → Icons selects each role, imports a bounded PNG,
+  previews it live or resets to emoji. Managed copies survive source moves;
+  saved styles deep-copy choices. Native app/tray/install ICO remains Windows branding.
+- Explicit pin order: preserve existing visual order on migration, append new saves
+  and re-pins on the right, deduplicate without reordering. A virtualized horizontal
+  row keeps existing button instances and scrolls to newly appended pins.
+- The following boundaries are implemented; physical hardware acceptance remains
+  open for the preview, rather than being inferred from simulated topologies:
+
 
 - Add a DockCoordinator that owns view instances and display assignments. Keep
   exactly one ShelfSession/StateStore, clipboard service, foreground tracker,
@@ -85,7 +98,7 @@ Implementation boundaries:
 - Valuable new display/panel records require schema 3 with preserved migration
   backup and explicit refusal by older schema-2 builds, rather than ignored data.
 
-Acceptance gate before claiming two-monitor support:
+Stage 3b acceptance gate before removing the monitor-preview label:
 
 | Setup/action | Expected result |
 | --- | --- |
@@ -97,9 +110,21 @@ Acceptance gate before claiming two-monitor support:
 | Disconnect/reconnect/sleep | No lost layout, duplicate window or invisible-only dock |
 | Changed foreground during paste | Copy-only fallback; no paste into an unintended app |
 
-Pure layout/migration logic can be tested with simulated display topologies.
-Windows CI with one display cannot prove the physical two-screen journeys above;
-a real mixed-DPI acceptance pass is required.
+Core layout/migration checks use negative origins, mixed-DPI projection, repeated
+reconnect and immutable pre-upgrade backup. Windows checks instantiate two real
+WPF dock HWNDs against logical monitor assignments on the runner's one display,
+exercise shared changes/Trash, separate visibility, shortcut routing and anchor
+subscription cleanup, and verify the native placement boundary. These do not
+prove physical two-screen/DPI behavior; the table above needs a real acceptance pass.
+
+## Next efficient slice: saved panels
+
+After stage 3b feedback, build named sets as one separate release: a set owns an
+ordered list of clip IDs while the Library owns clips. Closing a set creates a
+persistent recently-closed entry, not Trash. Restore returns its membership and
+layout. Start with create/name/switch/close/restore in one dock; add independent
+simultaneous sets only after those data/migration journeys pass. Keep mirrored
+views of one set distinct from views of independent sets.
 
 ## Later complexity stays separate
 

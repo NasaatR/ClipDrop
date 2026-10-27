@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.0 — 2026-10-27
+
+- Emoji interface icons with installed Windows font colors; managed per-role PNG
+  overrides, live preview, reset and deep-copied saved-style choices.
+- Stable explicit pin order: preserve old visible ordering, append saves/re-pins
+  right, leave duplicates in place. Reuse WPF buttons, virtualize long rows and
+  scroll to newly added clips. Reset recycled media thumbnails correctly.
+- Linked monitor dock preview: selected-screen mirroring, separate positions and
+  visibility, shared data, screen map, native physical placement/local DIP offsets,
+  reconnect fallback, routed shortcuts and tray show/hide-all. Library reattaches
+  to the invoking dock without retaining old event subscriptions.
+- Dedicated process command HWND keeps tray/hotkeys independent of dock lifetime.
+  Debounce display/resume events and skip unchanged appearance resources.
+- Schema 3 migration from 1/2 with immutable pre-upgrade metadata backup; previous
+  builds refuse the new schema. No original-file or clipboard payload conversion.
+- Updated staged roadmap. Physical mixed-DPI hardware acceptance remains open;
+  named/recently closed panels, version/backup UI and history are separate stages.
+
 ## 0.5.0 — 2026-10-27
 
 - Replace mixed retro/emoji toolbar and clip glyphs with one flat vector icon family.

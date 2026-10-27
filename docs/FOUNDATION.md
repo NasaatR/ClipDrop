@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.5.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.6.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -205,3 +205,33 @@ success from the fallback path.
 Current and subsequent scope is in [ROADMAP.md](ROADMAP.md). Two-monitor mirroring
 is designed there, with common state, independent placements, reconnect policy,
 DPI acceptance and schema migration. It is not implemented or claimed by 0.5.0.
+
+
+## 0.6.0: emoji/PNG, stable pins and mirrored dock preview
+
+This supersedes the historical 0.5 icon choice: all app action and file-fallback
+icons use emoji, or a per-role PNG chosen in Settings. Installed Windows emoji
+COLR/CPAL layers render as frozen drawings; no system font or external icon art
+is redistributed. The bounded reader only handles this fixed single-codepoint
+role list, not general emoji shaping. WPF text is the compatibility fallback.
+PNG imports are decoded/validated, bounded, re-encoded and stored by content hash.
+
+PinOrder preserves old displayed order once, then new saves/re-pins append right.
+A virtualized strip reuses buttons and guards thumbnail context recycling.
+Appearance resources skip unchanged tokens. DockCoordinator owns monitor views,
+while the process retains one store/session, foreground tracker, clipboard,
+tray/hotkey source, Library and Settings. Closed views ignore the remainder of
+an already captured Changed delegate invocation list.
+
+Display identities use EnumDisplayDevices monitor interface names (GDI name
+fallback for virtual drivers). Native physical window placement plus local DIP
+offsets avoids globally scaling desktop origins; WPF handles target HWND DPI.
+Display/resume events debounce; missing records remain and a temporary fallback
+keeps a dock reachable. Physical mixed-DPI acceptance remains open: this is a
+monitor preview. See ROADMAP for the next stabilization and saved-panel slices.
+
+Schema 3 migrates 1/2 and preserves an immutable pre-migration metadata copy
+before saving, in addition to the rotating .bak. Old schema-2 builds refuse it.
+Sources: Microsoft EnumDisplayDevicesW/GetDpiForWindow and OpenType COLR/CPAL
+specifications. Emoji.Wpf was inspected as an alternative; its general Unicode
+shaping/font parser/shader dependencies were not adopted for 22 fixed roles.

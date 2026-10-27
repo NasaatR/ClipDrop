@@ -13,7 +13,8 @@ public sealed class DockLayout
     public double? OffsetY { get; set; }
 }
 
-public sealed record DisplayArea(string Id, string Label, double Left, double Top, double Width, double Height, bool Primary = false);
+public sealed record DisplayArea(string Id, string Label, double Left, double Top, double Width, double Height, bool Primary = false)
+{ public override string ToString() => Label; }
 public sealed record DockAssignment(DisplayArea Display, DockLayout Layout, bool Temporary = false);
 public readonly record struct PixelPosition(double X, double Y);
 
