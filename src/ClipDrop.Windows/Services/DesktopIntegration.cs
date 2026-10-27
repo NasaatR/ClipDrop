@@ -19,6 +19,7 @@ public sealed class DesktopIntegration : IDisposable
     [StructLayout(LayoutKind.Sequential)] private struct RectNative { public int Left; public int Top; public int Right; public int Bottom; }
     private readonly HwndSource _source;
     private readonly Forms.NotifyIcon _tray;
+    private readonly System.Drawing.Icon _icon;
     private readonly DispatcherTimer _shake;
     private readonly Action _show;
     private int _lastX, _direction, _turns;
@@ -41,7 +42,9 @@ public sealed class DesktopIntegration : IDisposable
         Library = library;
         HotkeyAvailable = RegisterHotKey(_source.Handle, 1, 0x0002 | 0x0001 | 0x4000, 0x20);
         LibraryHotkeyAvailable = RegisterHotKey(_source.Handle, 2, 0x0002 | 0x0001 | 0x4000, 0x4C);
-        _tray = new Forms.NotifyIcon { Text = "ClipDrop · Ctrl+Alt+Space", Icon = System.Drawing.SystemIcons.Application, Visible = true };
+        using (var stream = Application.GetResourceStream(new Uri("pack://application:,,,/Assets/ClipDrop.ico")).Stream)
+        using (var original = new System.Drawing.Icon(stream)) _icon = (System.Drawing.Icon)original.Clone();
+        _tray = new Forms.NotifyIcon { Text = "ClipDrop · Ctrl+Alt+Space", Icon = _icon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Show dock", null, (_, _) => show());
         menu.Items.Add("Library", null, (_, _) => library());
@@ -95,6 +98,6 @@ public sealed class DesktopIntegration : IDisposable
         _source.RemoveHook(Hook);
         _tray.Visible = false;
         _tray.ContextMenuStrip?.Dispose();
-        _tray.Dispose();
+        _tray.Dispose(); _icon.Dispose();
     }
 }

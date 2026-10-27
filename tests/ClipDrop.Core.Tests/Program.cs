@@ -59,7 +59,23 @@ try
         "Named styles and detached/motion preferences survive restart");
     Check(AppearanceStyle.TryColor(" #ab09fF ", out var color) && color == "#AB09FF" && AppearanceStyle.TryColor("", out _) && !AppearanceStyle.TryColor("#GG0000", out _) && !AppearanceStyle.TryColor("red", out _),
         "Custom colors accept normalized RGB or automatic, reject invalid input");
+    var trashStore = new StateStore(Path.Combine(root, "trash")); var trashState = trashStore.Load();
+    var keep = ShelfItem.FromText("Keep me after restart"); trashState.Items.Add(keep);
+    LibraryOperations.Rename(keep, "Saved reference", "Design");
+    LibraryOperations.Remove(trashState, new[] { keep.Id }); trashStore.Save(trashState);
+    var trashReload = new StateStore(trashStore.Root).Load();
+    Check(trashReload.Items.Count == 0 && trashReload.Trash.Single().Item.Content == keep.Content && trashReload.Trash.Single().Item.Group == "Design", "Trash retains content, name and group after restart");
+    Check(LibraryOperations.UndoRemove(trashReload) == 1 && trashReload.Items.Single().Id == keep.Id && trashReload.Trash.Count == 0, "Undo removal restores the persistent deletion batch after restart");
+    var legacyRoot = Path.Combine(root, "legacy-library"); Directory.CreateDirectory(legacyRoot);
+    File.WriteAllText(Path.Combine(legacyRoot, "shelf.json"), "{\"SchemaVersion\":1,\"Items\":[],\"Settings\":{\"DockOpacity\":0,\"DockSpacing\":0}}");
+    var legacyStore = new StateStore(legacyRoot); var migrated = legacyStore.Load(); legacyStore.Save(migrated);
+    Check(migrated.SchemaVersion == 2 && migrated.Trash.Count == 0 && migrated.Settings.DockOpacity == 0 && File.ReadAllText(Path.Combine(legacyRoot, "shelf.json.bak")).Contains("\"SchemaVersion\":1"), "Schema-1 upgrade retains explicit preferences and an untouched old backup");
     var assets = new AssetStore(Path.Combine(root, "assets"));
+    var blobBytes = new byte[] { 0, 7, 128, 255 };
+    var hash = assets.WriteBlob(blobBytes); var blob = new ClipboardFormatBlob { Name = "Test", Hash = hash, Length = 4 };
+    Check(assets.ReadBlob(blob).SequenceEqual(blobBytes), "Clipboard format blobs retain exact binary content");
+    blob.Hash = "../escape";
+    Throws<InvalidDataException>(() => assets.ReadBlob(blob), "Clipboard assets reject paths outside their managed directory");
     var exported = assets.ExportText(text);
     Check(File.ReadAllText(exported) == text.Content, "Exported text is lossless");
     Check(assets.ExportText(text) == exported && File.Exists(exported), "Repeated export keeps a stable file alive");

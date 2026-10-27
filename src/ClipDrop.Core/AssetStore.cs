@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Security.Cryptography;
 
 namespace ClipDrop.Core;
 
@@ -15,6 +16,29 @@ public sealed class AssetStore
         using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
         file.Write(png);
         return path;
+    }
+    public string WriteBlob(byte[] bytes)
+    {
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        var directory = Path.Combine(Root, "clipboard"); Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, hash + ".bin");
+        if (!File.Exists(path))
+        {
+            var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try { File.WriteAllBytes(temporary, bytes); File.Move(temporary, path, true); }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
+        return hash;
+    }
+    public byte[] ReadBlob(ClipboardFormatBlob blob)
+    {
+        if (blob.Hash.Length != 64 || !System.Linq.Enumerable.All(blob.Hash, Uri.IsHexDigit) || blob.Length < 1 || blob.Length > 64 * 1024 * 1024)
+            throw new InvalidDataException("Invalid clipboard asset.");
+        var path = Path.Combine(Root, "clipboard", blob.Hash + ".bin");
+        if (new FileInfo(path).Length != blob.Length) throw new InvalidDataException("Clipboard asset changed.");
+        var bytes = File.ReadAllBytes(path);
+        if (!Convert.ToHexString(SHA256.HashData(bytes)).Equals(blob.Hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Clipboard asset changed.");
+        return bytes;
     }
 
     public string ExportText(ShelfItem item)

@@ -6,7 +6,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>ClipDrop</AssemblyName>
+    <ApplicationIcon>Assets/ClipDrop.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  <ItemGroup><Resource Include="Assets/ClipDrop.ico"/></ItemGroup>
   <ItemGroup><ProjectReference Include="../ClipDrop.Core/ClipDrop.Core.csproj" /></ItemGroup>
 </Project>

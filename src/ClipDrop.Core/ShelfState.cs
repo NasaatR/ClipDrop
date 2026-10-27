@@ -4,7 +4,7 @@ using System.IO;
 
 namespace ClipDrop.Core;
 
-public enum ItemKind { File, Folder, Image, Text, Link }
+public enum ItemKind { File, Folder, Image, Text, Link, Clipboard }
 
 public sealed class ShelfItem
 {
@@ -15,6 +15,8 @@ public sealed class ShelfItem
     public string? FilePath { get; set; }
     public bool OwnedAsset { get; set; }
     public bool IsPinned { get; set; }
+    public string Group { get; set; } = "";
+    public ClipboardSnapshot? Clipboard { get; set; }
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public static ShelfItem FromPath(string path)
@@ -44,7 +46,8 @@ public sealed class ShelfItem
     public bool SameContent(ShelfItem other) => Kind == other.Kind &&
         (FilePath is not null && other.FilePath is not null
             ? string.Equals(FilePath, other.FilePath, StringComparison.OrdinalIgnoreCase)
-            : FilePath is null && other.FilePath is null && Content == other.Content);
+            : FilePath is null && other.FilePath is null && Content == other.Content)
+        && Clipboard?.Identity == other.Clipboard?.Identity;
 }
 
 public sealed class ShelfSettings : AppearanceStyle
@@ -66,8 +69,31 @@ public sealed class ShelfSettings : AppearanceStyle
 
 public sealed class ShelfState
 {
-    public const int CurrentSchema = 1;
+    public const int CurrentSchema = 2;
     public int SchemaVersion { get; set; } = CurrentSchema;
     public List<ShelfItem> Items { get; set; } = new();
+    public List<TrashEntry> Trash { get; set; } = new();
     public ShelfSettings Settings { get; set; } = new();
+}
+
+public sealed class TrashEntry
+{
+    public ShelfItem Item { get; set; } = new();
+    public string Batch { get; set; } = Guid.NewGuid().ToString("N");
+    public DateTimeOffset DeletedUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class ClipboardSnapshot
+{
+    public string Identity { get; set; } = "";
+    public List<ClipboardFormatBlob> Formats { get; set; } = new();
+    public bool Partial { get; set; }
+}
+
+public sealed class ClipboardFormatBlob
+{
+    public uint StandardId { get; set; }
+    public string Name { get; set; } = "";
+    public string Hash { get; set; } = "";
+    public int Length { get; set; }
 }

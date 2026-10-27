@@ -75,7 +75,7 @@ internal static class PasteProbe
             var beforeDrag = dock.Left;
             UiProbe.Drag(dock, new Point(3, dock.ActualHeight / 2), 28, -20);
             check(Math.Abs(dock.Left - beforeDrag) > 15 && GetForegroundWindow() == hwnd, "Dragging dock padding moves it without stealing editor focus");
-            var items = (ItemsControl)dock.FindName("PinnedItems");
+            var items = dock.Pins;
             var container = items.ItemContainerGenerator.ContainerFromIndex(0) ?? throw new Exception("Dock pin was not rendered");
             var button = Descendant<Button>(container) ?? throw new Exception("Dock pin button missing");
             var point = button.PointToScreen(new Point(button.ActualWidth / 2, button.ActualHeight / 2));

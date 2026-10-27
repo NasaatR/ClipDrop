@@ -13,20 +13,17 @@ public sealed class ItemRow
     {
         get
         {
-            if (Item.Kind == ItemKind.Folder) return "DIR";
-            if (Item.Kind is ItemKind.File) return Path.GetExtension(Item.FilePath ?? "").TrimStart('.').ToUpperInvariant()[..Math.Min(3, Path.GetExtension(Item.FilePath ?? "").TrimStart('.').Length)];
-            var text = Item.Content.Trim();
-            if (Item.Kind == ItemKind.Link && Uri.TryCreate(text, UriKind.Absolute, out var uri)) text = uri.Host.Replace("www.", "");
-            var elements = new System.Globalization.StringInfo(text);
-            return elements.LengthInTextElements == 0 ? "Aa" : elements.SubstringByTextElements(0, Math.Min(2, elements.LengthInTextElements));
+            return Item.Kind switch { ItemKind.Text => "📝", ItemKind.Link => "🔗", ItemKind.Folder => "📁", ItemKind.Image => "🖼️", ItemKind.Clipboard => "📋", _ => "📄" };
         }
     }
-    public string Details => Missing ? "Original unavailable" : Item.Kind switch {
+    private string TypeDetails => Missing ? "Original unavailable" : Item.Kind switch {
         ItemKind.Text => $"Text · {Item.Content.Length:N0} characters",
         ItemKind.Link => "Link",
+        ItemKind.Clipboard => $"Clipboard · {Item.Clipboard?.Formats.Count ?? 0} formats",
         ItemKind.Folder => "Folder",
         _ => Path.GetExtension(Item.FilePath ?? "").TrimStart('.').ToUpperInvariant() + " file"
     };
+    public string Details => TypeDetails + (Item.Group.Length > 0 ? " · " + Item.Group : "");
     public string Help => Item.FilePath ?? Item.Content;
     public bool Missing => Item.FilePath is not null && !File.Exists(Item.FilePath) && !Directory.Exists(Item.FilePath);
     public Visibility Pinned => Item.IsPinned ? Visibility.Visible : Visibility.Collapsed;

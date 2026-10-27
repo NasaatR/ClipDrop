@@ -17,6 +17,7 @@ OutputBaseFilename=ClipDrop_{#MyAppVersion}_windows-x64_setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\src\ClipDrop.Windows\Assets\ClipDrop.ico
 UninstallDisplayIcon={app}\ClipDrop.exe
 AppMutex=Local\NasaatR.ClipDrop
 CloseApplications=no

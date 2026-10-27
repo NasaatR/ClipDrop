@@ -33,8 +33,9 @@ internal static class Program
             var transfers = new TransferService(assets);
             var note = ShelfItem.FromText("Hello\r\nПривет — Bonjour 👋");
             var textData = transfers.Build(new[] { note });
-            Check(textData.GetText() == note.Content && textData.GetFileDropList().Count == 1, "A text card exposes Unicode text and a real file simultaneously");
-            Check(File.ReadAllText(textData.GetFileDropList()[0]!) == note.Content, "Text drag file contains original contents");
+            Check(textData.GetText() == note.Content && !textData.GetDataPresent(DataFormats.FileDrop), "A text card stays Unicode text without a generated file");
+            var textDrag = transfers.BuildDrag(new[] { note });
+            Check(textDrag.GetText() == note.Content && !textDrag.GetDataPresent(DataFormats.FileDrop) && !Directory.Exists(Path.Combine(assets.Root, "exports")), "Dragging text never creates or advertises a TXT file");
             var linkData = transfers.Build(new[] { ShelfItem.FromText("https://example.com") });
             Check(linkData.GetDataPresent("UniformResourceLocatorW") && linkData.GetText() == "https://example.com", "Links expose URL and Unicode representations");
             var pixels = new byte[] { 0, 0, 255, 128, 0, 255, 0, 255 };
@@ -54,16 +55,17 @@ internal static class Program
             var source = Path.Combine(root, "source.txt"); File.WriteAllText(source, "kept");
             var file = ShelfItem.FromPath(source);
             var mixed = transfers.Build(new[] { file, image, note });
-            Check(mixed.GetFileDropList().Count == 3, "Mixed multi-selection provides every file payload");
+            Check(mixed.GetFileDropList().Count == 2 && mixed.GetText() == note.Content, "Mixed selection offers original files and text without manufacturing a TXT file");
             Check(File.ReadAllText(source) == "kept", "Transfer preparation preserves original files");
             try { transfers.Build(new[] { new ShelfItem { Kind = ItemKind.File, FilePath = Path.Combine(root, "missing") } }); throw new Exception("Missing path was accepted"); }
             catch (FileNotFoundException) { Check(true, "Missing originals fail explicitly before drag begins"); }
             // A real OLE clipboard roundtrip on the Windows runner; no external app automation is implied.
             Clipboard.SetDataObject(textData, true);
-            Check(Clipboard.GetText() == note.Content && Clipboard.ContainsFileDropList(), "System clipboard roundtrip preserves text and file formats");
+            Check(Clipboard.GetText() == note.Content && !Clipboard.ContainsFileDropList(), "System clipboard roundtrip preserves plain text without file formats");
             Check(transfers.Import(Clipboard.GetDataObject() ?? throw new Exception("Clipboard unavailable")).Single().Content == note.Content,
                 "Copying and pasting a ClipDrop text card keeps it a text card");
             Clipboard.Clear();
+            ClipboardProbe.Run(root, Check);
             var store = new StateStore(root); var state = store.Load();
             state.Items.AddRange(new[] { note, image, file, ShelfItem.FromText("A long Cyrillic reference: Проверка очень длинного названия изображения для рабочего проекта") });
             state.Items[0].IsPinned = true;
@@ -75,6 +77,7 @@ internal static class Program
             Check(dock.ActualHeight < 90, "The floating dock stays compact with real pins");
             PasteProbe.Run(dock, root, note.Content, Check);
             UiProbe.Placement(window, dock, Check);
+            UiProbe.Library(window, Check);
             var clipboardNote = ShelfItem.FromText("Shared session checkpoint");
             window.Session.Add(new[] { clipboardNote });
             Check(state.Items.Any(i => i.Id == clipboardNote.Id && i.IsPinned), "Dock and Library share one collection and pin new saves");
@@ -89,6 +92,8 @@ internal static class Program
             var settings = new SettingsWindow(state.Settings, () => window.Session.Change(), () => true, () => "test report", root) { Owner = window };
             settings.Show(); Render(settings, Path.Combine(output, "settings-open.png"));
             UiProbe.Styles(settings, window, dock, Check);
+            Check(settings.Preview is DockStrip && ((SolidColorBrush)settings.Preview.FindResource("DockBackground")).Color.A == 255,
+                "Settings renders the actual dock component with current appearance");
             UiProbe.Pump(250);
             Render(dock, Path.Combine(output, "dock-independent.png"));
             Render(window, Path.Combine(output, "library-midnight.png"));
@@ -101,7 +106,7 @@ internal static class Program
             settings.Close();
             Check(window.ActualWidth >= 320 && window.ActualHeight >= 300, "Real WPF surface renders at its minimum supported size");
             dock.Hide();
-            window.Session.TrySave();
+            window.Session.TrySave(); window.Session.Dispose();
             app.Shutdown();
             Console.WriteLine($"{_passed} Windows checks passed. UI captures: {output}");
             return 0;

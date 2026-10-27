@@ -13,7 +13,7 @@ public sealed class ShelfSession : IDisposable
 {
     private readonly StateStore _store;
     private readonly DispatcherTimer _save;
-    private readonly Stack<List<ShelfItem>> _removed = new();
+    private readonly NativeClipboard _clipboard;
     private bool _dirty;
     public ShelfState State { get; }
     public TransferService Transfer { get; }
@@ -31,7 +31,8 @@ public sealed class ShelfSession : IDisposable
     public ShelfSession(StateStore store, ShelfState state)
     {
         _store = store; State = state;
-        Transfer = new TransferService(new AssetStore(Path.Combine(Root, "assets")));
+        var assets = new AssetStore(Path.Combine(Root, "assets"));
+        Transfer = new TransferService(assets); _clipboard = new NativeClipboard(assets);
         _save = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
         _save.Tick += (_, _) => TrySave();
         if (store.RecoveryNotice is not null) Status = store.RecoveryNotice;
@@ -62,6 +63,7 @@ public sealed class ShelfSession : IDisposable
     {
         Diagnostics.Record(operation, error);
         var detail = error is FileNotFoundException ? "original file unavailable" :
+            error is InvalidOperationException ? error.Message :
             error is System.Runtime.InteropServices.ExternalException ? "clipboard is busy; try again" : "retry or copy diagnostics in Settings";
         Notify(operation + " failed — " + detail);
     }
@@ -89,9 +91,20 @@ public sealed class ShelfSession : IDisposable
     {
         try
         {
+            var sequence = NativeClipboard.GetClipboardSequenceNumber();
             var data = Clipboard.GetDataObject();
             if (data is null) { Notify("Clipboard is empty"); return; }
-            Capture(data);
+            List<ShelfItem> items;
+            try { items = Transfer.Import(data); }
+            catch (Exception ex) when (ex is NotSupportedException or FileFormatException or InvalidDataException)
+            { items = new(); Diagnostics.Record("Clipboard preview", ex); }
+            var snapshot = data.GetDataPresent(DataFormats.FileDrop) ? null : _clipboard.Capture();
+            if (NativeClipboard.GetClipboardSequenceNumber() != sequence) { Notify("Clipboard changed · save again"); return; }
+            if (items.Count == 0 && snapshot is not null) items.Add(new ShelfItem { Kind = ItemKind.Clipboard, Title = "Clipboard item" });
+            if (items.Count == 1) items[0].Clipboard = snapshot;
+            if (items.Count == 0) { Notify("No supported clipboard content"); return; }
+            var count = Add(items);
+            if (TrySave()) Notify(snapshot?.Partial == true ? "Saved · some app-only formats unavailable" : count > 0 ? "Saved · original clipboard formats kept" : "Already in your library");
         }
         catch (Exception ex) { Error("Save clipboard", ex); }
     }
@@ -116,21 +129,29 @@ public sealed class ShelfSession : IDisposable
     public void Remove(List<ShelfItem> items)
     {
         if (items.Count == 0) return;
-        _removed.Push(items);
-        if (_removed.Count > 20)
-        {
-            var batches = _removed.Take(20).Reverse().ToArray(); _removed.Clear();
-            foreach (var batch in batches) _removed.Push(batch);
-        }
-        foreach (var item in items) State.Items.Remove(item);
-        Change(); Notify("Removed · Ctrl+Z in Library to undo");
+        try { if (LibraryOperations.Remove(State, items.Select(i => i.Id)) > 0) { Change(); Notify("Moved to Trash · recover any time in Library"); } }
+        catch (Exception ex) { Error("Remove", ex); }
     }
 
+    public void RestoreTrash(IReadOnlyList<ShelfItem> items)
+    {
+        try { if (LibraryOperations.Restore(State, items.Select(i => i.Id)) > 0) { Change(); Notify("Items restored"); } }
+        catch (Exception ex) { Error("Restore", ex); }
+    }
     public void UndoRemove()
     {
-        if (!_removed.TryPop(out var items)) return;
-        State.Items.AddRange(items.Where(i => State.Items.All(current => current.Id != i.Id)));
-        Change(); Notify("Items restored");
+        try { if (LibraryOperations.UndoRemove(State) > 0) { Change(); Notify("Items restored"); } }
+        catch (Exception ex) { Error("Restore", ex); }
+    }
+    public void Rename(ShelfItem item, string title, string group)
+    {
+        try { LibraryOperations.Rename(item, title, group); Change(); Notify("Item updated"); }
+        catch (Exception ex) { Error("Rename", ex); }
+    }
+    private void WriteClipboard(IReadOnlyList<ShelfItem> items)
+    {
+        if (items.Count == 1 && items[0].Clipboard is { } original) _clipboard.Restore(original);
+        else Clipboard.SetDataObject(Transfer.Build(items), true);
     }
 
     public bool Copy(IReadOnlyList<ShelfItem> items, bool plainText = false)
@@ -139,8 +160,8 @@ public sealed class ShelfSession : IDisposable
         try
         {
             if (plainText) Clipboard.SetText(string.Join(Environment.NewLine, items.Select(i => i.FilePath ?? i.Content)));
-            else Clipboard.SetDataObject(Transfer.Build(items), true);
-            Notify("Copied · ready to paste"); return true;
+            else WriteClipboard(items);
+            Notify(items.Count == 1 && items[0].Clipboard?.Partial == true ? "Copied available formats · some app-only formats unavailable" : "Copied · ready to paste"); return true;
         }
         catch (Exception ex) { Error("Copy", ex); return false; }
     }
@@ -153,7 +174,7 @@ public sealed class ShelfSession : IDisposable
         {
             var target = Paster?.CaptureTarget();
             // The copied payload remains available on every fallback; never restore on a timer.
-            Clipboard.SetDataObject(Transfer.Build(items), true);
+            WriteClipboard(items);
             var result = Paster is null ? PasteOutcome.NoTarget : await Paster.Paste(target);
             Diagnostics.Note("Paste outcome", result.ToString());
             Notify(result == PasteOutcome.Requested ? "Paste requested · items kept" : result switch {
@@ -168,5 +189,5 @@ public sealed class ShelfSession : IDisposable
 
     public string Report() => Diagnostics.Report(State.Items.Count, StorageStatus);
     public void RequestQuit() => QuitRequested?.Invoke();
-    public void Dispose() => _save.Stop();
+    public void Dispose() { _save.Stop(); _clipboard.Dispose(); }
 }

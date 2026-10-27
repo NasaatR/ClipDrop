@@ -32,6 +32,9 @@ public class AppearanceStyle
         target.DockButtonSize = DockButtonSize; target.DockSpacing = DockSpacing;
         target.DockRadius = DockRadius; target.DockOpacity = DockOpacity;
     }
+    public bool EquivalentTo(AppearanceStyle other) =>
+        (Theme, DockPalette, LibraryPalette, DockColor, LibraryColor, AccentColor, FontSize, RowSpacing, CornerRadius, DockButtonSize, DockSpacing, DockRadius, DockOpacity) ==
+        (other.Theme, other.DockPalette, other.LibraryPalette, other.DockColor, other.LibraryColor, other.AccentColor, other.FontSize, other.RowSpacing, other.CornerRadius, other.DockButtonSize, other.DockSpacing, other.DockRadius, other.DockOpacity);
     public static bool TryColor(string? input, out string color)
     {
         color = (input ?? "").Trim().ToUpperInvariant();

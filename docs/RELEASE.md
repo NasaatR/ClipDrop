@@ -1,12 +1,13 @@
-Windows design and usability update.
+WeavyClips-inspired design, source-format clipboard copying and persistent Library recovery.
 
-- Drag dock and Library from any empty background, with existing card and control gestures preserved.
-- Icon-only Save and a consistent centered vector icon family.
-- Library opens near the dock, follows its movement and detaches when moved manually. Use the link button to attach again.
-- Graphite, Paper, Midnight and Compact styles; save your own named presets. Independent dock/Library palettes, custom RGB backgrounds and accent, live preview and compact Settings navigation.
-- Short button, new-pin and panel animations; respects Windows animation settings and the app toggle.
+- Colored floppy Save, gear Settings, three-line Library, then clip icons. The live Settings preview is the real dock component.
+- Grouped settings and original application, installer and tray icon.
+- Text/links stay text: no generated TXT/URL files. Original file copies stay original files.
+- Save retains native memory-backed clipboard formats, including Unicode, HTML/RTF, PNG/DIB and registered app formats. Copy/click-paste restores their bytes. Process/owner-bound formats are not universally portable; partial captures are reported.
+- Persistent Trash, restoration after restart, names/groups and group filters.
 
-Download `*_windows-x64_setup.exe` or extract the entire portable ZIP. Runtime included. Quit the previous version before updating; libraries and existing preferences are retained. Unsigned Windows x64 preview.
+The installer updates the existing installation and keeps data. Quit from the tray first. Portable ZIPs are extracted separately. Runtime included; unsigned Windows x64 preview.
 
-CI verifies recovery, OLE/clipboard payloads, native background movement and focus, a real dock click into a separate Windows editor, Library placement, named style UI/persistence, WPF views, published startup/shutdown and installer/uninstaller.
-Photoshop/Figma/browser-specific behavior and mixed-DPI monitor transitions still need manual testing. Click-paste retains copy-only fallback. Persistent trash, named/closed panel sets and automatic clipboard history remain future stages.
+Data schema 2 migrates existing schema-1 libraries with an untouched previous-save backup. Older builds refuse newer metadata; back up the data folder before manually rolling back. Original files remain untouched. Native snapshot limit: 128 formats / 64 MB. No automatic clipboard monitoring or cache deletion.
+
+CI exercises source-format roundtrips through restart, native click-paste/focus, background movement, Library restore and groups, schema migration, shared preview and WPF captures. Packaging checks upgrade from the actual 0.3.1 release, one installation, previous directory, kept data and uninstall. Photoshop/Figma app-specific objects and mixed-DPI monitor transitions still need manual testing. Saved/closed panel sets, automatic clipboard history, content editing/version history and backup UI remain future stages.

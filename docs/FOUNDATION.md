@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.3.1. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.4.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -141,3 +141,41 @@ browser CSS or a new rendering engine.
 The visual review found a Settings root background mismatch during live theme
 changes. 0.3.1 binds the window and content background explicitly and adds a
 regression assertion plus an open-preset-menu capture.
+
+
+## 0.4.0: requested WeavyClips direction, native copy and recovery
+
+The user explicitly prefers the supplied WeavyClips dock language over the
+original monochrome icon family: colored floppy Save, gear Settings, three-line
+Library, then clip emoji. Source inspected at d368314. Native original drawings
+adapt those roles; DockStrip is shared by the real dock and the live Settings
+preview. Settings uses compact grouped surfaces and section navigation. The
+original ClipDrop icon is committed with scalable source and a reproducible
+multi-size ICO renderer; no downloaded icon pack is bundled.
+
+Transfer behavior supersedes the original foundation: text and links never
+manufacture file payloads. File references stay files; clipboard-origin images
+remain image formats. Save captures bounded HGLOBAL clipboard formats and stores
+opaque bytes by SHA-256 in managed assets. Standard handle/owner-dependent formats
+and OLE process metadata are not blindly replayed. File captures keep copy-only
+intent rather than cut/delete negotiation. Snapshot restore reads and validates
+all assets and allocates buffers before emptying the live clipboard. Windows
+owns allocations accepted by SetClipboardData; rejected buffers are freed. No
+untrusted .NET object deserialization, network request or clipboard monitoring.
+
+[Microsoft clipboard operations](https://learn.microsoft.com/en-us/windows/win32/dataxchg/clipboard-operations)
+and [shell formats](https://learn.microsoft.com/en-us/windows/win32/shell/clipboard)
+define memory ownership, synthesized formats and move/delete negotiation.
+Byte preservation does not establish portability for every app-private format.
+Unavailable formats/limits produce a partial-capture message. Source captures
+use a clipboard sequence guard; dropped content uses supported OLE typed formats.
+
+Schema 2 adds persistent trash and group/name metadata. Schema 1 loads with
+safe defaults and retains an untouched backup on first save. Newer schema
+refusal remains explicit. Trash has no timer purge or original-file deletion.
+Restore is checked against active-library capacity; failed restore keeps the
+trash entry. Name/group edits affect metadata only, without changing original
+files, text bytes or captured clipboard assets.
+
+Remaining stages: content editing/version history and backup UI; named panel
+sets and recently closed restoration; opt-in automatic clipboard history.

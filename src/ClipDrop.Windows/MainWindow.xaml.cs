@@ -25,6 +25,9 @@ public partial class MainWindow : Window
     private bool _dragging;
     private DockWindow? _dock;
     private bool _placing;
+    private string _filter = "All";
+    private bool _updatingGroups;
+    private ShelfItem? _editing;
     public Diagnostics DiagnosticLog => Session.Diagnostics;
     public MainWindow(StateStore store, ShelfState state, bool integration = true) : this(new ShelfSession(store, state)) { }
     public MainWindow(ShelfSession session)
@@ -105,13 +108,24 @@ public partial class MainWindow : Window
         ApplyAppearance();
         var selected = Selected().Select(i => i.Id).ToHashSet();
         var query = SearchBox.Text.Trim();
+        _updatingGroups = true;
+        var group = GroupFilter.SelectedItem as string ?? "All groups";
+        var groups = new[] { "All groups" }.Concat(Session.State.Items.Concat(Session.State.Trash.Select(t => t.Item)).Select(i => i.Group).Where(g => g.Length > 0).Distinct().OrderBy(g => g)).ToArray();
+        GroupFilter.ItemsSource = groups; GroupFilter.SelectedItem = groups.Contains(group) ? group : "All groups";
+        _updatingGroups = false;
+        group = GroupFilter.SelectedItem as string ?? "All groups";
+        var source = _filter == "Trash" ? Session.State.Trash.OrderByDescending(t => t.DeletedUtc).Select(t => t.Item) : Session.State.Items.AsEnumerable();
         _rows.Clear();
-        foreach (var item in Session.State.Items.OrderByDescending(i => i.IsPinned).ThenByDescending(i => i.CreatedUtc))
-            if (query.Length == 0 || item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
+        foreach (var item in source.Where(i => (_filter != "Pinned" || i.IsPinned) && (group == "All groups" || i.Group == group)).OrderByDescending(i => i.IsPinned).ThenByDescending(i => i.CreatedUtc))
+            if (query.Length == 0 || item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Content.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Group.Contains(query, StringComparison.OrdinalIgnoreCase))
                 _rows.Add(new ItemRow(item));
         foreach (var row in _rows.Where(r => selected.Contains(r.Item.Id))) ItemList.SelectedItems.Add(row);
         EmptyState.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        EmptyTitle.Text = query.Length > 0 ? "No matching items" : "Your library is ready";
+        EmptyTitle.Text = _filter == "Trash" ? "Trash is empty" : query.Length > 0 ? "No matching items" : "Your library is ready";
+        TrashFilter.Content = "Trash " + Session.State.Trash.Count;
+        foreach (var button in new[] { AllFilter, PinnedFilter, TrashFilter }) button.SetResourceReference(BackgroundProperty, (string)button.Tag == _filter ? "Selected" : "Raised");
+        ActiveActions.Visibility = ClearButton.Visibility = _filter == "Trash" ? Visibility.Collapsed : Visibility.Visible;
+        RestoreButton.Visibility = _filter == "Trash" ? Visibility.Visible : Visibility.Collapsed;
         CountLabel.Text = Session.State.Items.Count.ToString(); UpdateSelection();
     }
     private System.Collections.Generic.List<ShelfItem> Selected() => ItemList?.SelectedItems.Cast<ItemRow>().Select(r => r.Item).ToList() ?? new();
@@ -122,6 +136,7 @@ public partial class MainWindow : Window
         var unpin = selected.Count > 0 && selected.All(i => i.IsPinned);
         PinButton.ToolTip = unpin ? "Unpin selection" : "Pin selection";
         PinActionIcon.Opacity = unpin ? 1 : .65;
+        RestoreButton.IsEnabled = selected.Count > 0; EditButton.IsEnabled = selected.Count == 1;
         System.Windows.Automation.AutomationProperties.SetName(PinButton, unpin ? "Unpin selection" : "Pin selection");
     }
     private void OnSelection(object sender, SelectionChangedEventArgs e) => UpdateSelection();
@@ -164,7 +179,7 @@ public partial class MainWindow : Window
     }
     private void OnItemDown(object sender, MouseButtonEventArgs e)
     {
-        if (Container(e.OriginalSource as DependencyObject) is null) { _origin = null; _pendingSingle = null; return; }
+        if (_filter == "Trash" || Container(e.OriginalSource as DependencyObject) is null) { _origin = null; _pendingSingle = null; return; }
         _origin = e.GetPosition(ItemList); _pendingSingle = null;
         if (Container(e.OriginalSource as DependencyObject) is { IsSelected: true, DataContext: ItemRow row } && ItemList.SelectedItems.Count > 1 && Keyboard.Modifiers == ModifierKeys.None)
         { _pendingSingle = row; e.Handled = true; }
@@ -190,10 +205,29 @@ public partial class MainWindow : Window
         catch (Exception ex) { Session.Error("Drag", ex); }
         finally { _dragging = false; DropCue.Visibility = Visibility.Collapsed; }
     }
+    private void OnFilter(object sender, RoutedEventArgs e)
+    {
+        _filter = sender is Button { Tag: string filter } ? filter : "All";
+        EditPanel.Visibility = Visibility.Collapsed; _editing = null; Refresh();
+    }
+    private void OnGroupFilter(object sender, SelectionChangedEventArgs e) { if (!_updatingGroups && IsLoaded) Refresh(); }
+    private void OnRestore(object sender, RoutedEventArgs e) => Session.RestoreTrash(Selected());
+    private void OnEdit(object sender, RoutedEventArgs e)
+    {
+        if (_filter == "Trash" || Selected().Count != 1) return;
+        _editing = Selected()[0]; NameEditor.Text = _editing.Title; GroupEditor.Text = _editing.Group;
+        EditPanel.Visibility = Visibility.Visible; NameEditor.Focus(); NameEditor.SelectAll();
+    }
+    private void OnSaveEdit(object sender, RoutedEventArgs e)
+    {
+        if (_editing is null || string.IsNullOrWhiteSpace(NameEditor.Text)) return;
+        Session.Rename(_editing, NameEditor.Text, GroupEditor.Text); EditPanel.Visibility = Visibility.Collapsed; _editing = null;
+    }
+    private void OnCancelEdit(object sender, RoutedEventArgs e) { EditPanel.Visibility = Visibility.Collapsed; _editing = null; }
     private void OnCopy(object sender, RoutedEventArgs e) => Session.Copy(Selected());
     private void OnCopyText(object sender, RoutedEventArgs e) => Session.Copy(Selected(), true);
     private void OnPin(object sender, RoutedEventArgs e) => Session.TogglePin(Selected());
-    private void OnRemove(object sender, RoutedEventArgs e) => Session.Remove(Selected());
+    private void OnRemove(object sender, RoutedEventArgs e) { if (_filter != "Trash") Session.Remove(Selected()); }
     private void OnClear(object sender, RoutedEventArgs e) => Session.Remove(Session.State.Items.Where(i => !i.IsPinned).ToList());
     private void OnOpen(object sender, MouseButtonEventArgs e)
     {
@@ -232,7 +266,8 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
-        else if (e.Key == Key.Enter && Keyboard.FocusedElement is not TextBox) { Session.Paste(Selected()); e.Handled = true; }
+        else if (e.Key == Key.F2 && Keyboard.FocusedElement is not TextBox) { OnEdit(this, e); e.Handled = true; }
+        else if (e.Key == Key.Enter && Keyboard.FocusedElement is not TextBox) { if (_filter == "Trash") Session.RestoreTrash(Selected()); else Session.Paste(Selected()); e.Handled = true; }
         else if (e.Key == Key.Delete && Keyboard.FocusedElement is not TextBox) { OnRemove(this, e); e.Handled = true; }
         else if (e.Key == Key.Escape) { if (SearchBox.Text.Length > 0) SearchBox.Clear(); else Hide(); e.Handled = true; }
         else if (e.Key == Key.Space && Keyboard.FocusedElement is not TextBox && Selected().Count == 1)

@@ -15,6 +15,9 @@ namespace ClipDrop.Windows;
 public partial class DockWindow : Window
 {
     public ShelfSession Session { get; }
+    public Button QuickSave => Strip.SaveButton;
+    public ItemsControl Pins => Strip.PinnedItems;
+    private Border DockBody => Strip.Body;
     private readonly Action _library;
     private readonly Action _settings;
     private readonly ThumbnailCache _thumbnails = new();
@@ -29,6 +32,9 @@ public partial class DockWindow : Window
     {
         Session = session; _library = library; _settings = settings;
         InitializeComponent();
+        Strip.SaveRequested += OnSave; Strip.SettingsRequested += OnSettings; Strip.LibraryRequested += OnLibrary;
+        Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
+        Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove;
         _ = new WindowDrag(this, () => { _feedback.IsOpen = false; }, () => {
             Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false);
         });
@@ -56,36 +62,29 @@ public partial class DockWindow : Window
     private void Refresh()
     {
         Appearance.Apply(Session.State.Settings, this, true);
-        var settings = Session.State.Settings;
+        var settings = Session.State.Settings; Strip.Apply(settings);
         Topmost = settings.AlwaysOnTop;
         FontSize = Appearance.Bound(settings.FontSize, 11, 18, 13);
-        Resources["DockSize"] = Appearance.Bound(settings.DockButtonSize, 30, 48, 36);
-        Resources["DockIconSize"] = Math.Min(24, (double)Resources["DockSize"] - 12);
-        Resources["DockGap"] = new Thickness(Appearance.Bound(settings.DockSpacing, 0, 12, 4) / 2);
-        Resources["DockRadius"] = new CornerRadius(Appearance.Bound(settings.DockRadius, 0, 24, 11));
         var pins = Session.State.Items.Where(i => i.IsPinned).OrderByDescending(i => i.CreatedUtc).ToArray();
         var available = IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
-        var size = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
-        var fixedWidth = 31 + 4 * size;
+        var size = Appearance.Bound(settings.DockButtonSize, 30, 48, 36) + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
+        var fixedWidth = 77 + 3 * size;
         var slots = Math.Max(1, (int)((available - fixedWidth) / size));
         if (pins.Length > slots) slots--;
         var capacity = Math.Max(1, Math.Min(8, slots));
         _arrivingPins.Clear();
         foreach (var pin in pins) if (!_knownPins.Contains(pin.Id)) _arrivingPins.Add(pin.Id);
         _knownPins.Clear(); foreach (var pin in pins) _knownPins.Add(pin.Id);
-        PinnedItems.ItemsSource = pins.Take(capacity).Select(i => new ItemRow(i)).ToArray();
-        EmptyHint.Visibility = pins.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        OverflowButton.Visibility = pins.Length > capacity ? Visibility.Visible : Visibility.Collapsed;
-        OverflowButton.Content = "+" + (pins.Length - capacity);
+        Strip.SetPins(pins, capacity);
         ApplySurface(false);
     }
     private void ApplySurface(bool dropping)
     {
         var key = dropping ? "Selected" : "Surface";
-        var color = ((SolidColorBrush)FindResource(key)).Color;
+        var color = ((SolidColorBrush)Strip.FindResource(key)).Color;
         color.A = dropping ? (byte)255 : (byte)Math.Round(255 * Appearance.Bound(Session.State.Settings.DockOpacity, 0, 100, 100) / 100);
         DockBody.Background = new SolidColorBrush(color);
-        DockBody.BorderBrush = (Brush)FindResource(dropping ? "Ink" : "Stroke");
+        DockBody.BorderBrush = (Brush)Strip.FindResource(dropping ? "Ink" : "DockOutline");
     }
     private void ShowFeedback(string message)
     {

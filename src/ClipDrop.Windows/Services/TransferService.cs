@@ -18,14 +18,18 @@ public sealed class TransferService
 
     public DataObject BuildDrag(IReadOnlyList<ShelfItem> items)
     {
-        var data = Build(items); data.SetData("NasaatR.ClipDrop.Internal", "1"); return data;
+        var data = Build(items);
+        var paths = items.Where(i => i.FilePath is not null).Select(i => i.FilePath!).ToArray();
+        foreach (var path in paths) if (!File.Exists(path) && !Directory.Exists(path)) throw new FileNotFoundException("An original file is unavailable.");
+        if (paths.Length > 0) { var files = new StringCollection(); files.AddRange(paths); data.SetFileDropList(files); }
+        data.SetData("NasaatR.ClipDrop.Internal", "1"); return data;
     }
 
     public List<ShelfItem> Import(IDataObject data)
     {
         var result = new List<ShelfItem>();
         if (data.GetDataPresent("NasaatR.ClipDrop.TextCard", false) &&
-            data.GetData(DataFormats.UnicodeText) is string ownText && !string.IsNullOrWhiteSpace(ownText))
+            data.GetData(DataFormats.UnicodeText) is string ownText && !string.IsNullOrEmpty(ownText))
             return new List<ShelfItem> { ShelfItem.FromText(ownText) };
         if (data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths)
         {
@@ -51,7 +55,7 @@ public sealed class TransferService
 
         var text = data.GetData(DataFormats.UnicodeText) as string
             ?? data.GetData(DataFormats.Text) as string;
-        if (!string.IsNullOrWhiteSpace(text)) result.Add(ShelfItem.FromText(text));
+        if (!string.IsNullOrEmpty(text)) result.Add(ShelfItem.FromText(text));
         return result;
     }
 
@@ -65,28 +69,30 @@ public sealed class TransferService
         if (items.Count == 0) throw new InvalidOperationException("Select an item first.");
         var data = new DataObject();
         var files = new StringCollection();
-        foreach (var item in items)
+        foreach (var item in items.Where(i => i.FilePath is not null && (!i.OwnedAsset || items.Count > 1)))
         {
-            var path = item.FilePath;
-            if (path is null) path = _assets.ExportText(item);
-            if (!File.Exists(path) && !Directory.Exists(path))
-                throw new FileNotFoundException("An original file is unavailable. Restore it or remove its card.");
+            var path = item.FilePath!;
+            if (!File.Exists(path) && !Directory.Exists(path)) throw new FileNotFoundException("An original file is unavailable. Restore it or remove its card.");
             files.Add(path);
         }
-        data.SetFileDropList(files);
+        if (files.Count > 0)
+        {
+            data.SetFileDropList(files);
+            data.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes(1)), false);
+        }
         if (items.Count == 1)
         {
             var item = items[0];
             if (item.Kind is ItemKind.Text or ItemKind.Link)
             {
                 data.SetText(item.Content, TextDataFormat.UnicodeText);
-                data.SetData("NasaatR.ClipDrop.TextCard", new MemoryStream(new byte[] { 1 }), false);
+
                 if (item.Kind == ItemKind.Link)
                 {
                     data.SetData("UniformResourceLocatorW", new MemoryStream(System.Text.Encoding.Unicode.GetBytes(item.Content.Trim() + "\0")), false);
                 }
             }
-            if (item.Kind == ItemKind.Image && item.FilePath is not null)
+            if (item.Kind == ItemKind.Image && item.OwnedAsset && item.FilePath is not null)
             {
                 var info = new FileInfo(item.FilePath);
                 // Large files still transfer by path without loading their full contents.
@@ -108,8 +114,12 @@ public sealed class TransferService
                 }
             }
         }
-        else if (items.All(i => i.Kind is ItemKind.Text or ItemKind.Link))
-            data.SetText(string.Join(Environment.NewLine, items.Select(i => i.Content)));
+        else if (items.Any(i => i.Kind is ItemKind.Text or ItemKind.Link))
+            data.SetText(string.Join(Environment.NewLine, items.Where(i => i.Kind is ItemKind.Text or ItemKind.Link).Select(i => i.Content)));
+        if (items.Count == 1 && items[0].Clipboard is { } snapshot)
+            foreach (var format in snapshot.Formats.Where(f => f.StandardId == 0))
+                data.SetData(format.Name, new MemoryStream(_assets.ReadBlob(format), false), false);
+        if (data.GetFormats(false).Length == 0) throw new InvalidOperationException("Select one clipboard item to preserve its source formats.");
         return data;
     }
 }

@@ -23,11 +23,15 @@ public sealed class SettingsWindow : Window
     private readonly Button _deleteStyle = new() { Content = "Delete", ToolTip = "Delete the selected saved style" };
     private readonly TextBlock _notice = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
     private bool _sync;
+    private StackPanel _section = null!;
+    private WrapPanel? _fields;
+    private readonly List<FrameworkElement> _fieldBoxes = new();
+    public DockStrip Preview { get; } = new();
 
     public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot)
     {
-        _settings = settings; _changed = changed;
-        Title = "ClipDrop settings"; Width = 440; Height = 690; MinWidth = 400; MinHeight = 430;
+        _settings = settings; _changed = () => { changed(); Preview.Apply(settings); }; _section = _panel;
+        Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Ink");
         FontFamily = new FontFamily("Segoe UI"); FontSize = 13;
@@ -36,20 +40,34 @@ public sealed class SettingsWindow : Window
         layout.SetResourceReference(Panel.BackgroundProperty, "Surface");
         var heading = new StackPanel { Margin = new Thickness(18, 14, 18, 12) };
         DockPanel.SetDock(heading, Dock.Top); layout.Children.Add(heading);
-        heading.Children.Add(new TextBlock { Text = "Settings", FontSize = 20, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 10) });
+        heading.Children.Add(new TextBlock { Text = "ClipDrop " + Diagnostics.Version, FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 10) });
+        _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); heading.Children.Add(_notice);
         var nav = new System.Windows.Controls.Primitives.UniformGrid { Rows = 1 }; heading.Children.Add(nav);
         var scroll = new ScrollViewer { Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        var footer = new TextBlock { Text = $"ClipDrop {Diagnostics.Version} · Made by Nasaat", FontSize = 11, Margin = new Thickness(18, 8, 18, 12) };
+        var footer = new TextBlock { Text = "Made by Nasaat", FontSize = 11, Margin = new Thickness(18, 8, 18, 12) };
         footer.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer);
         layout.Children.Add(scroll);
         TextBlock Section(string name)
         {
-            var title = new TextBlock { Text = name, FontSize = 15, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 18, 0, 8) };
-            _panel.Children.Add(title);
+            _section = new StackPanel(); _fields = null;
+            var block = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(14), Margin = new Thickness(0, 0, 0, 10), Child = _section };
+            block.SetResourceReference(Border.BackgroundProperty, "Raised");
+            block.SetResourceReference(Border.BorderBrushProperty, "Stroke"); block.BorderThickness = new Thickness(1);
+            _panel.Children.Add(block);
+            var title = new TextBlock { Text = name, FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 9) };
+            _section.Children.Add(title);
             var jump = new Button { Content = name, Padding = new Thickness(9, 5, 9, 5), MinHeight = 28 };
-            jump.Click += (_, _) => title.BringIntoView(); nav.Children.Add(jump); return title;
+            jump.Click += (_, _) => block.BringIntoView(); nav.Children.Add(jump); return title;
         }
         Section("Style");
+        var previewStage = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
+        previewStage.SetResourceReference(Border.BackgroundProperty, "Surface");
+        var previewLayout = new StackPanel(); previewStage.Child = previewLayout;
+        var previewLabel = new TextBlock { Text = "Your dock · updates instantly", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right };
+        previewLabel.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); previewLayout.Children.Add(previewLabel);
+        previewLayout.Children.Add(new Viewbox { Child = Preview, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Center, MaxHeight = 110 });
+        Preview.Apply(settings); Preview.SetPins(new[] { ShelfItem.FromText("Saved note"), ShelfItem.FromText("https://example.com") }, 2);
+        _section.Children.Add(previewStage);
         _presets.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, "Style preset");
         _presets.SelectionChanged += (_, _) => {
             _deleteStyle.IsEnabled = (_presets.SelectedItem as Preset)?.SavedId is not null;
@@ -77,7 +95,7 @@ public sealed class SettingsWindow : Window
             if (_presets.SelectedItem is not Preset { SavedId: { } id }) return;
             settings.SavedStyles.RemoveAll(s => s.Id == id); RebuildPresets(); _notice.Text = "Style deleted · current appearance kept"; _changed();
         };
-        _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); _panel.Children.Add(_notice);
+
         Choice("App theme", () => settings.Theme, new[] { "Dark", "Light", "Midnight" }, new[] { "Graphite", "Paper", "Midnight" }, value => settings.Theme = value);
         ColorField("Accent", () => settings.AccentColor, value => settings.AccentColor = value);
         Check("Animations", () => settings.AnimationsEnabled, value => settings.AnimationsEnabled = value, false);
@@ -99,14 +117,14 @@ public sealed class SettingsWindow : Window
         Range("Row spacing", () => settings.RowSpacing, 0, 12, value => settings.RowSpacing = value);
         Range("Row corners", () => settings.CornerRadius, 0, 16, value => settings.CornerRadius = value);
         var reset = new Button { Content = "Reset appearance", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 10, 0, 0) };
-        reset.Click += (_, _) => { ApplyStyle(new AppearanceStyle()); RebuildPresets(); _notice.Text = "Appearance reset · saved styles kept"; }; _panel.Children.Add(reset);
+        reset.Click += (_, _) => { ApplyStyle(new AppearanceStyle()); RebuildPresets(); _notice.Text = "Appearance reset · saved styles kept"; }; _section.Children.Add(reset);
         Section("App");
         Check("Always on top", () => settings.AlwaysOnTop, value => settings.AlwaysOnTop = value, false);
         Check("Start hidden in tray", () => settings.StartHidden, value => settings.StartHidden = value, false);
         Check("Alt+F4 hides to tray", () => settings.CloseToTray, value => settings.CloseToTray = value, false);
         Check("Shake to show (experimental)", () => settings.ShakeToShow, value => settings.ShakeToShow = value, false);
         Hint("Shake detection watches left-button movement.\nCtrl+Alt+Space: dock · Ctrl+Alt+L: Library");
-        var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; _panel.Children.Add(actions);
+        var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; _section.Children.Add(actions);
         var retry = new Button { Content = "Save now" };
         retry.Click += (_, _) => _notice.Text = save() ? "Library saved" : "Save failed. Changes remain open; copy diagnostics.";
         actions.Children.Add(retry);
@@ -116,6 +134,12 @@ public sealed class SettingsWindow : Window
         folder.Click += (_, _) => { try { Process.Start(new ProcessStartInfo(dataRoot) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "ClipDrop"); } }; actions.Children.Add(folder);
         Hint("Assets and exports remain on disk for reliable transfers.\nNo clipboard monitoring, accounts or network requests.");
         RebuildPresets();
+        void FitFields()
+        {
+            var width = Math.Max(210, (scroll.ActualWidth - 36 - 28 - 24 - 10) / 2);
+            foreach (var field in _fieldBoxes) field.Width = width;
+        }
+        SizeChanged += (_, _) => FitFields(); Loaded += (_, _) => FitFields();
     }
     private void ApplyStyle(AppearanceStyle style)
     {
@@ -135,25 +159,26 @@ public sealed class SettingsWindow : Window
         var choices = new List<Preset> { new("Custom") };
         choices.AddRange(AppearanceStyle.BuiltIns.Select(p => new Preset(p.Name, p.Style)));
         choices.AddRange(_settings.SavedStyles.Select(p => new Preset(p.Name + " · saved", p.Style, p.Id)));
-        _presets.ItemsSource = choices; _presets.SelectedItem = choices.FirstOrDefault(p => p.SavedId == selected && selected is not null) ?? choices[0];
+        _presets.ItemsSource = choices; _presets.SelectedItem = choices.FirstOrDefault(p => p.SavedId == selected && selected is not null) ?? choices.Skip(1).Reverse().FirstOrDefault(p => p.Style?.EquivalentTo(_settings) == true) ?? choices[0];
         _deleteStyle.IsEnabled = selected is not null; _sync = false;
     }
     private void Row(string label, FrameworkElement control)
     {
-        var row = new Grid { Margin = new Thickness(0, 3, 0, 3) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(105) }); row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
-        Grid.SetColumn(control, 1); row.Children.Add(control); _panel.Children.Add(row);
+        if (_fields is null) { _fields = new WrapPanel { Margin = new Thickness(-6, 0, -6, 0) }; _section.Children.Add(_fields); }
+        var field = new StackPanel { Margin = new Thickness(6, 4, 6, 7), Width = 325 };
+        field.Children.Add(new TextBlock { Text = label, FontSize = 12, FontWeight = FontWeights.Medium, Margin = new Thickness(0, 0, 0, 5) });
+        control.MinHeight = 32; field.Children.Add(control); _fields.Children.Add(field); _fieldBoxes.Add(field);
     }
+
     private void Hint(string text)
     {
         var hint = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 5, 0, 5) };
-        hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); _panel.Children.Add(hint);
+        hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); _section.Children.Add(hint);
     }
     private void Check(string label, Func<bool> read, Action<bool> write, bool appearance)
     {
         var check = new CheckBox { Content = label, IsChecked = read(), Margin = new Thickness(0, 5, 0, 5) };
-        check.Click += (_, _) => { write(check.IsChecked == true); Change(appearance); }; _panel.Children.Add(check);
+        check.Click += (_, _) => { write(check.IsChecked == true); Change(appearance); }; _section.Children.Add(check);
         _syncControls.Add(() => check.IsChecked = read());
     }
     private void Choice(string label, Func<string> read, string[] values, string[] labels, Action<string> write)

@@ -28,11 +28,11 @@ public static class Appearance
     private static Color Read(string value) => (Color)ColorConverter.ConvertFromString(value);
     private static void ApplyTo(ResourceDictionary resources, ShelfSettings settings, string palette, string custom)
     {
-        var bg = Read(palette == "Light" ? "#F5F5F7" : palette == "Midnight" ? "#141C2B" : "#202124");
+        var bg = Read(palette == "Light" ? "#F5F5F7" : palette == "Midnight" ? "#141C2B" : "#1E1E1E");
         if (AppearanceStyle.TryColor(custom, out var normalized) && normalized.Length > 0) bg = Read(normalized);
         var light = Luminance(bg) > .179;
         var ink = Read(light ? "#000000" : "#FFFFFF");
-        var accent = Read(light ? "#245DC4" : "#9ABEFF");
+        var accent = Read(light ? "#25252D" : "#FFFFFF");
         if (AppearanceStyle.TryColor(settings.AccentColor, out normalized) && normalized.Length > 0) accent = Read(normalized);
         // A custom accent always keeps a readable foreground on its own button.
         var onAccent = Read(Luminance(accent) > .179 ? "#101115" : "#FFFFFF");
@@ -48,7 +48,7 @@ public static class Appearance
         for (var i = 0; i < 20 && Contrast(muted, bg) < 4.5; i++) muted = Mix(muted, ink, .12);
         foreach (var pair in new Dictionary<string, Color> {
             ["Surface"] = bg, ["Raised"] = raised, ["Hover"] = Background(Mix(bg, ink, light ? .12 : .13)),
-            ["Stroke"] = Mix(bg, ink, .27), ["Ink"] = ink, ["Muted"] = muted,
+            ["Control"] = Background(Mix(raised, ink, .06)), ["Stroke"] = Mix(bg, ink, .16), ["Ink"] = ink, ["Muted"] = muted,
             ["Selected"] = Background(Mix(raised, accent, .22)), ["Accent"] = accent, ["OnAccent"] = onAccent })
         {
             var brush = new SolidColorBrush(pair.Value); brush.Freeze(); resources[pair.Key] = brush;

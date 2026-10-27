@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — 2026-10-27
+
+- Match WeavyClips dock structure: colored floppy Save, gear Settings, three-line Library, then clip icons; render the same DockStrip in Settings live preview.
+- Add original app/installer/tray icon and grouped compact Settings with appearance controls.
+- Stop synthesizing TXT/URL files for text/link copy or drag. Preserve original file references.
+- Persist native HGLOBAL clipboard formats and restore bytes for Copy/click-paste, including HTML/RTF and opaque registered formats; report partial app-bound captures.
+- Add persistent Trash, recovery after restart, editable clip names/groups and filtering.
+- Migrate schema 1 to 2 with preserved backup and older-version refusal protection.
+- Test upgrade from the released 0.3.1 installer, one app registration, previous directory and retained user data.
+
+
 ## 0.3.1 — 2026-10-27
 
 - Keep Settings background and foreground aligned during live theme changes; verify the actual dark surface and render its preset menu.

@@ -14,30 +14,36 @@
  </ContextMenu></Window.ContextMenu>
  <Border x:Name="LibrarySurface" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid Background="{DynamicResource Surface}" Margin="12,0,8,0">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="Library" FontWeight="SemiBold" FontSize="15"/><TextBlock x:Name="CountLabel" Margin="8,2,0,0" Foreground="{DynamicResource Muted}"/></StackPanel>
    <Button x:Name="AttachButton" Grid.Column="1" Style="{StaticResource IconButton}" Click="OnAttach" ToolTip="Attach Library to dock"><Path x:Name="AttachIcon" Style="{StaticResource LineIcon}" Data="{StaticResource LinkIcon}" Width="16" Height="16"/></Button>
    <Button Grid.Column="2" Style="{StaticResource IconButton}" Click="OnToggleTop" ToolTip="Keep above other windows" AutomationProperties.Name="Toggle always on top"><Path x:Name="TopIcon" Style="{StaticResource LineIcon}" Data="{StaticResource PinIcon}" Width="16" Height="16"/></Button>
-   <Button Grid.Column="3" Style="{StaticResource IconButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><Path Style="{StaticResource LineIcon}" Data="{StaticResource SettingsIcon}" Width="16" Height="16"/></Button>
+   <Button Grid.Column="3" Style="{StaticResource IconButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><Image Source="{StaticResource GearArtwork}" Width="18" Height="18"/></Button>
    <Button Grid.Column="4" Style="{StaticResource IconButton}" Click="OnHide" ToolTip="Hide Library" AutomationProperties.Name="Hide Library"><Path Style="{StaticResource LineIcon}" Data="{StaticResource CloseIcon}" Width="16" Height="16"/></Button>
   </Grid>
   <DockPanel Grid.Row="1" Margin="10,0,10,8" LastChildFill="True">
-   <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Click="OnPaste" ToolTip="Save clipboard · Ctrl+V" AutomationProperties.Name="Save clipboard"><Path Style="{StaticResource LineIcon}" Data="{StaticResource SaveIcon}"/></Button>
+   <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Click="OnPaste" ToolTip="Save clipboard · Ctrl+V" AutomationProperties.Name="Save clipboard"><Image Source="{StaticResource SaveArtwork}" Width="20" Height="20"/></Button>
    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Click="OnAddFiles" ToolTip="Add files · Ctrl+O" AutomationProperties.Name="Add files"><Path Style="{StaticResource LineIcon}" Data="{StaticResource PlusIcon}"/></Button>
    <Grid Margin="2">
     <TextBox x:Name="SearchBox" TextChanged="OnSearch" VerticalContentAlignment="Center" ToolTip="Search shelf · Ctrl+F" AutomationProperties.Name="Search shelf"/>
     <TextBlock Text="Search" Foreground="{DynamicResource Muted}" Margin="9,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
    </Grid>
   </DockPanel>
-  <Grid Grid.Row="2" Margin="12,0,12,4">
+  <DockPanel Grid.Row="2" Margin="10,0,10,8" LastChildFill="True">
+   <Button x:Name="AllFilter" Content="All" Tag="All" Click="OnFilter" Padding="8,4" FontSize="12"/>
+   <Button x:Name="PinnedFilter" Content="Pinned" Tag="Pinned" Click="OnFilter" Padding="8,4" FontSize="12"/>
+   <Button x:Name="TrashFilter" Content="Trash" Tag="Trash" Click="OnFilter" Padding="8,4" FontSize="12"/>
+   <ComboBox x:Name="GroupFilter" Margin="5,2,2,2" SelectionChanged="OnGroupFilter" ToolTip="Filter by group" AutomationProperties.Name="Group filter"/>
+  </DockPanel>
+  <Grid Grid.Row="3" Margin="12,0,12,4">
    <ListBox x:Name="ItemList" SelectionMode="Extended" PreviewMouseLeftButtonDown="OnItemDown" PreviewMouseLeftButtonUp="OnItemUp" PreviewMouseMove="OnItemMove" SelectionChanged="OnSelection" MouseDoubleClick="OnOpen"
     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Shelf items">
     <ListBox.ItemTemplate><DataTemplate><Grid ToolTip="{Binding Help}">
      <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <Image Width="28" Height="28" Stretch="Uniform" Visibility="{Binding ImageVisible}" Loaded="OnThumbnailLoaded"/>
-     <Path Width="19" Height="24" Stretch="Uniform" HorizontalAlignment="Center" Stroke="{DynamicResource Muted}" StrokeThickness="1.4" Visibility="{Binding IconVisible}" Data="M1,1 L11,1 L17,7 L17,23 L1,23 Z M11,1 L11,7 L17,7"/>
+     <TextBlock Text="{Binding DockGlyph}" FontFamily="Segoe UI Emoji" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IconVisible}"/>
      <StackPanel Grid.Column="1" Margin="7,0,4,0"><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxHeight="24"/><TextBlock Text="{Binding Details}" Foreground="{DynamicResource Muted}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/></StackPanel>
      <Path Grid.Column="2" Width="10" Height="12" Stretch="Uniform" Stroke="{DynamicResource Muted}" StrokeThickness="1.4" Visibility="{Binding Pinned}" Data="M1,1 L9,1 M3,1 L3,5 L1,8 L9,8 L7,5 L7,1 M5,8 L5,12"/>
     </Grid></DataTemplate></ListBox.ItemTemplate>
@@ -50,16 +56,23 @@
    </StackPanel>
    <Border x:Name="DropCue" Visibility="Collapsed" Background="{DynamicResource Selected}" BorderBrush="{DynamicResource Ink}" BorderThickness="1" CornerRadius="6" IsHitTestVisible="False" Opacity="0.95"><TextBlock Text="Add to shelf" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18"/></Border>
   </Grid>
-  <DockPanel Grid.Row="3" Margin="10,2,10,6">
-   <Button DockPanel.Dock="Right" Content="Clear" Click="OnClear" ToolTip="Remove unpinned cards; originals are preserved"/>
-   <WrapPanel>
+  <Border x:Name="EditPanel" Grid.Row="4" Visibility="Collapsed" Background="{DynamicResource Raised}" CornerRadius="8" Padding="10" Margin="12,0,12,8"><StackPanel>
+   <TextBlock Text="Name" FontSize="11" Margin="0,0,0,4"/><TextBox x:Name="NameEditor" MaxLength="120" AutomationProperties.Name="Item name"/>
+   <TextBlock Text="Group" FontSize="11" Margin="0,7,0,4"/><TextBox x:Name="GroupEditor" MaxLength="40" AutomationProperties.Name="Item group"/>
+   <StackPanel Orientation="Horizontal" Margin="0,7,0,0"><Button Content="Save" Click="OnSaveEdit"/><Button Content="Cancel" Click="OnCancelEdit"/></StackPanel>
+  </StackPanel></Border>
+  <DockPanel Grid.Row="5" Margin="10,2,10,6">
+   <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="Clear" Click="OnClear" ToolTip="Remove unpinned cards; originals are preserved"/>
+   <Button x:Name="RestoreButton" Content="Restore" Click="OnRestore" Visibility="Collapsed" ToolTip="Restore selection from Trash"/>
+   <WrapPanel x:Name="ActiveActions">
     <Button x:Name="PasteButton" Click="OnPasteSelected" ToolTip="Paste selected into previous app · Enter" AutomationProperties.Name="Paste selection"><StackPanel Orientation="Horizontal"><Path Style="{StaticResource LineIcon}" Data="{StaticResource PasteIcon}" Width="15" Height="15" Margin="0,0,7,0"/><TextBlock Text="Paste"/></StackPanel></Button>
     <Button x:Name="CopyButton" Style="{StaticResource IconButton}" Click="OnCopy" ToolTip="Copy selection · Ctrl+C" AutomationProperties.Name="Copy selection"><Path Style="{StaticResource LineIcon}" Data="{StaticResource CopyIcon}" Width="16" Height="16"/></Button>
     <Button x:Name="PinButton" Style="{StaticResource IconButton}" Click="OnPin" ToolTip="Pin selection" AutomationProperties.Name="Pin selection"><Path x:Name="PinActionIcon" Style="{StaticResource LineIcon}" Data="{StaticResource PinIcon}" Width="16" Height="16"/></Button>
+    <Button x:Name="EditButton" Style="{StaticResource IconButton}" Click="OnEdit" ToolTip="Rename / group · F2" AutomationProperties.Name="Edit item"><TextBlock Text="✎" FontSize="18"/></Button>
     <Button x:Name="RemoveButton" Style="{StaticResource IconButton}" Click="OnRemove" ToolTip="Remove cards · Delete" AutomationProperties.Name="Remove selection"><Path Style="{StaticResource LineIcon}" Data="{StaticResource TrashIcon}" Width="16" Height="16"/></Button>
    </WrapPanel>
   </DockPanel>
-  <Grid Grid.Row="4" Margin="14,0,14,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+  <Grid Grid.Row="6" Margin="14,0,14,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="{DynamicResource Muted}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" AutomationProperties.LiveSetting="Polite"/>
    <TextBlock Grid.Column="1" Text="Ctrl+Alt+L" Foreground="{DynamicResource Muted}" FontSize="11" Margin="8,0,0,0"/>
   </Grid>

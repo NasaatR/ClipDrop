@@ -23,9 +23,9 @@ content onto it. New captures become pins. Click a pin to request paste into you
 previous app, or drag it out. **Library** opens the full searchable collection;
 Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
 Transfers copy; originals and cards remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
-within the current session.
+from Trash, including after restarting.
 
-## Features in 0.3.1
+## Features in 0.4.0
 
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
@@ -36,9 +36,13 @@ within the current session.
 - Dock button size, spacing, corner radius and background-only opacity controls.
 - Fast button feedback, new-pin entrance and panel reveal; respects Windows animation settings and an app toggle.
 - File/folder references, Unicode text, links, PNG/bitmap and virtual-file inputs.
-- Native multi-format output: text plus .txt, URL plus .url, images as original
-  file / PNG / bitmap. The destination decides which format it accepts.
-- Multi-selection, search, pinning, preview, undo removal, persistent shelf.
+- Text and links stay text/URLs: copying or dragging never manufactures TXT/URL files.
+- Save clipboard retains available native memory formats (Unicode, HTML, RTF,
+  PNG/DIB and opaque registered formats); Copy/click-paste restores their bytes.
+  Process/owner-bound formats cannot always be persisted; partial captures are reported.
+- Original files remain file references, including TXT files; file-copy intent is copy-only.
+- Multi-selection, search, pinning, preview, editable names/groups and persistent Trash with restore/undo after restart.
+- WeavyClips-inspired colored Save/gear, three-line Library, shared live dock preview and grouped Settings. Custom application/installer/tray icon.
 - Dark/light themes, text size, row spacing from 0, corner radius.
 - Coalesced autosave, atomic replacement, previous-save backup and corruption
   recovery without silently resetting unreadable/newer data.
@@ -76,13 +80,14 @@ format. Browsers that supply only an image URL add a link: no URL downloading or
 reuse of browser cookies. Bitmap-only sources may already have lost alpha.
 Internal Photoshop layers / Figma nodes are not kept as editable objects.
 Elevated apps, secure desktops and exclusive fullscreen have Windows restrictions.
-Automatic edge docking, named/closed panel sets, persistent trash, clipboard history and HTML/RTF retention are not included. Shake can also trigger
+Automatic edge docking, named/closed panel sets, clipboard history, content-version editing and backup import/export UI are not included. Shake can also trigger
 during left-button text selection or window movement.
 
 PNG/bitmap/virtual imports and inline image output: 64 MB. Decoded images:
 64 megapixels. Up to 64 virtual files/drop and 5,000 cards. Ordinary large files
-transfer by path without full copies. Mixed groups transfer as files; all-text
-groups also offer joined text.
+transfer by path without full copies. Mixed selections offer the original file paths and text representations; the
+target chooses what it accepts. Copy a single saved clipboard item to retain
+all its source formats. Native snapshots are bounded to 128 formats / 64 MB.
 
 Data lives at `%LOCALAPPDATA%\NasaatR\ClipDrop`. `shelf.json` is current metadata;
 `shelf.json.bak` is the previous save. Assets/exports remain on disk so delayed
@@ -91,7 +96,7 @@ Original references break if files move. Uninstall preserves this data folder.
 To delete ClipDrop data, quit and remove that folder; external originals remain.
 Back it up before manual modifications.
 
-To update, quit from the tray and install/extract the new version. No automatic
+The installer upgrades the existing per-user installation using its permanent AppId and previous directory; no uninstall is needed. Quit from the tray before updating. Portable ZIPs are extracted separately. No automatic
 updater or signing service is configured.
 
 ## Build and verification
@@ -109,11 +114,13 @@ Windows/native clipboard checks, renders dark/light/narrow/open-settings WPF
 views, builds self-contained packages, inspects the ZIP and smoke-tests silent
 installation/uninstallation before creating a new preview release. Check the
 [actual workflow result](https://github.com/NasaatR/ClipDrop/actions).
-Native tests drag dock backgrounds without activation, exercise attached/detached Library placement and style save/restore, and deliver a physical dock click into a separate Windows editor process.
+Native tests verify native format bytes through restart, text without file output, persistent Trash, group editing, the live preview, and drag dock backgrounds without activation, exercise attached/detached Library placement and style save/restore, and deliver a physical dock click into a separate Windows editor process.
 They do not automate Photoshop/Figma/browser applications. The dock reports
 "Paste requested" because input submission cannot prove that every app consumed
 the content. It leaves the clipboard ready for manual Ctrl+V and never restores it
 on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
+
+Metadata schema 2 migrates schema-1 libraries with a preserved previous-save backup; old releases refuse newer metadata instead of resetting it.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals, clear

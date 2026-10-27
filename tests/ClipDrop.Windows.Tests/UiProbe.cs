@@ -64,8 +64,22 @@ internal static class UiProbe
             "Dragging empty Library background detaches and moves it");
         ((Button)library.FindName("AttachButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         check(library.Session.State.Settings.LibraryFollowsDock, "Link button reattaches Library");
-        check(!WindowDrag.CanStart((TextBox)library.FindName("SearchBox")) && !WindowDrag.CanStart((Button)dock.FindName("SaveButton")),
+        check(!WindowDrag.CanStart((TextBox)library.FindName("SearchBox")) && !WindowDrag.CanStart(dock.QuickSave),
             "Background movement excludes search editors and action buttons");
+    }
+    public static void Library(MainWindow library, Action<bool, string> check)
+    {
+        var item = library.Session.State.Items.First();
+        library.Session.Rename(item, "Reusable note", "Design");
+        var groups = (ComboBox)library.FindName("GroupFilter");
+        check(item.Title == "Reusable note" && groups.Items.Cast<string>().Contains("Design"), "Renaming and grouping updates Library filters");
+        library.Session.Remove(new System.Collections.Generic.List<ClipDrop.Core.ShelfItem> { item });
+        ((Button)library.FindName("TrashFilter")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var list = (ListBox)library.FindName("ItemList");
+        check(list.Items.Count == 1 && library.Session.State.Trash.Count == 1, "Deleted item remains available in the Trash view");
+        list.SelectedIndex = 0; ((Button)library.FindName("RestoreButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        check(library.Session.State.Trash.Count == 0 && library.Session.State.Items.Any(i => i.Id == item.Id && i.Group == "Design"), "Library Restore returns the original item and group");
+        ((Button)library.FindName("AllFilter")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
     public static void Styles(SettingsWindow settings, MainWindow library, DockWindow dock, Action<bool, string> check)
     {
@@ -87,7 +101,7 @@ internal static class UiProbe
             "Dock and Library resolve independent live palettes");
         check(settings.Background is SolidColorBrush background && background.Color == ((SolidColorBrush)Application.Current.FindResource("Surface")).Color && settings.Foreground is SolidColorBrush foreground && foreground.Color == ((SolidColorBrush)Application.Current.FindResource("Ink")).Color,
             "Settings window background and foreground follow live app theme together");
-        var button = (Button)dock.FindName("SaveButton"); Motion.Reveal(button); Motion.Arrive(button);
+        var button = dock.QuickSave; Motion.Reveal(button); Motion.Arrive(button);
         check(!button.HasAnimatedProperties && button.Opacity == 1 && button.RenderTransform is ScaleTransform scale && !scale.HasAnimatedProperties,
             "Disabled motion leaves controls visible with no running entrance animations");
     }

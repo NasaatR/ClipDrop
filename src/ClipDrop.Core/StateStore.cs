@@ -80,13 +80,22 @@ public sealed class StateStore
         // A newer schema must never silently fall back to an older backup.
         if (state.SchemaVersion > ShelfState.CurrentSchema)
             throw new NotSupportedException("This shelf was saved by a newer ClipDrop. Install that version to open it.");
-        if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null)
+        if (state.SchemaVersion == 1) state.SchemaVersion = ShelfState.CurrentSchema;
+        else if (!document.RootElement.TryGetProperty("Trash", out _)) throw new InvalidDataException("The saved trash structure is incomplete.");
+        if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null || state.Trash is null)
             throw new InvalidDataException("Invalid shelf structure.");
-        if (state.Items.Any(i => i is null || !Guid.TryParse(i.Id, out _) || i.Title is null ||
-            i.Content is null || !Enum.IsDefined(i.Kind)))
+        if (state.Trash.Any(t => t is null || t.Item is null || !Guid.TryParse(t.Batch, out _))) throw new InvalidDataException("Invalid trash entry.");
+        var all = state.Items.Concat(state.Trash.Select(t => t.Item)).ToArray();
+        if (all.Any(i => i is null || !Guid.TryParse(i.Id, out _) || i.Title is null || i.Group is null || i.Group.Length > 40 || i.Content is null || !Enum.IsDefined(i.Kind)))
             throw new InvalidDataException("Invalid shelf item.");
-        if (state.Items.Select(i => i.Id).Distinct().Count() != state.Items.Count)
-            throw new InvalidDataException("Duplicate shelf identities.");
+        if (all.Select(i => i.Id).Distinct().Count() != all.Length) throw new InvalidDataException("Duplicate shelf identities.");
+        foreach (var item in all.Where(i => i.Clipboard is not null))
+        {
+            var snapshot = item.Clipboard!;
+            if (snapshot.Formats is null || snapshot.Formats.Count is < 1 or > 128 || snapshot.Formats.Sum(f => f is null ? 0L : f.Length) > 64L * 1024 * 1024 ||
+                snapshot.Formats.Any(f => f is null || f.Hash is null || f.Hash.Length != 64 || !f.Hash.All(Uri.IsHexDigit) || f.Length is < 1 or > 64 * 1024 * 1024 || f.Name is null || f.Name.Length > 255))
+                throw new InvalidDataException("Invalid clipboard snapshot.");
+        }
         if (state.Settings.SavedStyles is null || state.Settings.SavedStyles.Count > 20 ||
             state.Settings.SavedStyles.Any(s => s is null || !Guid.TryParse(s.Id, out _) || string.IsNullOrWhiteSpace(s.Name) || s.Name.Length > 40 || s.Style is null) ||
             state.Settings.SavedStyles.Select(s => s.Id).Distinct().Count() != state.Settings.SavedStyles.Count)
