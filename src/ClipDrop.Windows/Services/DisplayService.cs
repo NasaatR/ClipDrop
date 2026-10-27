@@ -15,6 +15,7 @@ public interface IDisplaySource
 
 public sealed class DisplayService : IDisplaySource
 {
+    [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool EnumDisplayDevices(string device, uint number, ref DisplayDevice info, uint flags);
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] private struct DisplayDevice
     {
@@ -39,7 +40,7 @@ public sealed class DisplayService : IDisplaySource
     }).GroupBy(d => d.Id, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToArray();
     public string? TargetDisplay(IntPtr externalWindow)
     {
-        var screen = externalWindow != IntPtr.Zero ? Forms.Screen.FromHandle(externalWindow) : Forms.Screen.FromPoint(Forms.Cursor.Position);
+        var screen = externalWindow != IntPtr.Zero && IsWindow(externalWindow) ? Forms.Screen.FromHandle(externalWindow) : Forms.Screen.FromPoint(Forms.Cursor.Position);
         return Identity(screen).Id;
     }
 }

@@ -16,7 +16,7 @@ public static class Appearance
         foreach (var role in Views.AppIcon.Roles)
         {
             settings.PngIcons.TryGetValue(role.Key, out var hash);
-            var key = "IconImage." + role.Key; var image = IconAssets.Get(hash);
+            var key = "IconImage." + role.Key; ImageSource? image = IconAssets.Get(hash) ?? EmojiGlyphs.Get(role.Emoji);
             if (!ReferenceEquals(Application.Current.Resources[key], image)) Application.Current.Resources[key] = image;
         }
     }

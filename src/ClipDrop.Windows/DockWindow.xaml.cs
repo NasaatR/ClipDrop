@@ -74,6 +74,8 @@ public partial class DockWindow : Window
     }
     private void Refresh()
     {
+        // A view can be closed while Session.Changed is iterating its delegate snapshot.
+        if (_disposing) return;
         Appearance.Apply(Session.State.Settings, this, true);
         var settings = Session.State.Settings; Strip.Apply(settings);
         Topmost = settings.AlwaysOnTop;

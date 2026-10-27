@@ -36,7 +36,9 @@ internal static class PanelProbe
         session.TogglePin(new[] { first }); session.TogglePin(new[] { first });
         check(((ItemRow)dock.Pins.Items[dock.Pins.Items.Count - 1]).Item.Id == first.Id, "Re-pinning an existing clip appends it at the right");
         var emoji = UiProbe.Find<AppIcon>(dock.QuickSave, i => i.Kind == "Save");
-        check(UiProbe.Find<TextBlock>(emoji, t => t.Text == "📥").Visibility == Visibility.Visible, "Dock actions use visible emoji by default");
+        check(UiProbe.Find<Image>(emoji, _ => true).Source is DrawingImage || UiProbe.Find<TextBlock>(emoji, t => t.Text == "📥").Visibility == Visibility.Visible, "Dock actions use system emoji by default");
+        var colorEmoji = UiProbe.Find<Image>(emoji, _ => true).Source as DrawingImage;
+        check(colorEmoji?.Drawing is DrawingGroup { Children.Count: > 1 }, "Installed Windows emoji renders its actual colored font layers");
         var png = Path.Combine(root, "custom-icon.png");
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(2, 2, 96, 96, PixelFormats.Bgra32, null,
             new byte[] { 255, 0, 0, 255, 0, 0, 255, 255, 0, 255, 0, 255, 255, 255, 255, 0 }, 8)));
@@ -46,7 +48,7 @@ internal static class PanelProbe
             "A managed custom PNG replaces emoji without depending on its original file");
         session.TrySave(); check(new StateStore(root).Load().Settings.PngIcons["Save"] == hash, "Custom PNG choice survives storage roundtrip");
         session.State.Settings.PngIcons["Save"] = new string('F', 64); session.Change(); UiProbe.Pump();
-        check(UiProbe.Find<TextBlock>(emoji, _ => true).Visibility == Visibility.Visible, "Missing custom PNG falls back to the emoji");
+        check(UiProbe.Find<Image>(emoji, _ => true).Source is DrawingImage || UiProbe.Find<TextBlock>(emoji, _ => true).Visibility == Visibility.Visible, "Missing custom PNG falls back to the emoji");
         session.State.Settings.PngIcons.Clear(); session.Change();
         var invalid = Path.Combine(root, "invalid.png"); File.WriteAllText(invalid, "not a png");
         var rejected = false; try { IconAssets.Import(invalid); } catch (Exception ex) when (ex is FileFormatException or NotSupportedException or InvalidDataException) { rejected = true; }

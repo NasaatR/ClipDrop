@@ -51,8 +51,11 @@ public sealed class DockCoordinator : IDisposable
             var previousRecords = settings.Docks.Count;
             if (initial && settings.DockLeft is double x && settings.DockTop is double y && double.IsFinite(x) && double.IsFinite(y))
             {
-                // Old WPF coordinates are interpreted using the current HWND DPI once.
-                settings.HomeDisplayId = _displays.TargetDisplay(IntPtr.Zero) ?? "";
+                // Interpret legacy WPF coordinates once using a native HWND, then
+                // retain only the monitor identity and work-area-relative offsets.
+                var probe = new System.Windows.Window { Left = x, Top = y, Width = 200, Height = 60, ShowActivated = false, ShowInTaskbar = false, WindowStyle = System.Windows.WindowStyle.None };
+                try { settings.HomeDisplayId = _displays.TargetDisplay(new System.Windows.Interop.WindowInteropHelper(probe).EnsureHandle()) ?? ""; }
+                finally { probe.Close(); }
             }
             var plan = DockPlanning.Plan(settings, Displays);
             var activeIds = plan.Select(a => a.Display.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
