@@ -1,0 +1,89 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using ClipDrop.Core;
+using ClipDrop.Windows;
+using ClipDrop.Windows.Services;
+using ClipDrop.Windows.Views;
+
+internal static class Program
+{
+    private static int _passed;
+    private static void Check(bool value, string name) { if (!value) throw new Exception(name); Console.WriteLine("PASS " + name); _passed++; }
+    [STAThread]
+    public static int Main(string[] args)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "clipdrop-windows-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var output = Path.GetFullPath(args.FirstOrDefault() ?? "artifacts/qa");
+        Directory.CreateDirectory(output);
+        try
+        {
+            var app = new App(); app.InitializeComponent();
+            var assets = new AssetStore(Path.Combine(root, "assets"));
+            var transfers = new TransferService(assets);
+            var note = ShelfItem.FromText("Hello\r\nПривет — Bonjour 👋");
+            var textData = transfers.Build(new[] { note });
+            Check(textData.GetText() == note.Content && textData.GetFileDropList().Count == 1, "A text card exposes Unicode text and a real file simultaneously");
+            Check(File.ReadAllText(textData.GetFileDropList()[0]!) == note.Content, "Text drag file contains original contents");
+            var linkData = transfers.Build(new[] { ShelfItem.FromText("https://example.com") });
+            Check(linkData.GetDataPresent("UniformResourceLocatorW") && linkData.GetText() == "https://example.com", "Links expose URL and Unicode representations");
+            var pixels = new byte[] { 0, 0, 255, 128, 0, 255, 0, 255 };
+            var bitmap = BitmapSource.Create(2, 1, 96, 96, PixelFormats.Bgra32, null, pixels, 8);
+            var png = ImageFiles.Encode(bitmap);
+            var incoming = new DataObject(); incoming.SetData("PNG", new MemoryStream(png), false); incoming.SetText("https://example.com/image.png");
+            var image = transfers.Import(incoming).Single();
+            Check(image.Kind == ItemKind.Image && image.OwnedAsset, "Browser PNG wins over its accompanying URL");
+            var exportedImage = transfers.Build(new[] { image });
+            var returned = ImageFiles.ReadStream((Stream)exportedImage.GetData("PNG", false));
+            Check(returned.SequenceEqual(png), "Original PNG bytes survive import and export unchanged");
+            var decoded = new PngBitmapDecoder(new MemoryStream(returned), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+            var converted = new FormatConvertedBitmap(decoded, PixelFormats.Bgra32, null, 0); var actual = new byte[8]; converted.CopyPixels(actual, 8, 0);
+            Check(actual[3] == 128 && actual[7] == 255, "PNG alpha survives the transfer pipeline");
+            var source = Path.Combine(root, "source.txt"); File.WriteAllText(source, "kept");
+            var file = ShelfItem.FromPath(source);
+            var mixed = transfers.Build(new[] { file, image, note });
+            Check(mixed.GetFileDropList().Count == 3, "Mixed multi-selection provides every file payload");
+            Check(File.ReadAllText(source) == "kept", "Transfer preparation preserves original files");
+            try { transfers.Build(new[] { new ShelfItem { Kind = ItemKind.File, FilePath = Path.Combine(root, "missing") } }); throw new Exception("Missing path was accepted"); }
+            catch (FileNotFoundException) { Check(true, "Missing originals fail explicitly before drag begins"); }
+            // A real OLE clipboard roundtrip on the Windows runner; no external app automation is implied.
+            Clipboard.SetDataObject(textData, true);
+            Check(Clipboard.GetText() == note.Content && Clipboard.ContainsFileDropList(), "System clipboard roundtrip preserves text and file formats");
+            Clipboard.Clear();
+            var store = new StateStore(root); var state = store.Load();
+            state.Items.AddRange(new[] { note, image, file, ShelfItem.FromText("A long Cyrillic reference: Проверка очень длинного названия изображения для рабочего проекта") });
+            state.Items[0].IsPinned = true;
+            var window = new MainWindow(store, state, false); window.Show();
+            Render(window, Path.Combine(output, "shelf-dark.png"));
+            window.Width = 320; window.Height = 360;
+            Render(window, Path.Combine(output, "shelf-narrow.png"));
+            state.Settings.Theme = "Light"; window.ApplyAppearance();
+            Render(window, Path.Combine(output, "shelf-light.png"));
+            var settings = new SettingsWindow(state.Settings, () => window.ApplyAppearance(), () => true, () => "test report", root) { Owner = window };
+            settings.Show(); Render(settings, Path.Combine(output, "settings-open.png")); settings.Close();
+            Check(window.ActualWidth >= 320 && window.ActualHeight >= 300, "Real WPF surface renders at its minimum supported size");
+            app.Shutdown();
+            Console.WriteLine($"{_passed} Windows checks passed. UI captures: {output}");
+            return 0;
+        }
+        catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+        finally { try { Directory.Delete(root, true); } catch (IOException) { } }
+    }
+
+    private static void Render(Window window, string path)
+    {
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        window.UpdateLayout();
+        var content = (FrameworkElement)window.Content;
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(content);
+        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var file = File.Create(path); encoder.Save(file);
+    }
+}

@@ -1,0 +1,73 @@
+name: Windows build and checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Core data and recovery checks
+        run: dotnet run --project tests/ClipDrop.Core.Tests -c Release
+      - name: Windows transfer, clipboard and WPF rendering checks
+        run: dotnet run --project tests/ClipDrop.Windows.Tests -c Release -- artifacts/qa
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-ui-captures
+          path: artifacts/qa
+          if-no-files-found: ignore
+      - name: Build runnable package
+        shell: pwsh
+        run: ./scripts/package.ps1
+      - name: Silent installer and uninstaller smoke check
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem artifacts/release/*_setup.exe).FullName
+          $target = Join-Path $env:RUNNER_TEMP 'ClipDrop-install-test'
+          $process = Start-Process $installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$target`"") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          if (!(Test-Path "$target/ClipDrop.exe")) { throw 'Installed executable missing' }
+          $process = Start-Process "$target/unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Uninstaller failed: $($process.ExitCode)" }
+          if (Test-Path "$target/ClipDrop.exe") { throw 'Uninstaller left application executable behind' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClipDrop-windows-x64
+          path: artifacts/release/*
+          if-no-files-found: error
+  release:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ClipDrop-windows-x64
+          path: release
+      - name: Publish new version without replacing issued assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version=$(python3 -c 'import xml.etree.ElementTree as e; print(e.parse("Directory.Build.props").findtext(".//VersionPrefix"))')
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; issued assets are preserved."
+          else
+            gh release create "$tag" release/* --target "$GITHUB_SHA" --title "ClipDrop $version — Windows preview" --prerelease --notes-file docs/RELEASE.md
+          fi
