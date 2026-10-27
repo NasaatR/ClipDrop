@@ -34,6 +34,7 @@ public partial class App : Application
             _session = new ShelfSession(store, state) { Paster = _paste };
             var library = new MainWindow(_session);
             var dock = new DockWindow(_session, library.ShowShelf, library.OpenSettings);
+            library.AttachDock(dock);
             MainWindow = dock;
             _session.QuitRequested += () => {
                 if (!_session.TrySave()) { library.ShowShelf(); return; }

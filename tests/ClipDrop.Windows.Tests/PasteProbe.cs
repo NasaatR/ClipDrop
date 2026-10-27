@@ -72,6 +72,9 @@ internal static class PasteProbe
             dock.ShowDock(); dock.UpdateLayout();
             Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
             check(GetForegroundWindow() == hwnd, "Showing the non-activating dock preserves receiver focus");
+            var beforeDrag = dock.Left;
+            UiProbe.Drag(dock, new Point(3, dock.ActualHeight / 2), 28, -20);
+            check(Math.Abs(dock.Left - beforeDrag) > 15 && GetForegroundWindow() == hwnd, "Dragging dock padding moves it without stealing editor focus");
             var items = (ItemsControl)dock.FindName("PinnedItems");
             var container = items.ItemContainerGenerator.ContainerFromIndex(0) ?? throw new Exception("Dock pin was not rendered");
             var button = Descendant<Button>(container) ?? throw new Exception("Dock pin button missing");

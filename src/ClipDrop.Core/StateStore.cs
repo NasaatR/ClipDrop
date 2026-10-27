@@ -87,6 +87,10 @@ public sealed class StateStore
             throw new InvalidDataException("Invalid shelf item.");
         if (state.Items.Select(i => i.Id).Distinct().Count() != state.Items.Count)
             throw new InvalidDataException("Duplicate shelf identities.");
+        if (state.Settings.SavedStyles is null || state.Settings.SavedStyles.Count > 20 ||
+            state.Settings.SavedStyles.Any(s => s is null || !Guid.TryParse(s.Id, out _) || string.IsNullOrWhiteSpace(s.Name) || s.Name.Length > 40 || s.Style is null) ||
+            state.Settings.SavedStyles.Select(s => s.Id).Distinct().Count() != state.Settings.SavedStyles.Count)
+            throw new InvalidDataException("Invalid saved styles.");
         return state;
     }
 

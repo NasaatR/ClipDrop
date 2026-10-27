@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <!-- Original 24-unit line icons. One view box, consistent 1.7-unit stroke. -->
+ <Geometry x:Key="SaveIcon">M8,3 H16 M9,3 V1 H15 V3 M8,3 H5 V22 H19 V3 H16 M8,3 V6 H16 V3 M8,14 L11,17 L16,11</Geometry>
+ <Geometry x:Key="LibraryIcon">M3,4 H8 V21 H3 Z M10,4 H15 V21 H10 Z M17,5 L21,4 L24,20 L20,21 Z</Geometry>
+ <Geometry x:Key="SettingsIcon">M3,5 H21 M3,12 H21 M3,19 H21 M7,2 V8 M17,9 V15 M10,16 V22</Geometry>
+ <Geometry x:Key="CloseIcon">M6,6 L18,18 M18,6 L6,18</Geometry>
+ <Geometry x:Key="PinIcon">M7,3 H17 M9,3 V10 L5,14 H19 L15,10 V3 M12,14 V22</Geometry>
+ <Geometry x:Key="LinkIcon">M10,14 L14,10 M8,16 L6,18 C3,21 0,17 3,14 L7,10 C9,8 12,9 13,11 M16,8 L18,6 C21,3 25,7 22,10 L18,14 C16,16 13,15 12,13</Geometry>
+ <Geometry x:Key="PlusIcon">M12,4 V20 M4,12 H20</Geometry>
+ <Geometry x:Key="PasteIcon">M8,3 H16 V6 H8 Z M8,4 H5 V22 H19 V4 H16 M8,12 H16 M8,16 H14</Geometry>
+ <Geometry x:Key="CopyIcon">M8,8 H21 V21 H8 Z M16,5 V2 H2 V16 H5</Geometry>
+ <Geometry x:Key="TrashIcon">M3,6 H21 M9,6 V3 H15 V6 M6,6 L7,22 H17 L18,6 M10,10 V18 M14,10 V18</Geometry>
+ <Style x:Key="LineIcon" TargetType="Path"><Setter Property="Width" Value="18"/><Setter Property="Height" Value="18"/><Setter Property="Stretch" Value="Uniform"/><Setter Property="Stroke" Value="{DynamicResource Ink}"/><Setter Property="StrokeThickness" Value="1.7"/><Setter Property="StrokeStartLineCap" Value="Round"/><Setter Property="StrokeEndLineCap" Value="Round"/><Setter Property="StrokeLineJoin" Value="Round"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="IsHitTestVisible" Value="False"/></Style>
+ <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Width" Value="32"/><Setter Property="Height" Value="32"/><Setter Property="Padding" Value="7"/></Style>
+</ResourceDictionary>

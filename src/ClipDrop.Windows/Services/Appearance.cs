@@ -9,13 +9,50 @@ public static class Appearance
     public static double Bound(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
     public static void Apply(ShelfSettings settings)
     {
-        var light = settings.Theme == "Light";
-        foreach (var pair in new Dictionary<string, string> {
-            ["Surface"] = light ? "#F5F5F7" : "#1E1E1E", ["Raised"] = light ? "#E7E7EA" : "#2B2B2B",
-            ["Hover"] = light ? "#D9D9DF" : "#383838", ["Stroke"] = light ? "#85858E" : "#4B4B4B",
-            ["Ink"] = light ? "#19191D" : "#F3F3F5", ["Muted"] = light ? "#55555F" : "#B7B7BF",
-            ["Selected"] = light ? "#D0D0D8" : "#424242" })
-            Application.Current.Resources[pair.Key] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(pair.Value));
-        Application.Current.Resources["ItemRadius"] = new CornerRadius(Bound(settings.CornerRadius, 0, 16, 8));
+        Motion.Enabled = settings.AnimationsEnabled;
+        ApplyTo(Application.Current.Resources, settings, settings.Theme, "");
+    }
+    public static void Apply(ShelfSettings settings, FrameworkElement surface, bool dock = false)
+    {
+        Apply(settings);
+        var palette = dock ? settings.DockPalette : settings.LibraryPalette;
+        ApplyTo(surface.Resources, settings, palette == "Shared" ? settings.Theme : palette, dock ? settings.DockColor : settings.LibraryColor);
+    }
+    public static Color Mix(Color a, Color b, double weight) => Color.FromRgb(
+        (byte)Math.Round(a.R * (1 - weight) + b.R * weight), (byte)Math.Round(a.G * (1 - weight) + b.G * weight), (byte)Math.Round(a.B * (1 - weight) + b.B * weight));
+    public static double Luminance(Color color)
+    {
+        static double Channel(byte value) { var v = value / 255d; return v <= .04045 ? v / 12.92 : Math.Pow((v + .055) / 1.055, 2.4); }
+        return .2126 * Channel(color.R) + .7152 * Channel(color.G) + .0722 * Channel(color.B);
+    }
+    private static Color Read(string value) => (Color)ColorConverter.ConvertFromString(value);
+    private static void ApplyTo(ResourceDictionary resources, ShelfSettings settings, string palette, string custom)
+    {
+        var bg = Read(palette == "Light" ? "#F5F5F7" : palette == "Midnight" ? "#141C2B" : "#202124");
+        if (AppearanceStyle.TryColor(custom, out var normalized) && normalized.Length > 0) bg = Read(normalized);
+        var light = Luminance(bg) > .179;
+        var ink = Read(light ? "#000000" : "#FFFFFF");
+        var accent = Read(light ? "#245DC4" : "#9ABEFF");
+        if (AppearanceStyle.TryColor(settings.AccentColor, out normalized) && normalized.Length > 0) accent = Read(normalized);
+        // A custom accent always keeps a readable foreground on its own button.
+        var onAccent = Read(Luminance(accent) > .179 ? "#101115" : "#FFFFFF");
+        double Contrast(Color a, Color b) => (Math.Max(Luminance(a), Luminance(b)) + .05) / (Math.Min(Luminance(a), Luminance(b)) + .05);
+        Color Background(Color value)
+        {
+            var away = Read(light ? "#FFFFFF" : "#000000");
+            for (var i = 0; i < 20 && Contrast(value, ink) < 4.5; i++) value = Mix(value, away, .12);
+            return value;
+        }
+        var raised = Background(Mix(bg, ink, .055));
+        var muted = Mix(bg, ink, .70);
+        for (var i = 0; i < 20 && Contrast(muted, bg) < 4.5; i++) muted = Mix(muted, ink, .12);
+        foreach (var pair in new Dictionary<string, Color> {
+            ["Surface"] = bg, ["Raised"] = raised, ["Hover"] = Background(Mix(bg, ink, light ? .12 : .13)),
+            ["Stroke"] = Mix(bg, ink, .27), ["Ink"] = ink, ["Muted"] = muted,
+            ["Selected"] = Background(Mix(raised, accent, .22)), ["Accent"] = accent, ["OnAccent"] = onAccent })
+        {
+            var brush = new SolidColorBrush(pair.Value); brush.Freeze(); resources[pair.Key] = brush;
+        }
+        resources["ItemRadius"] = new CornerRadius(Bound(settings.CornerRadius, 0, 16, 8));
     }
 }

@@ -47,26 +47,21 @@ public sealed class ShelfItem
             : FilePath is null && other.FilePath is null && Content == other.Content);
 }
 
-public sealed class ShelfSettings
+public sealed class ShelfSettings : AppearanceStyle
 {
     public bool AlwaysOnTop { get; set; } = true;
     public bool StartHidden { get; set; }
     public bool ShakeToShow { get; set; }
     public bool CloseToTray { get; set; } = true;
-    public string Theme { get; set; } = "Dark";
-    public double FontSize { get; set; } = 13;
-    public double RowSpacing { get; set; } = 4;
-    public double CornerRadius { get; set; } = 8;
     public double Width { get; set; } = 376;
     public double Height { get; set; } = 500;
     public double? Left { get; set; }
     public double? Top { get; set; }
-    public double DockButtonSize { get; set; } = 36;
-    public double DockSpacing { get; set; } = 4;
-    public double DockRadius { get; set; } = 11;
-    public double DockOpacity { get; set; } = 100;
     public double? DockLeft { get; set; }
     public double? DockTop { get; set; }
+    public bool LibraryFollowsDock { get; set; } = true;
+    public bool AnimationsEnabled { get; set; } = true;
+    public List<SavedStyle> SavedStyles { get; set; } = new();
 }
 
 public sealed class ShelfState

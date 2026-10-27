@@ -32,4 +32,15 @@ public static class WindowPlacement
         window.Left = Math.Clamp(left, area.Left, Math.Max(area.Left, area.Right - width));
         window.Top = Math.Clamp(top, area.Top, Math.Max(area.Top, area.Bottom - height));
     }
+    public static void Near(Window window, Window anchor)
+    {
+        var area = WorkArea(anchor);
+        var width = window.ActualWidth;
+        var height = window.ActualHeight;
+        var above = anchor.Top - height - 10;
+        var below = anchor.Top + anchor.ActualHeight + 10;
+        window.Left = Math.Clamp(anchor.Left + (anchor.ActualWidth - width) / 2, area.Left, Math.Max(area.Left, area.Right - width));
+        var preferred = above >= area.Top ? above : below + height <= area.Bottom ? below : above;
+        window.Top = Math.Clamp(preferred, area.Top, Math.Max(area.Top, area.Bottom - height));
+    }
 }

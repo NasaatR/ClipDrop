@@ -25,11 +25,16 @@ Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
 Transfers copy; originals and cards remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
 within the current session.
 
-## Features in 0.2.0
+## Features in 0.3.0
 
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
+- Drag either surface by any empty background; buttons, cards, editors and resizing keep their gestures.
+- Library opens next to the dock and follows it. Drag Library to detach; its link button reattaches.
+- Four appearance presets, named saved styles, independent dock/Library palettes,
+  custom RGB backgrounds/accent and live preview. Existing visual values are kept on update.
 - Dock button size, spacing, corner radius and background-only opacity controls.
+- Fast button feedback, new-pin entrance and panel reveal; respects Windows animation settings and an app toggle.
 - File/folder references, Unicode text, links, PNG/bitmap and virtual-file inputs.
 - Native multi-format output: text plus .txt, URL plus .url, images as original
   file / PNG / bitmap. The destination decides which format it accepts.
@@ -71,7 +76,7 @@ format. Browsers that supply only an image URL add a link: no URL downloading or
 reuse of browser cookies. Bitmap-only sources may already have lost alpha.
 Internal Photoshop layers / Figma nodes are not kept as editable objects.
 Elevated apps, secure desktops and exclusive fullscreen have Windows restrictions.
-Automatic edge docking, full appearance presets, named/closed panel sets, persistent trash, clipboard history and HTML/RTF retention are not included in this first dock stage. Shake can also trigger
+Automatic edge docking, named/closed panel sets, persistent trash, clipboard history and HTML/RTF retention are not included. Shake can also trigger
 during left-button text selection or window movement.
 
 PNG/bitmap/virtual imports and inline image output: 64 MB. Decoded images:
@@ -104,7 +109,7 @@ Windows/native clipboard checks, renders dark/light/narrow/open-settings WPF
 views, builds self-contained packages, inspects the ZIP and smoke-tests silent
 installation/uninstallation before creating a new preview release. Check the
 [actual workflow result](https://github.com/NasaatR/ClipDrop/actions).
-Native tests deliver a physical dock click into a separate Windows editor process.
+Native tests drag dock backgrounds without activation, exercise attached/detached Library placement and style save/restore, and deliver a physical dock click into a separate Windows editor process.
 They do not automate Photoshop/Figma/browser applications. The dock reports
 "Paste requested" because input submission cannot prove that every app consumed
 the content. It leaves the clipboard ready for manual Ctrl+V and never restores it

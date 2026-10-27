@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.2.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.3.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -99,10 +99,41 @@ remain tied to that commit; later documentation changes do not replace them.
 
 Remaining user-feedback stages:
 
-1. Full appearance presets, independent dock/library palettes and effects preview.
+1. Appearance stage shipped in 0.3.0: presets, independent palettes, RGB overrides, live preview and bounded motion.
 2. Expanded reusable Library, naming/groups/content versions, persistent trash and backup UI.
 3. Named panel sets, independent windows, persistent recently closed panels and restore.
 4. Opt-in clipboard history, pause, protected-format exclusions, deduplication and retention.
 
 Persistent trash, closed-panel history and automatic clipboard capture are not
 implemented by 0.2.0. Current Undo remains session-local; communicate that clearly.
+
+
+## 0.3.0: appearance and movement
+
+User feedback: installed 0.2.0 works and transfers into/out of dock work. Main
+problems were tiny movement targets, a detached-looking Library, Save text and
+missing motion. Dock and Library now move from any non-interactive background;
+card OLE gestures, input fields, buttons, sliders and resize grips are excluded.
+Captured pointer movement does not activate the dock. Library follows its dock
+by default, stays inside its monitor working area, detaches on manual movement
+and reattaches via a visible link button. Detached geometry is retained.
+
+AppearanceStyle is a visual-only snapshot: applying or resetting it never changes
+startup, topmost, motion preference, attachment, original files or window positions.
+Four built-ins and up to 20 named styles use the same values as the live UI.
+Legacy schema-1 flat settings load unchanged, including explicit zero values;
+new fields receive defaults. Invalid color text is kept in the editor without
+replacing the saved value. Empty color restores the selected palette.
+
+Dock and Library scope their resources independently. Surface foregrounds derive
+from luminance; custom accent buttons have a derived foreground. Settings stays
+on the app theme. No shell-wide resource mutation or bitmap icon font is used.
+
+Motion budget: 110 ms button response, 160 ms panel reveal, 180 ms new-pin
+arrival, with no layout-width animation or continuous loop. All entrance content
+has a visible final baseline, interrupted button feedback replaces its clock,
+and app/Windows motion preferences disable the spatial effects. See
+[Microsoft ClientAreaAnimation](https://learn.microsoft.com/en-us/dotnet/api/system.windows.systemparameters.clientareaanimation)
+and [WPF FillBehavior](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.animation.timeline.fillbehavior).
+This is native WPF adaptation of the restrained WeavyClips feedback, not copied
+browser CSS or a new rendering engine.

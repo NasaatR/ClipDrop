@@ -72,6 +72,7 @@ internal static class Program
             Render(dock, Path.Combine(output, "dock-dark.png"));
             Check(dock.ActualHeight < 90, "The floating dock stays compact with real pins");
             PasteProbe.Run(dock, root, note.Content, Check);
+            UiProbe.Placement(window, dock, Check);
             var clipboardNote = ShelfItem.FromText("Shared session checkpoint");
             window.Session.Add(new[] { clipboardNote });
             Check(state.Items.Any(i => i.Id == clipboardNote.Id && i.IsPinned), "Dock and Library share one collection and pin new saves");
@@ -83,8 +84,14 @@ internal static class Program
             state.Settings.Theme = "Light"; window.Session.Change();
             Render(dock, Path.Combine(output, "dock-light.png"));
             Render(window, Path.Combine(output, "shelf-light.png"));
-            var settings = new SettingsWindow(state.Settings, () => window.ApplyAppearance(), () => true, () => "test report", root) { Owner = window };
-            settings.Show(); Render(settings, Path.Combine(output, "settings-open.png")); settings.Close();
+            var settings = new SettingsWindow(state.Settings, () => window.Session.Change(), () => true, () => "test report", root) { Owner = window };
+            settings.Show(); Render(settings, Path.Combine(output, "settings-open.png"));
+            UiProbe.Styles(settings, window, dock, Check);
+            UiProbe.Pump(250);
+            Render(dock, Path.Combine(output, "dock-independent.png"));
+            Render(window, Path.Combine(output, "library-midnight.png"));
+            Render(settings, Path.Combine(output, "settings-styles.png"));
+            settings.Close();
             Check(window.ActualWidth >= 320 && window.ActualHeight >= 300, "Real WPF surface renders at its minimum supported size");
             dock.Hide();
             window.Session.TrySave();

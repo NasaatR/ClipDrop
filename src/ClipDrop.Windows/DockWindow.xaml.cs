@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -17,6 +18,8 @@ public partial class DockWindow : Window
     private readonly Action _library;
     private readonly Action _settings;
     private readonly ThumbnailCache _thumbnails = new();
+    private readonly HashSet<string> _knownPins = new();
+    private readonly HashSet<string> _arrivingPins = new();
     private Point? _origin;
     private Button? _dragButton;
     private bool _suppressClick;
@@ -26,6 +29,9 @@ public partial class DockWindow : Window
     {
         Session = session; _library = library; _settings = settings;
         InitializeComponent();
+        _ = new WindowDrag(this, () => { _feedback.IsOpen = false; }, () => {
+            Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false);
+        });
         SourceInitialized += (_, _) => NativePastePlatform.MakeNonActivating(this);
         Loaded += (_, _) => {
             var saved = Session.State.Settings;
@@ -45,11 +51,11 @@ public partial class DockWindow : Window
         _feedbackTimer.Tick += (_, _) => { _feedback.IsOpen = false; _feedbackTimer.Stop(); };
         Refresh();
     }
-    public void ShowDock() { Session.Paster?.CaptureTarget(); Show(); WindowPlacement.Clamp(this); }
+    public void ShowDock() { Session.Paster?.CaptureTarget(); var opening = !IsVisible; Show(); WindowPlacement.Clamp(this); if (opening) Motion.Reveal(DockBody); }
     public void Toggle() { if (IsVisible) Hide(); else ShowDock(); }
     private void Refresh()
     {
-        Appearance.Apply(Session.State.Settings);
+        Appearance.Apply(Session.State.Settings, this, true);
         var settings = Session.State.Settings;
         Topmost = settings.AlwaysOnTop;
         FontSize = Appearance.Bound(settings.FontSize, 11, 18, 13);
@@ -60,10 +66,13 @@ public partial class DockWindow : Window
         var pins = Session.State.Items.Where(i => i.IsPinned).OrderByDescending(i => i.CreatedUtc).ToArray();
         var available = IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
         var size = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
-        var fixedWidth = 41 + 76 + Appearance.Bound(settings.DockSpacing, 0, 12, 4) + 3 * size;
+        var fixedWidth = 31 + 4 * size;
         var slots = Math.Max(1, (int)((available - fixedWidth) / size));
         if (pins.Length > slots) slots--;
         var capacity = Math.Max(1, Math.Min(8, slots));
+        _arrivingPins.Clear();
+        foreach (var pin in pins) if (!_knownPins.Contains(pin.Id)) _arrivingPins.Add(pin.Id);
+        _knownPins.Clear(); foreach (var pin in pins) _knownPins.Add(pin.Id);
         PinnedItems.ItemsSource = pins.Take(capacity).Select(i => new ItemRow(i)).ToArray();
         EmptyHint.Visibility = pins.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         OverflowButton.Visibility = pins.Length > capacity ? Visibility.Visible : Visibility.Collapsed;
@@ -73,10 +82,10 @@ public partial class DockWindow : Window
     private void ApplySurface(bool dropping)
     {
         var key = dropping ? "Selected" : "Surface";
-        var color = ((SolidColorBrush)Application.Current.FindResource(key)).Color;
+        var color = ((SolidColorBrush)FindResource(key)).Color;
         color.A = dropping ? (byte)255 : (byte)Math.Round(255 * Appearance.Bound(Session.State.Settings.DockOpacity, 0, 100, 100) / 100);
         DockBody.Background = new SolidColorBrush(color);
-        DockBody.BorderBrush = (Brush)Application.Current.FindResource(dropping ? "Ink" : "Stroke");
+        DockBody.BorderBrush = (Brush)FindResource(dropping ? "Ink" : "Stroke");
     }
     private void ShowFeedback(string message)
     {
@@ -93,12 +102,9 @@ public partial class DockWindow : Window
         if (_suppressClick) { _suppressClick = false; return; }
         if (sender is Button { DataContext: ItemRow row }) Session.Paste(new[] { row.Item });
     }
-    private void OnMove(object sender, MouseButtonEventArgs e)
+    private void OnPinLoaded(object sender, RoutedEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left) return;
-        try { _feedback.IsOpen = false; DragMove(); WindowPlacement.Clamp(this); }
-        catch (InvalidOperationException) { return; }
-        Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false);
+        if (sender is Button { DataContext: ItemRow row } button && _arrivingPins.Remove(row.Item.Id)) Motion.Arrive(button);
     }
     private void OnItemDown(object sender, MouseButtonEventArgs e)
     { _origin = e.GetPosition(this); _dragButton = sender as Button; _suppressClick = false; }

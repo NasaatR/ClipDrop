@@ -23,12 +23,15 @@ public partial class MainWindow : Window
     private Point? _origin;
     private ItemRow? _pendingSingle;
     private bool _dragging;
+    private DockWindow? _dock;
+    private bool _placing;
     public Diagnostics DiagnosticLog => Session.Diagnostics;
     public MainWindow(StateStore store, ShelfState state, bool integration = true) : this(new ShelfSession(store, state)) { }
     public MainWindow(ShelfSession session)
     {
         Session = session;
         InitializeComponent();
+        _ = new WindowDrag(this, () => { Session.State.Settings.LibraryFollowsDock = false; UpdateAttachment(); }, QueueGeometrySave);
         ItemList.ItemsSource = _rows;
         Session.Changed += Refresh;
         Session.StatusChanged += SetStatus;
@@ -36,7 +39,7 @@ public partial class MainWindow : Window
             WindowPlacement.Restore(this, Session.State.Settings.Left, Session.State.Settings.Top,
                 Session.State.Settings.Width, Session.State.Settings.Height);
             LocationChanged += (_, _) => QueueGeometrySave();
-            SizeChanged += (_, _) => QueueGeometrySave();
+            SizeChanged += (_, _) => { PositionNearDock(); QueueGeometrySave(); };
         };
         Closing += OnClosing;
         DragLeave += (_, e) => {
@@ -46,7 +49,37 @@ public partial class MainWindow : Window
         };
         ApplyAppearance(); Refresh();
     }
-    public void ShowShelf() { Session.Paster?.CaptureTarget(); Show(); Activate(); Refresh(); }
+    public void AttachDock(DockWindow dock)
+    {
+        _dock = dock;
+        dock.LocationChanged += (_, _) => PositionNearDock();
+        dock.SizeChanged += (_, _) => PositionNearDock();
+        dock.IsVisibleChanged += (_, _) => PositionNearDock();
+    }
+    private void PositionNearDock()
+    {
+        if (_placing || !IsVisible || _dock?.IsVisible != true || !Session.State.Settings.LibraryFollowsDock) return;
+        _placing = true;
+        try { UpdateLayout(); WindowPlacement.Near(this, _dock); }
+        finally { _placing = false; }
+    }
+    private void UpdateAttachment()
+    {
+        var follows = Session.State.Settings.LibraryFollowsDock;
+        AttachIcon.Opacity = follows ? 1 : .4;
+        AttachButton.ToolTip = follows ? "Detach Library from dock" : "Attach Library to dock";
+        System.Windows.Automation.AutomationProperties.SetName(AttachButton, follows ? "Detach Library from dock" : "Attach Library to dock");
+    }
+    private void OnAttach(object sender, RoutedEventArgs e)
+    {
+        Session.State.Settings.LibraryFollowsDock = !Session.State.Settings.LibraryFollowsDock;
+        Session.Change(); PositionNearDock();
+    }
+    public void ShowShelf()
+    {
+        Session.Paster?.CaptureTarget(); var opening = !IsVisible; Show(); Refresh(); PositionNearDock(); Activate();
+        if (opening) Motion.Reveal(LibrarySurface);
+    }
     public void OpenSettings()
     {
         var existing = Application.Current.Windows.OfType<SettingsWindow>().FirstOrDefault();
@@ -58,7 +91,8 @@ public partial class MainWindow : Window
     public void ApplyAppearance()
     {
         var settings = Session.State.Settings;
-        Appearance.Apply(settings);
+        Appearance.Apply(settings, this);
+        UpdateAttachment(); PositionNearDock();
         Topmost = settings.AlwaysOnTop; TopIcon.Opacity = Topmost ? 1 : 0.35;
         FontSize = Bound(settings.FontSize, 11, 18, 13);
         var style = new Style(typeof(ListBoxItem), (Style)Application.Current.FindResource(typeof(ListBoxItem)));
@@ -85,7 +119,10 @@ public partial class MainWindow : Window
     {
         var selected = Selected();
         CopyButton.IsEnabled = PinButton.IsEnabled = RemoveButton.IsEnabled = PasteButton.IsEnabled = selected.Count > 0;
-        PinButton.Content = selected.Count > 0 && selected.All(i => i.IsPinned) ? "Unpin" : "Pin";
+        var unpin = selected.Count > 0 && selected.All(i => i.IsPinned);
+        PinButton.ToolTip = unpin ? "Unpin selection" : "Pin selection";
+        PinActionIcon.Opacity = unpin ? 1 : .65;
+        System.Windows.Automation.AutomationProperties.SetName(PinButton, unpin ? "Unpin selection" : "Pin selection");
     }
     private void OnSelection(object sender, SelectionChangedEventArgs e) => UpdateSelection();
     private void OnSearch(object sender, TextChangedEventArgs e) => Refresh();
@@ -203,16 +240,6 @@ public partial class MainWindow : Window
     }
     private void OnSettings(object sender, RoutedEventArgs e) => OpenSettings();
     private void OnToggleTop(object sender, RoutedEventArgs e) { Session.State.Settings.AlwaysOnTop = !Session.State.Settings.AlwaysOnTop; Session.Change(); }
-    private void OnTitleDrag(object sender, MouseButtonEventArgs e)
-    {
-        var node = e.OriginalSource as DependencyObject;
-        while (node is not null && !ReferenceEquals(node, sender))
-        {
-            if (node is Button) return;
-            node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
-        }
-        if (e.ChangedButton == MouseButton.Left) { try { DragMove(); } catch (InvalidOperationException) { } }
-    }
     private void OnHide(object sender, RoutedEventArgs e) => Hide();
     private void OnQuit(object sender, RoutedEventArgs e) => Session.RequestQuit();
     private void OnClosing(object? sender, CancelEventArgs e)

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 — 2026-10-27
+
+- Move dock and Library from empty backgrounds while preserving interactive controls and card transfers.
+- Anchor Library to the dock; manual movement detaches and the link button reattaches it.
+- Replace Save text and scattered icons with a consistent centered vector icon system.
+- Add four built-in styles, named saved presets, independent palettes, custom RGB backgrounds/accent and compact section navigation in Settings.
+- Add bounded interaction/new-pin/reveal animations with Windows and app motion preferences.
+- Preserve schema-1 data, explicit zero preferences, window placement and behavior when applying styles.
+- Exercise native background movement/focus, placement, style application and persistence in Windows/core checks.
+
+
 ## 0.2.0 — 2026-10-27
 
 - Add non-activating floating dock with clipboard save, quick pins and copy-only drag-out.

@@ -1,19 +1,12 @@
-Compact dock preview for Windows, inspired by WeavyClips workflow:
+Windows design and usability update.
 
-- Save clipboard in one click; new items appear as dock pins.
-- Click a pin to request paste into the previous app, or drag it out natively.
-- Separate searchable Library; Enter / Paste uses the selection.
-- Non-activating dock, bounded pin row, shared state, light/dark surfaces,
-  button size/spacing/corners/background opacity, and copyable diagnostics.
-- Ctrl+Alt+Space toggles the dock; Ctrl+Alt+L opens Library.
+- Drag dock and Library from any empty background, with existing card and control gestures preserved.
+- Icon-only Save and a consistent centered vector icon family.
+- Library opens near the dock, follows its movement and detaches when moved manually. Use the link button to attach again.
+- Graphite, Paper, Midnight and Compact styles; save your own named presets. Independent dock/Library palettes, custom RGB backgrounds and accent, live preview and compact Settings navigation.
+- Short button, new-pin and panel animations; respects Windows animation settings and the app toggle.
 
-Download `*_windows-x64_setup.exe` or extract the entire portable ZIP. Runtime
-included. Quit the previous version before updating; existing libraries remain.
-Unsigned Windows x64 preview.
+Download `*_windows-x64_setup.exe` or extract the entire portable ZIP. Runtime included. Quit the previous version before updating; libraries and existing preferences are retained. Unsigned Windows x64 preview.
 
-CI checks data recovery, actual OLE clipboard formats, a real dock click into a
-separate Windows editor process, focus preservation, WPF views, published-app
-startup/shutdown, ZIP contents and installer/uninstaller. Photoshop/Figma/browser
-compatibility still needs manual testing. Blocked or changed targets use copy-only
-fallback. Full design presets, persistent trash/closed panels and automatic
-clipboard history are planned next stages and are not included in this release.
+CI verifies recovery, OLE/clipboard payloads, native background movement and focus, a real dock click into a separate Windows editor, Library placement, named style UI/persistence, WPF views, published startup/shutdown and installer/uninstaller.
+Photoshop/Figma/browser-specific behavior and mixed-DPI monitor transitions still need manual testing. Click-paste retains copy-only fallback. Persistent trash, named/closed panel sets and automatic clipboard history remain future stages.

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using ClipDrop.Core;
 
@@ -41,6 +42,23 @@ try
     Throws<InvalidDataException>(() => new StateStore(isolated.Root).Load(), "Unrecoverable corruption is never replaced with an empty shelf");
     File.WriteAllText(Path.Combine(isolated.Root, "shelf.json"), "{}");
     Throws<InvalidDataException>(() => new StateStore(isolated.Root).Load(), "An incomplete JSON object cannot masquerade as an empty saved shelf");
+    var legacy = JsonSerializer.Deserialize<ShelfSettings>("{\"Theme\":\"Light\",\"DockOpacity\":0,\"DockSpacing\":0}")!;
+    Check(legacy.Theme == "Light" && legacy.DockOpacity == 0 && legacy.DockSpacing == 0 && legacy.LibraryFollowsDock && legacy.AnimationsEnabled && legacy.SavedStyles.Count == 0,
+        "Legacy appearance keeps explicit zero values and gains safe defaults");
+    var styled = new ShelfSettings { Left = 321, DockTop = 456, LibraryFollowsDock = false, AnimationsEnabled = false, StartHidden = true, DockColor = "#224466", DockSpacing = 0, DockOpacity = 0 };
+    var snapshot = styled.Snapshot();
+    AppearanceStyle.BuiltIns[2].Style.CopyTo(styled);
+    Check(styled.Theme == "Midnight" && styled.Left == 321 && styled.DockTop == 456 && !styled.LibraryFollowsDock && !styled.AnimationsEnabled && styled.StartHidden,
+        "Style presets never reset behavior, animation preference or window placement");
+    snapshot.CopyTo(styled);
+    Check(styled.DockSpacing == 0 && styled.DockOpacity == 0 && styled.DockColor == "#224466", "Custom style restores exact appearance including zero values");
+    styled.SavedStyles.Add(new SavedStyle { Name = "My style", Style = snapshot });
+    var stylesStore = new StateStore(Path.Combine(root, "styles")); var stylesState = stylesStore.Load(); stylesState.Settings = styled; stylesStore.Save(stylesState);
+    var stylesReloaded = new StateStore(stylesStore.Root).Load().Settings;
+    Check(stylesReloaded.SavedStyles.Single().Style.DockOpacity == 0 && stylesReloaded.SavedStyles.Single().Name == "My style" && !stylesReloaded.LibraryFollowsDock && !stylesReloaded.AnimationsEnabled,
+        "Named styles and detached/motion preferences survive restart");
+    Check(AppearanceStyle.TryColor(" #ab09fF ", out var color) && color == "#AB09FF" && AppearanceStyle.TryColor("", out _) && !AppearanceStyle.TryColor("#GG0000", out _) && !AppearanceStyle.TryColor("red", out _),
+        "Custom colors accept normalized RGB or automatic, reject invalid input");
     var assets = new AssetStore(Path.Combine(root, "assets"));
     var exported = assets.ExportText(text);
     Check(File.ReadAllText(exported) == text.Content, "Exported text is lossless");
