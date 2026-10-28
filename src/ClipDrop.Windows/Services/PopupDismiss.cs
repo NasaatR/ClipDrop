@@ -10,7 +10,8 @@ namespace ClipDrop.Windows.Services;
 
 // A non-activating dock may leave the same external HWND in foreground. Its next
 // click still needs to close the popup. Observe pointer-downs only while a menu is
-// open; never consume/replay input, install in another process or record content.
+// open. Outside clicks pass through; Escape only closes the visible menu. No
+// content is recorded and no observer remains after the menu closes.
 public sealed class PopupDismiss : IDisposable
 {
     private static PopupDismiss? _active;
@@ -20,8 +21,9 @@ public sealed class PopupDismiss : IDisposable
     private readonly ContextMenu _menu;
     private readonly Window _owner;
     private readonly MouseHook _mouse;
+    private readonly MouseHook _keyboard;
     private readonly WinEvent _foreground;
-    private IntPtr _mouseHook, _foregroundHook;
+    private IntPtr _mouseHook, _foregroundHook, _keyHook;
     private bool _closed, _queued;
     private delegate IntPtr MouseHook(int code, IntPtr message, IntPtr data);
     private delegate void WinEvent(IntPtr hook, uint kind, IntPtr hwnd, int objectId, int childId, uint thread, uint time);
@@ -46,11 +48,12 @@ public sealed class PopupDismiss : IDisposable
     private PopupDismiss(ContextMenu menu, Window owner)
     {
         _menu = menu; _owner = owner;
-        _mouse = ObserveMouse;
+        _mouse = ObserveMouse; _keyboard = ObserveKey;
         _foreground = (_, _, hwnd, _, _, _, _) => {
             if (hwnd != IntPtr.Zero && hwnd != MenuHandle && hwnd != new WindowInteropHelper(owner).Handle) QueueClose();
         };
         _mouseHook = SetWindowsHookEx(14, _mouse, GetModuleHandle(null), 0);
+        _keyHook = SetWindowsHookEx(13, _keyboard, GetModuleHandle(null), 0);
         _foregroundHook = SetWinEventHook(3, 3, IntPtr.Zero, _foreground, 0, 0, 0);
         menu.Closed += OnClosed; owner.IsVisibleChanged += OwnerVisibility; owner.LocationChanged += OwnerMoved;
     }
@@ -62,6 +65,12 @@ public sealed class PopupDismiss : IDisposable
             if (!GetWindowRect(MenuHandle, out var bounds) || point.X < bounds.Left || point.X >= bounds.Right || point.Y < bounds.Top || point.Y >= bounds.Bottom) QueueClose();
         }
         return CallNextHookEx(_mouseHook, code, message, data);
+    }
+    private IntPtr ObserveKey(int code, IntPtr message, IntPtr data)
+    {
+        if (code >= 0 && !_closed && message.ToInt32() is 0x0100 or 0x0104 && Marshal.ReadInt32(data) == 0x1B)
+        { QueueClose(); return new IntPtr(1); }
+        return CallNextHookEx(_keyHook, code, message, data);
     }
     private void QueueClose()
     {
@@ -75,10 +84,11 @@ public sealed class PopupDismiss : IDisposable
     {
         if (_closed) return; _closed = true;
         if (_mouseHook != IntPtr.Zero) UnhookWindowsHookEx(_mouseHook);
+        if (_keyHook != IntPtr.Zero) UnhookWindowsHookEx(_keyHook);
         if (_foregroundHook != IntPtr.Zero) UnhookWinEvent(_foregroundHook);
-        _mouseHook = _foregroundHook = IntPtr.Zero;
+        _mouseHook = _foregroundHook = _keyHook = IntPtr.Zero;
         _menu.Closed -= OnClosed; _owner.IsVisibleChanged -= OwnerVisibility; _owner.LocationChanged -= OwnerMoved;
         if (ReferenceEquals(_active, this)) _active = null;
-        Changed?.Invoke(_owner); GC.KeepAlive(_mouse); GC.KeepAlive(_foreground);
+        Changed?.Invoke(_owner); GC.KeepAlive(_mouse); GC.KeepAlive(_keyboard); GC.KeepAlive(_foreground);
     }
 }
