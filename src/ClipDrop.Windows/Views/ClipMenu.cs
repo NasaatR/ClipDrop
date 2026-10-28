@@ -18,38 +18,50 @@ public static class ClipMenu
     public static ContextMenu Create(ShelfSession session, IReadOnlyList<ShelfItem> items, Window owner, bool dock, bool trash = false, Action<ShelfItem>? edit = null)
     {
         var selected = items.ToArray();
-        var menu = new ContextMenu(); Appearance.Apply(session.State.Settings, menu, dock);
+        var menu = new ContextMenu { MaxWidth = 280, FontSize = 11.5 }; Appearance.Apply(session.State.Settings, menu, dock);
+        PopupDismiss.Attach(menu, owner);
         System.Windows.Automation.AutomationProperties.SetName(menu, "Clip actions");
-        void Add(string header, string id, string icon, Action run, bool enabled = true, string shortcut = "")
+        MenuItem Add(string header, string id, string icon, Action run, string shortcut = "")
         {
-            var glyph = new AppIcon { Kind = icon.Replace("Icon", ""), Width = 18, Height = 18 };
-            var item = new MenuItem { Header = header, Tag = id, Icon = glyph, InputGestureText = shortcut, IsEnabled = enabled };
+            var glyph = new AppIcon { Kind = icon, Width = 15, Height = 15 };
+            var item = new MenuItem { Header = header, Tag = id, Icon = glyph, InputGestureText = shortcut, Padding = new Thickness(6, 3, 6, 3), FontSize = 11.5 };
             item.Click += (_, _) => { menu.IsOpen = false; owner.Dispatcher.BeginInvoke(run, DispatcherPriority.Background); };
-            menu.Items.Add(item);
+            menu.Items.Add(item); return item;
         }
         var single = selected.Length == 1;
-        Add("Paste", "Paste", "PasteIcon", () => session.Paste(selected), selected.Length > 0 && !trash);
-        Add("Copy", "Copy", "CopyIcon", () => session.Copy(selected), selected.Length > 0, "Ctrl+C");
-        Add("Copy as plain text", "CopyText", "TextIcon", () => session.Copy(selected, true), selected.Length > 0);
-        menu.Items.Add(new Separator());
-        Add("Preview", "Preview", "ImageIcon", () => new PreviewWindow(selected[0]) { Owner = owner }.Show(), single, "Space");
-        Add("Open in app", "Open", "RevealIcon", () => Open(selected[0], session), single && !new ItemRow(selected[0]).Missing && selected[0].Kind is not (ItemKind.Text or ItemKind.Clipboard));
-        Add("Show in Explorer", "Reveal", "FolderIcon", () => Reveal(selected[0], session), single && selected[0].FilePath is not null && !new ItemRow(selected[0]).Missing);
-        menu.Items.Add(new Separator());
-        if (trash) Add("Restore", "Restore", "RestoreIcon", () => session.RestoreTrash(selected), selected.Length > 0);
+        if (trash) Add("Restore", "Restore", "Restore", () => session.RestoreTrash(selected));
         else
         {
-            var pinned = selected.Length > 0 && selected.All(i => i.IsPinned);
-            Add(pinned ? "Remove from dock" : "Add to dock", "Pin", "PinIcon", () => session.TogglePin(selected), selected.Length > 0);
+            Add(selected.Length > 1 ? $"Delete {selected.Length} clips" : "Delete", "Trash", "Trash", () => session.Remove(selected.ToList()), "Del").ToolTip = "Move to Trash · restore in Library";
             var kept = selected.Length > 0 && selected.All(i => i.KeepAfterUse);
-            Add(kept ? "Allow removal after use" : "Keep after use", "Keep", "KeepIcon", () => session.ToggleKeep(selected), selected.Length > 0);
-            Add("Rename / group", "Edit", "EditIcon", () => edit?.Invoke(selected[0]), single && edit is not null, "F2");
-            Add("Move to Trash", "Trash", "TrashIcon", () => session.Remove(selected.ToList()), selected.Length > 0, "Delete");
+            Add(kept ? "Use once" : "Keep after use", "Keep", "Keep", () => session.ToggleKeep(selected));
         }
+        Add("Copy", "Copy", "Copy", () => session.Copy(selected), "Ctrl+C");
+        var more = new MenuItem { Header = "More…", Tag = "More", Icon = new AppIcon { Kind = "Library", Width = 15, Height = 15 }, StaysOpenOnClick = true, Padding = new Thickness(6, 3, 6, 3), FontSize = 11.5 };
+        menu.Items.Add(more);
+        more.Click += (_, e) => {
+            e.Handled = true; menu.Items.Remove(more); menu.Items.Add(new Separator());
+            if (!trash && selected.Length > 0) Add("Paste", "Paste", "Paste", () => session.Paste(selected));
+            if (selected.Length > 0) Add("Copy as text", "CopyText", "Text", () => session.Copy(selected, true));
+            if (single)
+            {
+                Add("Preview", "Preview", "Image", () => new PreviewWindow(selected[0]) { Owner = owner }.Show(), "Space");
+                var item = selected[0];
+                if (!new ItemRow(item).Missing && item.Kind is not (ItemKind.Text or ItemKind.Clipboard)) Add("Open in app", "Open", "Reveal", () => Open(item, session));
+                if (item.FilePath is not null && !new ItemRow(item).Missing) Add("Show in Explorer", "Reveal", "Folder", () => Reveal(item, session));
+            }
+            if (!trash && selected.Length > 0)
+            {
+                var pinned = selected.All(i => i.IsPinned);
+                Add(pinned ? "Remove from dock" : "Add to dock", "Pin", "Pin", () => session.TogglePin(selected));
+                if (single && edit is not null) Add("Rename / group", "Edit", "Edit", () => edit(selected[0]), "F2");
+            }
+        };
         return menu;
     }
     public static void Show(ContextMenu menu, FrameworkElement target, bool keyboard = false)
     {
+        PopupDismiss.CloseAll();
         menu.PlacementTarget = target; menu.Placement = keyboard ? PlacementMode.Bottom : PlacementMode.MousePoint;
         menu.IsOpen = true;
     }

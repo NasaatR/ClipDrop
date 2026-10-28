@@ -33,7 +33,7 @@ public sealed class DesktopIntegration : IDisposable
         set { _shakeEnabled = value; if (value) _shake.Start(); else _shake.Stop(); }
     }
 
-    public DesktopIntegration(Action toggle, Action show, Action library, Action save, Action settings, Action quit, Action showAll, Action hideAll)
+    public DesktopIntegration(Action toggle, Action show, Action library, Action save, Action settings, Action quit, Action showAll, Action hideAll, Action? trayToggle = null)
     {
         _show = show;
         _source = new HwndSource(new HwndSourceParameters("ClipDrop commands") { ParentWindow = new IntPtr(-3), WindowStyle = 0 });
@@ -44,7 +44,7 @@ public sealed class DesktopIntegration : IDisposable
         LibraryHotkeyAvailable = RegisterHotKey(_source.Handle, 2, 0x0002 | 0x0001 | 0x4000, 0x4C);
         using (var stream = Application.GetResourceStream(new Uri("pack://application:,,,/ClipDrop;component/Assets/ClipDrop.ico")).Stream)
         using (var original = new System.Drawing.Icon(stream)) _icon = (System.Drawing.Icon)original.Clone();
-        _tray = new Forms.NotifyIcon { Text = "ClipDrop · Ctrl+Alt+Space", Icon = _icon, Visible = true };
+        _tray = new Forms.NotifyIcon { Text = "ClipDrop · click to show / hide docks", Icon = _icon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Show dock here", null, (_, _) => show());
         menu.Items.Add("Show all docks", null, (_, _) => showAll());
@@ -55,7 +55,7 @@ public sealed class DesktopIntegration : IDisposable
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Quit ClipDrop", null, (_, _) => quit());
         _tray.ContextMenuStrip = menu;
-        _tray.DoubleClick += (_, _) => show();
+        _tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) (trayToggle ?? toggle)(); };
         _shake = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
         _shake.Tick += (_, _) => Tick();
     }

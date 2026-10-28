@@ -14,10 +14,15 @@ try
 {
     LayoutChecks.Run(root, Check);
     UsageChecks.Run(root, Check);
+    var idleStyle = new ShelfSettings();
+    Check(idleStyle.IdleDockOpacity == 20, "Idle dock visibility defaults to twenty percent");
+    idleStyle.IdleDockOpacity = 5; var idleSnapshot = idleStyle.Snapshot();
+    AppearanceStyle.BuiltIns[0].Style.CopyTo(idleStyle); idleSnapshot.CopyTo(idleStyle);
+    Check(idleStyle.IdleDockOpacity == 5 && idleSnapshot.EquivalentTo(idleStyle), "Appearance snapshots and reset preserve explicit idle visibility choices");
     var store = new StateStore(root);
     var state = store.Load();
     Check(state.Items.Count == 0, "Empty installation starts with a real empty shelf");
-    state.Settings.RowSpacing = 0; state.Settings.AlwaysOnTop = false; state.Settings.DockSpacing = 0; state.Settings.DockOpacity = 0;
+    state.Settings.IdleDockOpacity = 35; state.Settings.RowSpacing = 0; state.Settings.AlwaysOnTop = false; state.Settings.DockSpacing = 0; state.Settings.DockOpacity = 0;
     var text = ShelfItem.FromText("  Bonjour\r\nПривет 👋  ");
     Check(text.Content == "  Bonjour\r\nПривет 👋  ", "Text whitespace and Unicode are lossless");
     Check(ShelfItem.FromText("https://example.com/path").Kind == ItemKind.Link, "HTTP links are recognized");
@@ -25,7 +30,7 @@ try
     Check(ShelfItem.FromText("https://example.com/\r\nIconFile=anything").Kind == ItemKind.Text, "Multiline clipboard text cannot become a URL shortcut");
     state.Items.Add(text); store.Save(state);
     var restored = new StateStore(root).Load();
-    Check(restored.Items[0].Content == text.Content && restored.Settings.RowSpacing == 0 && !restored.Settings.AlwaysOnTop && restored.Settings.DockSpacing == 0 && restored.Settings.DockOpacity == 0,
+    Check(restored.Items[0].Content == text.Content && restored.Settings.IdleDockOpacity == 35 && restored.Settings.RowSpacing == 0 && !restored.Settings.AlwaysOnTop && restored.Settings.DockSpacing == 0 && restored.Settings.DockOpacity == 0,
         "Save and reload preserve text, zero and false settings");
     state.Items.Add(ShelfItem.FromText("Second revision")); store.Save(state);
     File.WriteAllText(Path.Combine(root, "shelf.json"), "{broken");

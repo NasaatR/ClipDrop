@@ -1,6 +1,6 @@
 # ClipDrop — incremental delivery plan
 
-Updated 2026-10-28. Windows first. Each stage ends with a runnable installer,
+Updated 2026-10-29. Windows first. Each stage ends with a runnable installer,
 portable package, targeted checks and user feedback before expanding its scope.
 Main is the working branch. This plan supersedes the older future-stage lists
 in FOUNDATION.md; those sections also document historical releases.
@@ -11,6 +11,7 @@ in FOUNDATION.md; those sections also document historical releases.
 | 2 · Basic video | Background video thumbnails, explicit Play/Pause, seek, muted start, open-in-app fallback | Delivered in 0.5 |
 | 3a · Icons and linked monitors | Emoji/PNG roles, append-right pins, one linked dock per selected screen | 0.6 preview; automated acceptance below |
 | 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Current 0.7 iteration |
+| 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Current 0.8 iteration |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4 · Saved panels | Named panel sets, separate pin membership, recently closed and restore | After mirrored docks are reliable |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
@@ -153,6 +154,29 @@ protected drop, Esc cancellation, Ctrl/Shift selection, corner pin without paste
 group reorder/no archive, batch deletion + restore, persistent protection and
 migration backup. Repeat on linked dock views. Continue physical DPI feedback as
 stage 3b; do not bundle saved-set/history work into this interaction iteration.
+
+## Stage 3d: low-distraction daily use — 0.8
+
+- Whole dock fades to 20% visibility away from the pointer; hover, menu, source
+  dragging and incoming drops hold it fully visible. Short interrupted fades obey
+  motion preferences; no perpetual polling for hover. Explicit show briefly reveals
+  the dock. Idle visibility (5–100%) is a saved appearance value with live preview;
+  background opacity remains a separate control. Fully hide via the dock/tray.
+- Clip context menu starts with Delete, Keep/Use once, Copy, More. Secondary actions
+  expand only on request; omit unavailable rows. Preserve captured targets/groups.
+  A temporary pointer-down observer closes a menu even if the external foreground
+  window never changed. Release observers on close/hide/move; one popup at a time.
+- Single left tray click toggles enabled docks together; native double-click does
+  not cause a second toggle. Right-click retains tray commands. Shortcut targets
+  remain per active external display. Restore minimized/hidden docks directly.
+- Small Hide control and background menu (Hide, Undo removal, Library) provide
+  quick exits and recovery without new persistent content models.
+
+Acceptance: real outside click into an already-used external receiver, Escape,
+More expansion, no lingering observers, active/idle/menu opacity, live preview,
+native NotifyIcon callback sequences, minimized restore and quick dock undo.
+Single-display CI does not establish physical mixed-DPI acceptance. Saved sets and
+clipboard history stay separate; this iteration stabilizes the current shelf.
 
 ## Next efficient slice: saved panels
 

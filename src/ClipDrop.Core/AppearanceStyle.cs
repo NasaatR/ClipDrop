@@ -21,6 +21,7 @@ public class AppearanceStyle
     public double DockSpacing { get; set; } = 4;
     public double DockRadius { get; set; } = 11;
     public double DockOpacity { get; set; } = 100;
+    public double IdleDockOpacity { get; set; } = 20;
 
     public AppearanceStyle Snapshot()
     {
@@ -33,12 +34,12 @@ public class AppearanceStyle
         target.DockColor = DockColor; target.LibraryColor = LibraryColor; target.AccentColor = AccentColor;
         target.FontSize = FontSize; target.RowSpacing = RowSpacing; target.CornerRadius = CornerRadius;
         target.DockButtonSize = DockButtonSize; target.DockSpacing = DockSpacing;
-        target.DockRadius = DockRadius; target.DockOpacity = DockOpacity;
+        target.DockRadius = DockRadius; target.DockOpacity = DockOpacity; target.IdleDockOpacity = IdleDockOpacity;
     }
     public bool EquivalentTo(AppearanceStyle other) =>
         PngIcons.Count == other.PngIcons.Count && PngIcons.All(p => other.PngIcons.TryGetValue(p.Key, out var hash) && hash == p.Value) &&
-        (Theme, DockPalette, LibraryPalette, DockColor, LibraryColor, AccentColor, FontSize, RowSpacing, CornerRadius, DockButtonSize, DockSpacing, DockRadius, DockOpacity) ==
-        (other.Theme, other.DockPalette, other.LibraryPalette, other.DockColor, other.LibraryColor, other.AccentColor, other.FontSize, other.RowSpacing, other.CornerRadius, other.DockButtonSize, other.DockSpacing, other.DockRadius, other.DockOpacity);
+        (Theme, DockPalette, LibraryPalette, DockColor, LibraryColor, AccentColor, FontSize, RowSpacing, CornerRadius, DockButtonSize, DockSpacing, DockRadius, DockOpacity, IdleDockOpacity) ==
+        (other.Theme, other.DockPalette, other.LibraryPalette, other.DockColor, other.LibraryColor, other.AccentColor, other.FontSize, other.RowSpacing, other.CornerRadius, other.DockButtonSize, other.DockSpacing, other.DockRadius, other.DockOpacity, other.IdleDockOpacity);
     public static bool TryColor(string? input, out string color)
     {
         color = (input ?? "").Trim().ToUpperInvariant();

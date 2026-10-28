@@ -41,6 +41,11 @@ internal static class UiProbe
         }
         return Search(node) ?? throw new Exception("UI control not found: " + typeof(T).Name);
     }
+    public static void MoveTo(Point point) { SetCursorPos((int)point.X, (int)point.Y); Pump(); }
+    public static void ClickAt(Point point) { MoveTo(point); MouseEvent(2); Pump(30); MouseEvent(4); Pump(); }
+    public static void Escape() { KeyEvent(0x1B, false); Pump(30); KeyEvent(0x1B, true); Pump(); }
+    public static void RightClickAt(Point point)
+    { MoveTo(point); MouseEvent(8); MouseEvent(16); Pump(); }
     public static void RightClick(FrameworkElement target)
     {
         var point = target.PointToScreen(new Point(target.ActualWidth / 2, target.ActualHeight / 2));

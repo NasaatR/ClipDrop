@@ -40,6 +40,7 @@
     <Button x:Name="DeleteSelectedButton" Style="{StaticResource DockButton}" Click="OnDeleteSelected" ToolTip="Move selected clips to Trash" AutomationProperties.Name="Delete selected clips"><views:AppIcon Kind="Trash"/></Button>
    </StackPanel>
    <Button x:Name="DoneButton" Style="{StaticResource DockButton}" Click="OnDone" ToolTip="Exit selection" AutomationProperties.Name="Exit selection" Visibility="Collapsed"><views:AppIcon Kind="Close"/></Button>
+   <Button x:Name="HideButton" Click="OnHide" Width="22" Height="24" MinHeight="0" Padding="2" Margin="5,0,0,0" Focusable="False" Background="Transparent" ToolTip="Hide dock · restore from tray" AutomationProperties.Name="Hide dock"><views:AppIcon Kind="Hide" Width="16" Height="16"/></Button>
   </StackPanel>
  </Border>
 </UserControl>

@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     {
         Session = session;
         InitializeComponent();
+        if (ContextMenu is not null) PopupDismiss.Attach(ContextMenu, this);
         _ = new WindowDrag(this, () => { Session.State.Settings.LibraryFollowsDock = false; UpdateAttachment(); }, QueueGeometrySave);
         ItemList.ItemsSource = _rows;
         Session.Changed += Refresh;

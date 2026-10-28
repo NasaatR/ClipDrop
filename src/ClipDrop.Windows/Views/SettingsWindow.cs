@@ -23,6 +23,7 @@ public sealed class SettingsWindow : Window
     private readonly Button _deleteStyle = new() { Content = "Delete", ToolTip = "Delete the selected saved style" };
     private readonly TextBlock _notice = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
     private bool _sync;
+    private bool _previewIdle;
     private StackPanel _section = null!;
     private WrapPanel? _fields;
     private readonly List<FrameworkElement> _fieldBoxes = new();
@@ -30,7 +31,7 @@ public sealed class SettingsWindow : Window
 
     public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot, DockCoordinator? docks = null)
     {
-        _settings = settings; _changed = () => { changed(); Preview.Apply(settings); }; _section = _panel;
+        _settings = settings; _changed = () => { changed(); Preview.Apply(settings); UpdatePreviewOpacity(); }; _section = _panel;
         Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Ink");
@@ -72,7 +73,11 @@ public sealed class SettingsWindow : Window
         var previewLayout = new StackPanel(); previewStage.Child = previewLayout;
         var previewLabel = new TextBlock { Text = "Your dock · updates instantly", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right };
         previewLabel.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); previewLayout.Children.Add(previewLabel);
+        var idlePreview = new CheckBox { Content = "Preview idle visibility", Margin = new Thickness(0, 4, 0, 0) };
+        idlePreview.Checked += (_, _) => { _previewIdle = true; UpdatePreviewOpacity(); };
+        idlePreview.Unchecked += (_, _) => { _previewIdle = false; UpdatePreviewOpacity(); };
         previewLayout.Children.Add(new Viewbox { Child = Preview, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Center, MaxHeight = 110 });
+        previewLayout.Children.Add(idlePreview);
         Preview.Apply(settings); Preview.SetPins(new[] { ShelfItem.FromText("Saved note"), ShelfItem.FromText("https://example.com") }, 2);
         _section.Children.Add(previewStage);
         _presets.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, "Style preset");
@@ -137,7 +142,8 @@ public sealed class SettingsWindow : Window
         Range("Spacing", () => settings.DockSpacing, 0, 12, value => settings.DockSpacing = value);
         Range("Corners", () => settings.DockRadius, 0, 24, value => settings.DockRadius = value);
         Range("Opacity", () => settings.DockOpacity, 0, 100, value => settings.DockOpacity = value);
-        Hint("Opacity affects the dock background. Buttons and content stay readable.");
+        Range("Idle visibility", () => settings.IdleDockOpacity, 5, 100, value => settings.IdleDockOpacity = value);
+        Hint("Idle visibility fades the whole dock away from the pointer. Hover, menus and transfers reveal it. Opacity changes only the background.");
         if (docks is not null)
         {
             Section("Screens"); var monitorSettings = new MonitorSettings(settings, docks, () => Change(false));
@@ -180,6 +186,7 @@ public sealed class SettingsWindow : Window
             WindowPlacement.Clamp(this); FitFields();
         };
     }
+    private void UpdatePreviewOpacity() => Preview.Opacity = _previewIdle ? Appearance.Bound(_settings.IdleDockOpacity, 5, 100, 20) / 100 : 1;
     public void SetStorageStatus(string text) => _notice.Text = text;
     private void ApplyStyle(AppearanceStyle style)
     {

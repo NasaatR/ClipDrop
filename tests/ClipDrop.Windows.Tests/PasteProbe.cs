@@ -17,6 +17,8 @@ using Forms = System.Windows.Forms;
 internal static class PasteProbe
 {
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
+    [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left, Top, Right, Bottom; }
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern uint SendInput(uint count, MouseInput[] inputs, int size);
     [StructLayout(LayoutKind.Sequential)] private struct MouseInput { public uint Type; public MouseUnion Data; }
@@ -95,7 +97,13 @@ internal static class PasteProbe
             check(GetForegroundWindow() == hwnd, "Dock click leaves the receiving editor focused");
             UiProbe.RightClick(button);
             check(button.ContextMenu?.IsOpen == true && File.ReadAllText(received).Replace("\r\n", "\n") == expected.Replace("\r\n", "\n"), "Right clicking a pin opens actions without triggering another paste");
-            button.ContextMenu!.IsOpen = false; UiProbe.Pump();
+            var opened = button.ContextMenu!;
+            check(opened.Items.OfType<MenuItem>().Count() == 4 && opened.Items.OfType<MenuItem>().First().Tag as string == "Trash", "Clip actions start with Delete in a compact four-row menu");
+            if (!GetWindowRect(hwnd, out var receiverRect)) throw new Exception("Receiver bounds unavailable");
+            UiProbe.ClickAt(new Point(receiverRect.Right - 30, receiverRect.Top + 80));
+            check(!opened.IsOpen && !PopupDismiss.HasObserver && GetForegroundWindow() == hwnd, "A real click in the external receiver dismisses the dock menu and releases its observer");
+            UiProbe.RightClick(button); UiProbe.Escape();
+            check(button.ContextMenu?.IsOpen != true && !PopupDismiss.HasObserver, "Escape closes the native dock context menu");
             check(dock.Session.State.Items.Contains(keptClip) && dock.Session.State.Trash.All(t => t.Item.Id != keptClip.Id), "A kept clip remains after actual paste into the external receiver");
             var once = ShelfItem.FromText(" — sent once"); dock.Session.Add(new[] { once }); UiProbe.Pump();
             var onceButton = UiProbe.Find<Button>(dock.Pins, b => b.DataContext is ItemRow r && r.Item.Id == once.Id && b.Tag as string != "Keep");

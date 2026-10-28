@@ -15,7 +15,7 @@ namespace ClipDrop.Windows.Views;
 // The exact same dock surface renders in the floating window and Settings preview.
 public partial class DockStrip : UserControl
 {
-    public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded, KeepRequested, SelectRequested, DeleteSelectedRequested, DoneRequested;
+    public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded, KeepRequested, SelectRequested, DeleteSelectedRequested, DoneRequested, HideRequested;
     public event MouseButtonEventHandler? PinDown, PinUp, PinMenu;
     public event MouseEventHandler? PinMove;
     private readonly ObservableCollection<ItemRow> _rows = new();
@@ -108,6 +108,7 @@ public partial class DockStrip : UserControl
     {
         if (FindScroll(PinnedItems) is { ScrollableWidth: > 0 } scroll) { scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset - Math.Sign(e.Delta) * _slot * 2); e.Handled = true; }
     }
+    private void OnHide(object sender, RoutedEventArgs e) => HideRequested?.Invoke(sender, e);
     private void OnKeep(object sender, RoutedEventArgs e) => KeepRequested?.Invoke(sender, e);
     private void OnSelect(object sender, RoutedEventArgs e) => SelectRequested?.Invoke(sender, e);
     private void OnDeleteSelected(object sender, RoutedEventArgs e) => DeleteSelectedRequested?.Invoke(sender, e);

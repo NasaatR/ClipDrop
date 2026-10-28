@@ -90,7 +90,7 @@ public sealed class DockCoordinator : IDisposable
                 view.Assignment = assignment;
                 view.RefreshDock(); Place(view);
                 var show = !_startHidden && (assignment.Layout.Visible || assignment.Temporary && oldVisible);
-                if (show) view.ShowDock(); else view.Hide();
+                if (show) view.ShowDock(); else view.HideDock();
                 Place(view);
             }
             if (initial || _startHidden || settings.Docks.Count != previousRecords) _session.Change(false);
@@ -142,8 +142,9 @@ public sealed class DockCoordinator : IDisposable
     public void ShowTarget() => Target()?.ShowDock();
     public void ShowLibrary() { var view = Target(); if (view is not null) ShowLibrary(view); else _library.ShowShelf(); }
     public void ShowLibrary(DockWindow view) { _library.AttachDock(view); _library.ShowShelf(); }
+    public void ToggleAll() { if (_views.Values.Any(v => v.IsShown)) HideAll(); else ShowAll(); }
     public void ShowAll() { foreach (var view in _views.Values) view.ShowDock(); }
-    public void HideAll() { foreach (var view in _views.Values) view.Hide(); }
+    public void HideAll() { foreach (var view in _views.Values) view.HideDock(); }
     public void Dispose()
     {
         if (_disposed) return; _disposed = true;
