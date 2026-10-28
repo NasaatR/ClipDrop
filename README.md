@@ -19,14 +19,19 @@ These are unsigned previews; Windows may show a publisher/reputation prompt.
 Only download from this repository.
 
 The compact dock opens first. Click **Save** to capture the clipboard, or drop
-content onto it. New captures become pins. Click a pin to request paste into your
+content onto it. New captures appear in the dock. Click a clip to request paste into your
 previous app, or drag it out. **Library** opens the full searchable collection;
 Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
-Transfers copy; originals and cards remain. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
+Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.6.0
+## Features in 0.7.0
 
+- One-use clips: dispatched paste / accepted outgoing Copy drop moves unprotected cards
+  to persistent Trash; a corner pin keeps a clip after use. Originals stay intact.
+- Select mode, Ctrl/Shift selection, one-action batch removal and group context menus.
+- Drag inside a linked dock to reorder one clip or a selected group, with an insertion
+  line and edge scrolling. Drag out to transfer. Reordering never consumes clips.
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
 - Drag either surface by any empty background; buttons, cards, editors and resizing keep their gestures.
@@ -60,6 +65,20 @@ from Trash, including after restarting.
   without recording item contents.
 - Local operation; no accounts, subscription, telemetry, clipboard monitoring,
   app-initiated network requests or cloud storage.
+
+## Temporary clips and selection
+
+- Click a clip to paste. A dispatched request moves it into Trash; click its corner
+  pin first to keep it after use. The pin appears on hover and stays visible when on.
+- Copy, a failed/cancelled transfer and clipboard-only fallback keep the clip.
+- **Select clips** enters selection mode: plain clicks toggle clips. Ctrl toggles
+  individual members and Shift selects a range. Use the count/Trash action to remove
+  the group; **Exit selection** returns to click-paste. Right-click acts on the group.
+- Drag a clip/group inside a dock to change its position; the line shows where it
+  will land. All linked docks share the order. An external accepted drop sends
+  unprotected members to Trash. Use Esc during dragging to cancel.
+- Manual deletion can remove a kept clip too. **Library → Trash → Restore** or
+  Ctrl+Z in Library recovers a batch, including after restart, with protection intact.
 
 ## Shortcuts
 
@@ -126,10 +145,11 @@ installation/uninstallation before creating a new preview release. Check the
 Native tests verify native format bytes through restart, text without file output, persistent Trash, group editing, the live preview, and drag dock backgrounds without activation, exercise attached/detached Library placement and style save/restore, and deliver a physical dock click into a separate Windows editor process.
 They do not automate Photoshop/Figma/browser applications. The dock reports
 "Paste requested" because input submission cannot prove that every app consumed
-the content. It leaves the clipboard ready for manual Ctrl+V and never restores it
+the content. The request archives one-use clips into recoverable Trash. OLE cleanup
+uses the target’s Copy acknowledgement; it does not delete source files. It leaves the clipboard ready for manual Ctrl+V and never restores it
 on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
 
-Metadata schema 3 migrates schema-1/2 libraries and keeps an immutable `shelf.json.schema-<old>-before-v3.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
+Metadata schema 4 migrates schema-1/2/3 libraries and keeps an immutable `shelf.json.schema-<old>-before-v4.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals, clear

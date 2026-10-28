@@ -182,7 +182,7 @@ public partial class DockWindow : Window
         if (Session.OwnDrag(e.Data) is not null)
         {
             var index = Strip.InsertionAt(e.GetPosition(Strip.PinnedItems));
-            Strip.ShowInsertion(index); ApplySurface(false); e.Effects = index is not null ? DragDropEffects.Copy : DragDropEffects.None;
+            Strip.ShowInsertion(index); ApplySurface(index is not null && Strip.PinnedItems.Items.Count == 0); e.Effects = index is not null ? DragDropEffects.Copy : DragDropEffects.None;
         }
         else { var supported = TransferService.Supports(e.Data); ApplySurface(supported); e.Effects = supported ? DragDropEffects.Copy : DragDropEffects.None; }
         e.Handled = true;

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.0 — 2026-10-28
+
+- Dispatched paste and accepted external Copy drops archive unprotected clips to
+  persistent Trash. Copy, cancellation, failed input/focus and internal reorder keep
+  clips. No originals or managed payload files are deleted.
+- Per-clip corner keep pin and shared Library context action; protection survives
+  restart and restore. Dock membership remains a separate property.
+- Transient per-view select mode, Ctrl/Shift range/toggle selection, group context
+  actions and one-batch deletion with a visible count/exit control.
+- Native OLE internal single/group reorder, insertion line, edge scrolling and
+  shared order across mirrored docks. Active session tokens prevent internal drops
+  from triggering use cleanup. Library clips can be inserted into the dock.
+- Schema 4 with immutable migration backups from 1/2/3; schema-3 order and monitor
+  records are retained. Older releases refuse the new schema.
+- Updated incremental roadmap; physical monitor feedback and named/recently closed
+  sets remain separate work.
+
 ## 0.6.0 — 2026-10-27
 
 - Emoji interface icons with installed Windows font colors; managed per-role PNG

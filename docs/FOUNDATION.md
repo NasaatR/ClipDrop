@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.6.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.7.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -235,3 +235,27 @@ before saving, in addition to the rotating .bak. Old schema-2 builds refuse it.
 Sources: Microsoft EnumDisplayDevicesW/GetDpiForWindow and OpenType COLR/CPAL
 specifications. Emoji.Wpf was inspected as an alternative; its general Unicode
 shaping/font parser/shader dependencies were not adopted for 22 fixed roles.
+
+
+## 0.7.0: recoverable one-use workflow
+
+The user’s 2026-10-28 request supersedes historical keep-after-drag behavior.
+Use cleanup follows a dispatched paste / target-acknowledged OLE Copy, and only
+moves unprotected references to persistent Trash. Copies, failed/cancelled actions
+and internal reorder keep clips. `KeepAfterUse` is separate from `IsPinned` dock
+membership. Library/group menus and the hover-visible/persistent-on corner pin
+operate on the same flag. Original files and managed clipboard/image blobs remain.
+
+Selection is transient and per dock view, with plain-click select mode and
+Ctrl/Shift range/toggle alternatives. A group is removed as one undoable batch.
+Internal OLE uses one session-owned active token and an acknowledgement flag;
+returning Copy for reorder does not invoke use cleanup. Drop position is a slot
+in the original visible order; removal of selected predecessors is accounted for.
+Group order, per-clip flags and new captures’ append-right behavior persist.
+
+Schema 4 preserves protection against older builds ignoring and overwriting it.
+Migrate 1/2/3 with an immutable before-v4 copy; only 1/2 receive the old order
+migration. Primary API basis: Microsoft WPF DoDragDrop / Drop documentation.
+An OLE effect acknowledges a target operation; SendInput acknowledges submitted
+input. Neither proves that another application saved a document. Recoverable
+Trash and unchanged originals are the recovery route.

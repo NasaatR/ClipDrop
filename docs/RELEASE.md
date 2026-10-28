@@ -1,14 +1,14 @@
-Emoji/PNG icons, stable right-appended clips and linked monitor docks (preview).
+One-use clips, keep pins, batch selection and drag reordering.
 
-- Interface icons are emoji with the installed Windows font colors. Settings → Icons replaces any role with a local PNG, previews it live or restores emoji. Managed copies survive source moves and are included in saved styles. Thumbnail previews remain real images/video frames.
-- New saves and re-pins append on the right. Duplicates stay put. Existing buttons are reused; a virtualized horizontal row reveals new pins and supports wheel scrolling.
-- Settings → Screens: choose the main display, enable Duplicate dock on selected displays and select screens. One shared collection; independent positions and visibility. Display map, Show all / Hide all, reconnect fallback and one Library/Settings instance.
-- Ctrl+Alt+Space targets the external app's screen, with pointer fallback. Tray offers Show all / Hide all. Drag stays on an assigned display; change screen in Settings.
-- Unchanged appearance resources are reused; recycled thumbnails reset correctly. Monitor events are debounced, closed views release session subscriptions and monitor records survive disconnect.
-- ROADMAP separates hardware stabilization, saved/recently closed panels, backup/version work and opt-in clipboard history. These later features are not bundled into this update.
+- After a dispatched paste or accepted external Copy drop, unprotected clips move straight into persistent Trash. The corner 📌 keeps a clip after use. It appears on hover and stays visible while on; Library/group menus expose the same action.
+- Copy, cancelled/Esc drags, failed paste input/focus and clipboard-only fallback keep clips. Originals, clipboard blobs and image assets are never deleted by use cleanup.
+- Select clips: plain clicks choose items without insertion. Ctrl toggles members, Shift selects a range. A count, Trash action and Exit selection make batch removal available without shortcuts. Right-click uses the selected group.
+- Drag a clip/group within any linked dock to reorder. The insertion line and edge scrolling guide placement. Internal reorder keeps clips and shares the order across mirrors; new captures still append right. Library clips can be inserted into the dock.
+- Manual deletion can remove protected clips too. Library → Trash → Restore or Ctrl+Z restores a deletion batch and protection, including after restart.
+- Updated roadmap separates this workflow from physical monitor feedback, named/recently closed panels and later backup/history features.
 
-The installer upgrades the existing installation and keeps data. Quit from the tray first. Runtime included; unsigned Windows x64 preview.
+The installer upgrades the existing installation and preserves data. Quit from the tray first. Runtime included; unsigned Windows x64 preview.
 
-Data upgrades from schema 1/2 to 3. An immutable `shelf.json.schema-<old>-before-v3.bak` is kept before the first save, alongside the usual rotating backup. Older releases explicitly refuse the new schema. Original files and clipboard formats stay intact.
+Schema 4 migrates data from 1/2/3, retaining monitor layouts and order. It keeps an immutable `shelf.json.schema-<old>-before-v4.bak` before the first save. Older releases refuse the new schema.
 
-Monitor mirroring is a preview: core checks simulate negative origins/scaling/reconnect, and Windows checks create two real WPF docks on logical display assignments. Physical dual-monitor mixed-DPI, sleep and reconnect acceptance remains open. Video support continues to depend on installed Windows providers/codecs. PNG icons: up to 5 MB / 2048 × 2048. No network, new codec bundle, subscription or automatic clipboard monitoring.
+“Paste requested” means the input was dispatched; OLE cleanup uses the target's Copy acknowledgement. Neither proves that the destination saved a document. ClipDrop retains recoverable Trash and all originals. Monitor mirroring remains a preview pending physical mixed-DPI hardware feedback. No clipboard monitoring, accounts, network or codec bundle is added.

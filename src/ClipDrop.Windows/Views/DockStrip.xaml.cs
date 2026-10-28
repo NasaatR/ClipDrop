@@ -77,6 +77,11 @@ public partial class DockStrip : UserControl
     }
     public int? InsertionAt(Point point)
     {
+        if (_rows.Count == 0)
+        {
+            var hint = PinnedItems.TranslatePoint(point, EmptyHint);
+            return hint.X >= -8 && hint.X <= EmptyHint.ActualWidth + 8 && hint.Y >= -12 && hint.Y <= EmptyHint.ActualHeight + 12 ? 0 : null;
+        }
         if (point.X < 0 || point.Y < 0 || point.X > PinnedItems.ActualWidth || point.Y > PinnedItems.ActualHeight) return null;
         if (FindScroll(PinnedItems) is { ScrollableWidth: > 0 } scroll && Environment.TickCount64 - _lastScroll > 90)
         {
@@ -90,7 +95,8 @@ public partial class DockStrip : UserControl
             var local = PinnedItems.TranslatePoint(point, container);
             return _rows.IndexOf(row) + (local.X >= container.ActualWidth / 2 ? 1 : 0);
         }
-        return point.X < _slot / 2 ? 0 : _rows.Count;
+        var offset = FindScroll(PinnedItems)?.HorizontalOffset ?? 0;
+        return Math.Clamp((int)Math.Round((offset + point.X) / _slot), 0, _rows.Count);
     }
     private static ScrollViewer? FindScroll(DependencyObject node)
     {

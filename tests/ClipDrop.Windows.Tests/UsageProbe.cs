@@ -56,8 +56,8 @@ internal static class UsageProbe
         var dropArea = new Border { Background = Brushes.SlateGray, Child = new TextBlock { Text = "Native OLE copy target", Margin = new Thickness(20) } };
         var receiver = new Window { Title = "ClipDrop OLE probe", Content = dropArea, Width = 280, Height = 180, AllowDrop = true, WindowStartupLocation = WindowStartupLocation.Manual };
         var area = WindowPlacement.WorkArea(dock); receiver.Left = area.Right - 300; receiver.Top = area.Top + 250;
-        receiver.DragOver += (_, e) => { e.Effects = e.Data.GetDataPresent(DataFormats.UnicodeText) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; };
-        receiver.Drop += (_, e) => { received = e.Data.GetData(DataFormats.UnicodeText) as string ?? ""; dropCount++; e.Effects = DragDropEffects.Copy; e.Handled = true; };
+        receiver.DragOver += (_, e) => { e.Effects = (e.Data.GetDataPresent(DataFormats.UnicodeText) || e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; };
+        receiver.Drop += (_, e) => { received = e.Data.GetDataPresent(DataFormats.FileDrop) ? ((string[])e.Data.GetData(DataFormats.FileDrop)).Single() : e.Data.GetData(DataFormats.UnicodeText) as string ?? ""; dropCount++; e.Effects = DragDropEffects.Copy; e.Handled = true; };
         receiver.Show(); receiver.Activate(); UiProbe.Pump();
         var destination = dropArea.PointToScreen(new Point(dropArea.ActualWidth / 2, dropArea.ActualHeight / 2));
         try
@@ -68,6 +68,11 @@ internal static class UsageProbe
             check(received == b.Content && state.Items.Contains(b), "An accepted external drag keeps a protected clip");
             var count = dropCount; UiProbe.DragTo(Pin(dock, d), destination, true);
             check(dropCount == count && state.Items.Contains(d), "Esc cancels a native OLE drag without consuming the clip");
+            var filePath = Path.Combine(store.Root, "original.txt"); File.WriteAllText(filePath, "original file bytes");
+            var fileClip = ShelfItem.FromPath(filePath); session.Add(new[] { fileClip }); UiProbe.Pump();
+            UiProbe.DragTo(Pin(dock, fileClip), destination);
+            check(received == filePath && state.Trash.Any(t => t.Item.Id == fileClip.Id) && File.ReadAllText(filePath) == "original file bytes",
+                "Native file drop offers the original TXT file and archives only its card");
             var e = ShelfItem.FromText("Group E"); var f = ShelfItem.FromText("Group F"); var g = ShelfItem.FromText("Group G"); session.Add(new[] { e, f, g }); UiProbe.Pump();
             var ePin = Pin(dock, e); UiProbe.Hover(ePin);
             var keep = UiProbe.Find<Button>(dock.Pins, button => button.Tag as string == "Keep" && button.DataContext is ItemRow row && row.Item.Id == e.Id);
@@ -94,6 +99,10 @@ internal static class UsageProbe
             session.UndoRemove(); check(state.Items.Contains(d) && state.Items.Contains(e) && e.KeepAfterUse, "Undo restores the batch and its protection flags");
             session.TrySave(); var loaded = new StateStore(store.Root).Load();
             check(loaded.Items.Single(i => i.Id == e.Id).KeepAfterUse, "Corner protection survives saving and restart");
+            foreach (var item in state.Items) item.IsPinned = false; session.Change(); UiProbe.Pump();
+            var hint = (TextBlock)strip.FindName("EmptyHint");
+            var atHint = hint.TranslatePoint(new Point(hint.ActualWidth / 2, hint.ActualHeight / 2), strip.PinnedItems);
+            check(strip.InsertionAt(atHint) == 0, "An empty dock exposes its visible drop hint as insertion slot zero");
         }
         finally { dock.DisposeView(); mirror.DisposeView(); receiver.Close(); IconAssets.Initialize(root); originalDock.ShowDock(); library.ShowShelf(); }
     }
