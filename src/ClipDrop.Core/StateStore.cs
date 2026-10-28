@@ -92,7 +92,7 @@ public sealed class StateStore
         originalVersion = state.SchemaVersion;
         if (state.SchemaVersion == 1) state.SchemaVersion = ShelfState.CurrentSchema;
         else if (!document.RootElement.TryGetProperty("Trash", out _)) throw new InvalidDataException("The saved trash structure is incomplete.");
-        if (originalVersion is 1 or 2) state.SchemaVersion = ShelfState.CurrentSchema;
+        if (originalVersion is 1 or 2 or 3) state.SchemaVersion = ShelfState.CurrentSchema;
         if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null || state.Trash is null)
             throw new InvalidDataException("Invalid shelf structure.");
         if (state.Trash.Any(t => t is null || t.Item is null || !Guid.TryParse(t.Batch, out _))) throw new InvalidDataException("Invalid trash entry.");
@@ -131,7 +131,7 @@ public sealed class StateStore
             // Keep an immutable pre-migration copy; ordinary .bak rotates on every save.
             if (_migrationVersion is int old && _migrationSource is string source)
             {
-                var backup = _path + ".schema-" + old + "-before-v3.bak";
+                var backup = _path + ".schema-" + old + "-before-v" + ShelfState.CurrentSchema + ".bak";
                 if (!File.Exists(backup)) File.Copy(source, backup, false);
                 _migrationVersion = null; _migrationSource = null;
             }

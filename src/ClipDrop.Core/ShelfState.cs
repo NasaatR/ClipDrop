@@ -15,6 +15,7 @@ public sealed class ShelfItem
     public string? FilePath { get; set; }
     public bool OwnedAsset { get; set; }
     public bool IsPinned { get; set; }
+    public bool KeepAfterUse { get; set; }
     public long PinOrder { get; set; }
     public string Group { get; set; } = "";
     public ClipboardSnapshot? Clipboard { get; set; }
@@ -73,7 +74,7 @@ public sealed class ShelfSettings : AppearanceStyle
 
 public sealed class ShelfState
 {
-    public const int CurrentSchema = 3;
+    public const int CurrentSchema = 4;
     public int SchemaVersion { get; set; } = CurrentSchema;
     public List<ShelfItem> Items { get; set; } = new();
     public List<TrashEntry> Trash { get; set; } = new();

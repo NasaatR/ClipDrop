@@ -41,13 +41,13 @@ internal static class LayoutChecks
         old.Settings.DockLeft = 300; old.Settings.DockOpacity = 0;
         var original = JsonSerializer.SerializeToUtf8Bytes(old); var path = Path.Combine(migrationRoot, "shelf.json"); File.WriteAllBytes(path, original);
         var store = new StateStore(migrationRoot); var migrated = store.Load();
-        check(migrated.SchemaVersion == 3 && migrated.Items.OrderBy(i => i.PinOrder).First().Content == "Recent" && migrated.Settings.DockOpacity == 0,
+        check(migrated.SchemaVersion == ShelfState.CurrentSchema && migrated.Items.OrderBy(i => i.PinOrder).First().Content == "Recent" && migrated.Settings.DockOpacity == 0,
             "Schema-2 upgrade preserves existing visual pin order and zero-valued preferences");
         var added = ShelfItem.FromText("Append right"); added.IsPinned = true; added.PinOrder = PinOrdering.Next(migrated); migrated.Items.Add(added);
         check(migrated.Items.OrderBy(i => i.PinOrder).Last().Id == added.Id, "A newly saved pin appends after migrated pins");
         DockPlanning.Plan(migrated.Settings, new[] { a, b }); migrated.Settings.Docks[1].OffsetX = 42;
         migrated.Settings.PngIcons["Save"] = new string('A', 64); store.Save(migrated); store.Save(migrated);
-        check(File.ReadAllBytes(path + ".schema-2-before-v3.bak").SequenceEqual(original), "Repeated saves preserve the immutable original schema-2 migration backup");
+        check(File.ReadAllBytes(path + ".schema-2-before-v" + ShelfState.CurrentSchema + ".bak").SequenceEqual(original), "Repeated saves preserve the immutable original schema-2 migration backup");
         var reloaded = new StateStore(migrationRoot).Load();
         check(reloaded.Settings.Docks[1].OffsetX == 42 && reloaded.Settings.PngIcons["Save"] == new string('A', 64) && reloaded.Items.Last().PinOrder == added.PinOrder,
             "Monitor offsets, managed PNG references and explicit pin order survive restart");

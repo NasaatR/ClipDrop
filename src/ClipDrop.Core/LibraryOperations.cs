@@ -15,6 +15,11 @@ public static class LibraryOperations
         foreach (var item in items) { state.Items.Remove(item); state.Trash.Add(new TrashEntry { Item = item, Batch = batch, DeletedUtc = now }); }
         return items.Length;
     }
+    public static int ArchiveUsed(ShelfState state, IEnumerable<string> ids)
+    {
+        var requested = ids.ToHashSet();
+        return Remove(state, state.Items.Where(i => requested.Contains(i.Id) && !i.KeepAfterUse).Select(i => i.Id));
+    }
     public static int Restore(ShelfState state, IEnumerable<string> ids)
     {
         var selected = ids.ToHashSet(); var entries = state.Trash.Where(t => selected.Contains(t.Item.Id)).ToArray();

@@ -15,17 +15,20 @@ namespace ClipDrop.Windows.Views;
 // The exact same dock surface renders in the floating window and Settings preview.
 public partial class DockStrip : UserControl
 {
-    public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded;
+    public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded, KeepRequested, SelectRequested, DeleteSelectedRequested, DoneRequested;
     public event MouseButtonEventHandler? PinDown, PinUp, PinMenu;
     public event MouseEventHandler? PinMove;
     private readonly ObservableCollection<ItemRow> _rows = new();
     private double _slot = 40;
+    private ItemRow? _cue;
+    private long _lastScroll;
     public DockStrip() { InitializeComponent(); PinnedItems.ItemsSource = _rows; }
     public void Apply(ShelfSettings settings)
     {
         Appearance.Apply(settings, this, true);
         Resources["DockSize"] = Appearance.Bound(settings.DockButtonSize, 30, 48, 36);
         _slot = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
+        Resources["DockSlot"] = _slot;
         Resources["DockGap"] = new Thickness(Appearance.Bound(settings.DockSpacing, 0, 12, 4) / 2);
         Resources["DockRadius"] = new CornerRadius(Appearance.Bound(settings.DockRadius, 0, 24, 11));
         var bg = ((SolidColorBrush)FindResource("Surface")).Color;
@@ -56,16 +59,53 @@ public partial class DockStrip : UserControl
         OverflowButton.Visibility = all.Length > capacity ? Visibility.Visible : Visibility.Collapsed;
         OverflowButton.Content = "+" + (all.Length - capacity);
     }
+    public void SetSelection(IReadOnlySet<string> selected, bool mode)
+    {
+        foreach (var row in _rows) row.Selected = selected.Contains(row.Item.Id);
+        SelectedCount.Text = selected.Count.ToString();
+        SelectionActions.Visibility = selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        DoneButton.Visibility = mode || selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SelectButton.SetResourceReference(BackgroundProperty, mode ? "Selected" : "Raised");
+    }
+    public void ShowInsertion(int? index)
+    {
+        var row = index is int position && _rows.Count > 0 ? _rows[Math.Clamp(position, 0, _rows.Count - 1)] : null;
+        var mark = index >= _rows.Count ? 2 : 1;
+        if (_cue == row && (row is null || row.DropMark == mark)) return;
+        if (_cue is not null) _cue.DropMark = 0;
+        _cue = row; if (row is not null) row.DropMark = mark;
+    }
+    public int? InsertionAt(Point point)
+    {
+        if (point.X < 0 || point.Y < 0 || point.X > PinnedItems.ActualWidth || point.Y > PinnedItems.ActualHeight) return null;
+        if (FindScroll(PinnedItems) is { ScrollableWidth: > 0 } scroll && Environment.TickCount64 - _lastScroll > 90)
+        {
+            var direction = point.X < 18 ? -1 : point.X > PinnedItems.ActualWidth - 18 ? 1 : 0;
+            if (direction != 0) { scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset + direction * _slot); _lastScroll = Environment.TickCount64; }
+        }
+        var hit = PinnedItems.InputHitTest(point) as DependencyObject;
+        while (hit is not null && hit is not ListBoxItem) hit = VisualTreeHelper.GetParent(hit);
+        if (hit is ListBoxItem { DataContext: ItemRow row } container)
+        {
+            var local = PinnedItems.TranslatePoint(point, container);
+            return _rows.IndexOf(row) + (local.X >= container.ActualWidth / 2 ? 1 : 0);
+        }
+        return point.X < _slot / 2 ? 0 : _rows.Count;
+    }
+    private static ScrollViewer? FindScroll(DependencyObject node)
+    {
+        if (node is ScrollViewer viewer) return viewer;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) if (FindScroll(VisualTreeHelper.GetChild(node, i)) is ScrollViewer child) return child;
+        return null;
+    }
     private void OnPinWheel(object sender, MouseWheelEventArgs e)
     {
-        static ScrollViewer? Find(DependencyObject node)
-        {
-            if (node is ScrollViewer viewer) return viewer;
-            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) if (Find(VisualTreeHelper.GetChild(node, i)) is ScrollViewer child) return child;
-            return null;
-        }
-        if (Find(PinnedItems) is { ScrollableWidth: > 0 } scroll) { scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset - Math.Sign(e.Delta) * _slot * 2); e.Handled = true; }
+        if (FindScroll(PinnedItems) is { ScrollableWidth: > 0 } scroll) { scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset - Math.Sign(e.Delta) * _slot * 2); e.Handled = true; }
     }
+    private void OnKeep(object sender, RoutedEventArgs e) => KeepRequested?.Invoke(sender, e);
+    private void OnSelect(object sender, RoutedEventArgs e) => SelectRequested?.Invoke(sender, e);
+    private void OnDeleteSelected(object sender, RoutedEventArgs e) => DeleteSelectedRequested?.Invoke(sender, e);
+    private void OnDone(object sender, RoutedEventArgs e) => DoneRequested?.Invoke(sender, e);
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(sender, e);
     private void OnSettings(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke(sender, e);
     private void OnLibrary(object sender, RoutedEventArgs e) => LibraryRequested?.Invoke(sender, e);

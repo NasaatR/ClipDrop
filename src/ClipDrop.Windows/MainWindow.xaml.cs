@@ -149,10 +149,10 @@ public partial class MainWindow : Window
         var selected = Selected();
         CopyButton.IsEnabled = PinButton.IsEnabled = RemoveButton.IsEnabled = PasteButton.IsEnabled = selected.Count > 0;
         var unpin = selected.Count > 0 && selected.All(i => i.IsPinned);
-        PinButton.ToolTip = unpin ? "Unpin selection" : "Pin selection";
+        PinButton.ToolTip = unpin ? "Remove selection from dock" : "Add selection to dock";
         PinActionIcon.Opacity = unpin ? 1 : .65;
         RestoreButton.IsEnabled = selected.Count > 0; EditButton.IsEnabled = selected.Count == 1;
-        System.Windows.Automation.AutomationProperties.SetName(PinButton, unpin ? "Unpin selection" : "Pin selection");
+        System.Windows.Automation.AutomationProperties.SetName(PinButton, unpin ? "Remove selection from dock" : "Add selection to dock");
     }
     private void OnSelection(object sender, SelectionChangedEventArgs e) => UpdateSelection();
     private void OnSearch(object sender, TextChangedEventArgs e) => Refresh();
@@ -214,8 +214,9 @@ public partial class MainWindow : Window
         try
         {
             _dragging = true;
-            var result = DragDrop.DoDragDrop(ItemList, Session.Transfer.BuildDrag(selected), DragDropEffects.Copy);
-            Session.Notify(result == DragDropEffects.None ? "Transfer cancelled · items kept" : "Transfer finished · items kept");
+            using var transfer = Session.BeginDrag(selected);
+            var result = DragDrop.DoDragDrop(ItemList, transfer.Data, DragDropEffects.Copy);
+            Session.CompleteDrag(transfer, result);
         }
         catch (Exception ex) { Session.Error("Drag", ex); }
         finally { _dragging = false; DropCue.Visibility = Visibility.Collapsed; }

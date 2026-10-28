@@ -114,6 +114,7 @@ internal static class Program
             stylePicker.IsDropDownOpen = false;
             settings.Close();
             PanelProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
+            UsageProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MediaProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             Render(dock, Path.Combine(output, "dock-video.png"));
             Render(window, Path.Combine(output, "library-video.png"));

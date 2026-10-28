@@ -18,7 +18,8 @@ internal static class UiProbe
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern uint SendInput(uint count, Input[] inputs, int size);
     [StructLayout(LayoutKind.Sequential)] private struct Input { public uint Type; public Union Data; }
-    [StructLayout(LayoutKind.Explicit)] private struct Union { [FieldOffset(0)] public Mouse Mouse; }
+    [StructLayout(LayoutKind.Explicit)] private struct Union { [FieldOffset(0)] public Mouse Mouse; [FieldOffset(0)] public KeyInput Keyboard; }
+    [StructLayout(LayoutKind.Sequential)] private struct KeyInput { public ushort Key, Scan; public uint Flags, Time; public UIntPtr Extra; }
     [StructLayout(LayoutKind.Sequential)] private struct Mouse { public int X, Y; public uint Data, Flags, Time; public UIntPtr Extra; }
     public static void Pump(int ms = 80)
     {
@@ -47,6 +48,55 @@ internal static class UiProbe
         var clicks = new[] { new Input { Type = 0, Data = new Union { Mouse = new Mouse { Flags = 8 } } }, new Input { Type = 0, Data = new Union { Mouse = new Mouse { Flags = 16 } } } };
         if (SendInput(2, clicks, Marshal.SizeOf<Input>()) != 2) throw new Exception("Right mouse input blocked");
         Pump();
+    }
+    private static void MouseEvent(uint flags)
+    {
+        if (SendInput(1, new[] { new Input { Data = new Union { Mouse = new Mouse { Flags = flags } } } }, Marshal.SizeOf<Input>()) != 1) throw new Exception("Mouse input blocked");
+    }
+    private static void KeyEvent(ushort key, bool up)
+    {
+        if (SendInput(1, new[] { new Input { Type = 1, Data = new Union { Keyboard = new KeyInput { Key = key, Flags = up ? 2u : 0 } } } }, Marshal.SizeOf<Input>()) != 1) throw new Exception("Key input blocked");
+    }
+    public static void Hover(FrameworkElement target)
+    {
+        var point = target.PointToScreen(new Point(target.ActualWidth / 2, target.ActualHeight / 2));
+        SetCursorPos((int)point.X, (int)point.Y); Pump();
+    }
+    public static void Click(FrameworkElement target, ModifierKeys modifiers = ModifierKeys.None)
+    {
+        Hover(target);
+        try
+        {
+            if (modifiers.HasFlag(ModifierKeys.Control)) KeyEvent(0x11, false);
+            if (modifiers.HasFlag(ModifierKeys.Shift)) KeyEvent(0x10, false);
+            MouseEvent(2); Pump(30); MouseEvent(4); Pump();
+        }
+        finally
+        {
+            if (modifiers.HasFlag(ModifierKeys.Shift)) KeyEvent(0x10, true);
+            if (modifiers.HasFlag(ModifierKeys.Control)) KeyEvent(0x11, true);
+        }
+    }
+    public static void DragTo(FrameworkElement source, Point destination, bool cancel = false)
+    {
+        var start = source.PointToScreen(new Point(source.ActualWidth / 2, source.ActualHeight / 2));
+        Exception? error = null; var done = false;
+        var worker = new Thread(() => {
+            try
+            {
+                SetCursorPos((int)start.X, (int)start.Y); Thread.Sleep(80); MouseEvent(2); Thread.Sleep(80);
+                for (var step = 1; step <= 12; step++)
+                { SetCursorPos((int)(start.X + (destination.X - start.X) * step / 12), (int)(start.Y + (destination.Y - start.Y) * step / 12)); Thread.Sleep(45); }
+                Thread.Sleep(100);
+                if (cancel) { KeyEvent(0x1B, false); KeyEvent(0x1B, true); }
+            }
+            catch (Exception ex) { error = ex; }
+            finally { try { MouseEvent(4); } catch (Exception ex) { error ??= ex; } System.Threading.Volatile.Write(ref done, true); }
+        }) { IsBackground = true };
+        worker.Start(); var watch = Stopwatch.StartNew();
+        while (!System.Threading.Volatile.Read(ref done) && watch.ElapsedMilliseconds < 8000) Pump(20);
+        if (!done) throw new Exception("Native drag injection timed out");
+        Pump(200); if (error is not null) throw error;
     }
     public static void ContextActions(MainWindow library, DockWindow dock, string output, Action<bool, string> check, Action<FrameworkElement, string> render)
     {

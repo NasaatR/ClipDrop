@@ -1,6 +1,6 @@
 # ClipDrop — incremental delivery plan
 
-Updated 2026-10-27. Windows first. Each stage ends with a runnable installer,
+Updated 2026-10-28. Windows first. Each stage ends with a runnable installer,
 portable package, targeted checks and user feedback before expanding its scope.
 Main is the working branch. This plan supersedes the older future-stage lists
 in FOUNDATION.md; those sections also document historical releases.
@@ -10,6 +10,7 @@ in FOUNDATION.md; those sections also document historical releases.
 | 1 · Daily actions | Per-clip actions, modern compact surfaces | Delivered in 0.5; emoji/PNG revised in 0.6 |
 | 2 · Basic video | Background video thumbnails, explicit Play/Pause, seek, muted start, open-in-app fallback | Delivered in 0.5 |
 | 3a · Icons and linked monitors | Emoji/PNG roles, append-right pins, one linked dock per selected screen | 0.6 preview; automated acceptance below |
+| 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Current 0.7 iteration |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4 · Saved panels | Named panel sets, separate pin membership, recently closed and restore | After mirrored docks are reliable |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
@@ -116,6 +117,42 @@ WPF dock HWNDs against logical monitor assignments on the runner's one display,
 exercise shared changes/Trash, separate visibility, shortcut routing and anchor
 subscription cleanup, and verify the native placement boundary. These do not
 prove physical two-screen/DPI behavior; the table above needs a real acceptance pass.
+
+## Stage 3c: temporary shelf workflow — 0.7
+
+User priority on 2026-10-28 supersedes the old "always keep cards after drag" rule.
+The clipboard/original file payload remains copy-only; only ClipDrop references
+move into its recoverable Trash.
+
+1. A dispatched click-paste or accepted external OLE Copy drop archives unprotected
+   clips immediately as one persistent deletion batch. A paste request is input
+   submission, not proof the destination saved its document. A target's OLE Copy
+   result is its acknowledgement. Do not infer acceptance from pointer release.
+2. Copy, clipboard-only paste fallback, focus/input failure, Esc/cancel, failed drag
+   construction and internal drag keep clips. Originals/managed payload files are
+   never deleted or reclaimed on a timer. Full Trash keeps clips and reports it.
+3. `KeepAfterUse` is independent of `IsPinned` (membership in the dock). A small
+   corner pin appears on hover and stays visible while protection is on. It does
+   not paste or start a drag. Library context menus support the same flag for a
+   selection. Explicit manual deletion can remove a kept clip; restore retains it.
+4. Select button enters a mode where plain clicks toggle clips without inserting.
+   Ctrl toggles members; Shift selects a contiguous range. A visible count, one
+   Trash action and Exit selection make batch removal available without a keyboard.
+   Right-click acts on the selected group; unselected right-click switches target.
+5. Drag within any linked dock inserts at a visible line, preserving group order.
+   Scroll near the edge for long rows. A session-scoped active token distinguishes
+   internal reorder from an outgoing transfer, and suppresses use cleanup. Dragging
+   from Library into the dock can insert previously unpinned clips at that slot.
+   Selection is per view; order and protection are shared across mirrored views.
+6. Schema 4 preserves the new protection flag and prevents old builds from erasing
+   it. Migrate schemas 1/2/3 with an immutable pre-upgrade copy, retaining schema-3
+   monitor records and explicit order. Do not remigrate schema-3 pin ordering.
+
+Acceptance: real native click-paste to an external process; native OLE copy,
+protected drop, Esc cancellation, Ctrl/Shift selection, corner pin without paste,
+group reorder/no archive, batch deletion + restore, persistent protection and
+migration backup. Repeat on linked dock views. Continue physical DPI feedback as
+stage 3b; do not bundle saved-set/history work into this interaction iteration.
 
 ## Next efficient slice: saved panels
 

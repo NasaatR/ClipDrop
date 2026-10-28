@@ -13,6 +13,7 @@ void Throws<T>(Action action, string name) where T : Exception
 try
 {
     LayoutChecks.Run(root, Check);
+    UsageChecks.Run(root, Check);
     var store = new StateStore(root);
     var state = store.Load();
     Check(state.Items.Count == 0, "Empty installation starts with a real empty shelf");

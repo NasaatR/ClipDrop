@@ -7,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ClipDrop.Core;
 using ClipDrop.Windows.Services;
 using ClipDrop.Windows.Views;
 
@@ -28,6 +29,9 @@ public partial class DockWindow : Window
     private readonly ThumbnailCache _thumbnails = ThumbnailCache.Shared;
     private readonly HashSet<string> _knownPins = new();
     private readonly HashSet<string> _arrivingPins = new();
+    private readonly ClipSelection _selection = new();
+    private bool _selectMode;
+    private ModifierKeys _clickModifiers;
     private Point? _origin;
     private Button? _dragButton;
     private bool _suppressClick;
@@ -37,6 +41,10 @@ public partial class DockWindow : Window
     {
         _managed = managed; Session = session; _library = library; _settings = settings; _edit = edit;
         InitializeComponent();
+        Strip.KeepRequested += (sender, _) => { if (sender is Button { DataContext: ItemRow row }) Session.ToggleKeep(new[] { row.Item }); };
+        Strip.SelectRequested += (_, _) => { _selectMode = !_selectMode; if (!_selectMode) _selection.Clear(); Refresh(); };
+        Strip.DoneRequested += (_, _) => { _selectMode = false; _selection.Clear(); Refresh(); };
+        Strip.DeleteSelectedRequested += (_, _) => Session.Remove(SelectedClips().ToList());
         Strip.SaveRequested += OnSave; Strip.SettingsRequested += OnSettings; Strip.LibraryRequested += OnLibrary;
         Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
         Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove; Strip.PinMenu += OnPinMenu;
@@ -56,7 +64,7 @@ public partial class DockWindow : Window
         Closing += (_, e) => { if (!_disposing && !Dispatcher.HasShutdownStarted && (Application.Current as App)?.IsQuitting != true) { e.Cancel = true; Hide(); } };
         DragLeave += (_, e) => {
             var point = e.GetPosition(this);
-            if (point.X < 0 || point.Y < 0 || point.X > ActualWidth || point.Y > ActualHeight) ApplySurface(false);
+            if (point.X < 0 || point.Y < 0 || point.X > ActualWidth || point.Y > ActualHeight) { ApplySurface(false); Strip.ShowInsertion(null); }
         };
         IsVisibleChanged += (_, _) => { if (!IsVisible) { _feedback.IsOpen = false; _feedbackTimer.Stop(); } };
         Session.Changed += Refresh; Session.Notification += ShowFeedback;
@@ -83,7 +91,8 @@ public partial class DockWindow : Window
         var pins = Session.State.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).ToArray();
         var available = Assignment is { } a ? a.Display.Width / WindowPlacement.Scale(this) : IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
         var size = Appearance.Bound(settings.DockButtonSize, 30, 48, 36) + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
-        var fixedWidth = 77 + 3 * size;
+        _selection.Trim(pins.Select(i => i.Id));
+        var fixedWidth = 77 + 4 * size + (_selection.Ids.Count > 0 ? 20 + 2 * size : _selectMode ? size : 0);
         var slots = Math.Max(1, (int)((available - fixedWidth) / size));
         if (pins.Length > slots) slots--;
         var capacity = Math.Max(1, Math.Min(8, slots));
@@ -91,6 +100,7 @@ public partial class DockWindow : Window
         foreach (var pin in pins) if (!_knownPins.Contains(pin.Id)) _arrivingPins.Add(pin.Id);
         _knownPins.Clear(); foreach (var pin in pins) _knownPins.Add(pin.Id);
         Strip.SetPins(pins, capacity);
+        Strip.SetSelection(_selection.Ids, _selectMode);
         ApplySurface(false);
     }
     private void ApplySurface(bool dropping)
@@ -114,14 +124,23 @@ public partial class DockWindow : Window
     private void OnUseItem(object sender, RoutedEventArgs e)
     {
         if (_suppressClick) { _suppressClick = false; return; }
-        if (sender is Button { DataContext: ItemRow row }) Session.Paste(new[] { row.Item });
+        if (sender is not Button { DataContext: ItemRow row }) return;
+        var modifiers = _clickModifiers; _clickModifiers = ModifierKeys.None;
+        if (_selectMode || (modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0)
+        {
+            _selection.Click(PinIds(), row.Item.Id, modifiers.HasFlag(ModifierKeys.Control), modifiers.HasFlag(ModifierKeys.Shift), _selectMode);
+            Refresh(); return;
+        }
+        Session.Paste(new[] { row.Item });
     }
     private void OnPinMenu(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Button { DataContext: ItemRow row } button) return;
         e.Handled = true; _origin = null; _dragButton = null; _feedback.IsOpen = false;
         Session.Paster?.CaptureTarget();
-        button.ContextMenu = ClipMenu.Create(Session, new[] { row.Item }, this, true, edit: _edit);
+        if (_selection.Ids.Count > 0 && !_selection.Ids.Contains(row.Item.Id)) { _selection.Single(row.Item.Id); Refresh(); }
+        var targets = _selection.Ids.Contains(row.Item.Id) ? SelectedClips() : new[] { row.Item };
+        button.ContextMenu = ClipMenu.Create(Session, targets, this, true, edit: _edit);
         ClipMenu.Show(button.ContextMenu, button);
     }
     private void OnPinLoaded(object sender, RoutedEventArgs e)
@@ -129,29 +148,55 @@ public partial class DockWindow : Window
         if (sender is Button { DataContext: ItemRow row } button && _arrivingPins.Remove(row.Item.Id)) Motion.Arrive(button);
     }
     private void OnItemDown(object sender, MouseButtonEventArgs e)
-    { _origin = e.GetPosition(this); _dragButton = sender as Button; _suppressClick = false; }
+    { _origin = e.GetPosition(this); _dragButton = sender as Button; _suppressClick = false; _clickModifiers = Keyboard.Modifiers; }
     private void OnItemUp(object sender, MouseButtonEventArgs e) { _origin = null; _dragButton = null; }
     private void OnItemMove(object sender, MouseEventArgs e)
     {
         if (_origin is not Point start || _dragButton?.DataContext is not ItemRow row || e.LeftButton != MouseButtonState.Pressed) return;
         var point = e.GetPosition(this);
         if (Math.Abs(point.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        var implicitSelection = _selection.Ids.Count == 0 && !_selectMode && _clickModifiers == ModifierKeys.None;
         var button = _dragButton; _origin = null; _dragButton = null; _suppressClick = true;
         // Release the button's capture so ending an OLE drag cannot also invoke click-paste.
         button.ReleaseMouseCapture();
         try
         {
-            var result = DragDrop.DoDragDrop(button, Session.Transfer.BuildDrag(new[] { row.Item }), DragDropEffects.Copy);
-            Session.Notify(result == DragDropEffects.None ? "Transfer cancelled · item kept" : "Transfer finished · item kept");
+            if (!_selection.Ids.Contains(row.Item.Id))
+            {
+                if ((_clickModifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0)
+                    _selection.Click(PinIds(), row.Item.Id, _clickModifiers.HasFlag(ModifierKeys.Control), _clickModifiers.HasFlag(ModifierKeys.Shift), false);
+                else _selection.Single(row.Item.Id);
+                Strip.SetSelection(_selection.Ids, _selectMode);
+            }
+            using var transfer = Session.BeginDrag(SelectedClips());
+            var result = DragDrop.DoDragDrop(button, transfer.Data, DragDropEffects.Copy);
+            Session.CompleteDrag(transfer, result);
         }
         catch (Exception ex) { Session.Error("Drag", ex); }
-        finally { ApplySurface(false); }
+        finally { ApplySurface(false); Strip.ShowInsertion(null); if (implicitSelection) { _selection.Clear(); Refresh(); } }
     }
+    private string[] PinIds() => Session.State.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).Select(i => i.Id).ToArray();
+    private ShelfItem[] SelectedClips() => Session.State.Items.Where(i => i.IsPinned && _selection.Ids.Contains(i.Id)).OrderBy(i => i.PinOrder).ToArray();
     private void OnDragOver(object sender, DragEventArgs e)
-    { var supported = TransferService.Supports(e.Data); ApplySurface(supported); e.Effects = supported ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
+    {
+        if (Session.OwnDrag(e.Data) is not null)
+        {
+            var index = Strip.InsertionAt(e.GetPosition(Strip.PinnedItems));
+            Strip.ShowInsertion(index); ApplySurface(false); e.Effects = index is not null ? DragDropEffects.Copy : DragDropEffects.None;
+        }
+        else { var supported = TransferService.Supports(e.Data); ApplySurface(supported); e.Effects = supported ? DragDropEffects.Copy : DragDropEffects.None; }
+        e.Handled = true;
+    }
     private void OnDrop(object sender, DragEventArgs e)
     {
-        ApplySurface(false); e.Handled = true; e.Effects = DragDropEffects.None;
+        ApplySurface(false); Strip.ShowInsertion(null); e.Handled = true; e.Effects = DragDropEffects.None;
+        if (Session.OwnDrag(e.Data) is { } own)
+        {
+            own.InternalHandled = true;
+            if (Strip.InsertionAt(e.GetPosition(Strip.PinnedItems)) is int index)
+            { Session.Reorder(own.Items, index); e.Effects = DragDropEffects.Copy; }
+            return;
+        }
         if (!TransferService.Supports(e.Data)) return;
         try { if (Session.Capture(e.Data)) e.Effects = DragDropEffects.Copy; }
         catch (Exception ex) { Session.Error("Drop", ex); }

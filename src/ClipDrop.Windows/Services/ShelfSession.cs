@@ -22,6 +22,7 @@ public sealed class ShelfSession : IDisposable
     public string Status { get; private set; } = "Ready";
     public string StorageStatus { get; private set; } = "Saved";
     public DesktopPaste? Paster { get; set; }
+    private ClipDrag? _activeDrag;
     public bool IsPasting { get; private set; }
     public event Action? Changed;
     public event Action<string>? StatusChanged;
@@ -118,6 +119,43 @@ public sealed class ShelfSession : IDisposable
         return true;
     }
 
+    public void ToggleKeep(IReadOnlyList<ShelfItem> items)
+    {
+        var current = State.Items.Where(i => items.Any(s => s.Id == i.Id)).ToArray();
+        if (current.Length == 0) return;
+        var keep = !current.All(i => i.KeepAfterUse);
+        foreach (var item in current) item.KeepAfterUse = keep;
+        Change(); Notify(keep ? "Kept after use" : "Move to Trash after use");
+    }
+    public void Reorder(IReadOnlyList<ShelfItem> items, int insertionIndex)
+    {
+        if (PinOrdering.Move(State, items.Select(i => i.Id), insertionIndex)) { Change(); Notify("Dock order updated"); }
+    }
+    public ClipDrag BeginDrag(IReadOnlyList<ShelfItem> items)
+    {
+        if (_activeDrag is not null) throw new InvalidOperationException("A transfer is already active.");
+        return _activeDrag = new ClipDrag(this, items);
+    }
+    public ClipDrag? OwnDrag(IDataObject data) => _activeDrag is { } drag && data.GetDataPresent(ClipDrag.TokenFormat, false) &&
+        data.GetData(ClipDrag.TokenFormat, false) is string token && token == drag.Token ? drag : null;
+    internal void EndDrag(ClipDrag drag) { if (ReferenceEquals(_activeDrag, drag)) _activeDrag = null; }
+    public void CompleteDrag(ClipDrag drag, DragDropEffects effect)
+    {
+        if (!ReferenceEquals(_activeDrag, drag)) return;
+        if (drag.InternalHandled) return;
+        if ((effect & DragDropEffects.Copy) != 0) ArchiveUsed(drag.Items, "Transfer finished");
+        else Notify("Transfer cancelled · clips kept");
+    }
+    private void ArchiveUsed(IReadOnlyList<ShelfItem> items, string action)
+    {
+        try
+        {
+            var count = LibraryOperations.ArchiveUsed(State, items.Select(i => i.Id));
+            if (count > 0) { Change(); if (!TrySave()) return; }
+            Notify(action + (count > 0 ? $" · {count} moved to Trash · undo in Library" : " · clips kept"));
+        }
+        catch (InvalidOperationException ex) { Diagnostics.Record("Archive used clips", ex); Notify(action + " · Trash full; clips kept"); }
+    }
     public void TogglePin(IReadOnlyList<ShelfItem> items)
     {
         if (items.Count == 0) return;
@@ -166,8 +204,10 @@ public sealed class ShelfSession : IDisposable
         catch (Exception ex) { Error("Copy", ex); return false; }
     }
 
-    public async void Paste(IReadOnlyList<ShelfItem> items)
+    public async void Paste(IReadOnlyList<ShelfItem> items) => await PasteAsync(items);
+    public async System.Threading.Tasks.Task PasteAsync(IReadOnlyList<ShelfItem> items)
     {
+        items = items.ToArray();
         if (IsPasting || items.Count == 0) return;
         IsPasting = true;
         try
@@ -177,7 +217,8 @@ public sealed class ShelfSession : IDisposable
             WriteClipboard(items);
             var result = Paster is null ? PasteOutcome.NoTarget : await Paster.Paste(target);
             Diagnostics.Note("Paste outcome", result.ToString());
-            Notify(result == PasteOutcome.Requested ? "Paste requested · items kept" : result switch {
+            if (result == PasteOutcome.Requested) ArchiveUsed(items, "Paste requested");
+            else Notify(result switch {
                 PasteOutcome.TargetChanged => "Copied · destination changed; paste manually",
                 PasteOutcome.KeysHeld => "Copied · release modifier keys and paste manually",
                 _ => "Copied · focus your app and press Ctrl+V"

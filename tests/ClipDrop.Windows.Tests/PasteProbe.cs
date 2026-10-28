@@ -1,6 +1,9 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using ClipDrop.Core;
+using ClipDrop.Windows.Views;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
@@ -75,6 +78,7 @@ internal static class PasteProbe
             var beforeDrag = dock.Left;
             UiProbe.Drag(dock, new Point(3, dock.ActualHeight / 2), 28, -20);
             check(Math.Abs(dock.Left - beforeDrag) > 15 && GetForegroundWindow() == hwnd, "Dragging dock padding moves it without stealing editor focus");
+            var keptClip = dock.Session.State.Items.First(i => i.IsPinned); keptClip.KeepAfterUse = true; dock.Session.Change();
             var items = dock.Pins;
             var container = items.ItemContainerGenerator.ContainerFromIndex(0) ?? throw new Exception("Dock pin was not rendered");
             var button = Descendant<Button>(container) ?? throw new Exception("Dock pin button missing");
@@ -92,6 +96,13 @@ internal static class PasteProbe
             UiProbe.RightClick(button);
             check(button.ContextMenu?.IsOpen == true && File.ReadAllText(received).Replace("\r\n", "\n") == expected.Replace("\r\n", "\n"), "Right clicking a pin opens actions without triggering another paste");
             button.ContextMenu!.IsOpen = false; UiProbe.Pump();
+            check(dock.Session.State.Items.Contains(keptClip) && dock.Session.State.Trash.All(t => t.Item.Id != keptClip.Id), "A kept clip remains after actual paste into the external receiver");
+            var once = ShelfItem.FromText(" — sent once"); dock.Session.Add(new[] { once }); UiProbe.Pump();
+            var onceButton = UiProbe.Find<Button>(dock.Pins, b => b.DataContext is ItemRow r && r.Item.Id == once.Id && b.Tag as string != "Keep");
+            UiProbe.Click(onceButton);
+            Until(() => File.ReadAllText(received).Replace("\r\n", "\n") == expected.Replace("\r\n", "\n") + once.Content, "One-use clip did not reach the external editor");
+            check(dock.Session.State.Trash.Any(t => t.Item.Id == once.Id) && dock.Session.State.Items.All(i => i.Id != once.Id), "A dispatched native paste moves the unprotected clip to Trash");
+            dock.Session.UndoRemove(); dock.Session.State.Items.Remove(once); keptClip.KeepAfterUse = false; dock.Session.Change();
         }
         finally { dock.Session.Paster = null; if (!child.HasExited) { child.Kill(); child.WaitForExit(3000); } }
     }

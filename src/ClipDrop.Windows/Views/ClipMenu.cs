@@ -40,7 +40,9 @@ public static class ClipMenu
         else
         {
             var pinned = selected.Length > 0 && selected.All(i => i.IsPinned);
-            Add(pinned ? "Unpin from dock" : "Pin to dock", "Pin", "PinIcon", () => session.TogglePin(selected), selected.Length > 0);
+            Add(pinned ? "Remove from dock" : "Add to dock", "Pin", "PinIcon", () => session.TogglePin(selected), selected.Length > 0);
+            var kept = selected.Length > 0 && selected.All(i => i.KeepAfterUse);
+            Add(kept ? "Allow removal after use" : "Keep after use", "Keep", "KeepIcon", () => session.ToggleKeep(selected), selected.Length > 0);
             Add("Rename / group", "Edit", "EditIcon", () => edit?.Invoke(selected[0]), single && edit is not null, "F2");
             Add("Move to Trash", "Trash", "TrashIcon", () => session.Remove(selected.ToList()), selected.Length > 0, "Delete");
         }

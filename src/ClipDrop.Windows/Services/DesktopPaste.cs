@@ -25,9 +25,10 @@ public sealed class DesktopPaste : IDisposable
 {
     private readonly IPastePlatform _platform;
     private readonly NativePastePlatform? _native;
+    private readonly Func<PasteTarget?>? _capture;
     public DesktopPaste() { _native = new NativePastePlatform(); _platform = _native; }
-    public DesktopPaste(IPastePlatform platform) { _platform = platform; }
-    public PasteTarget? CaptureTarget() => _native?.CaptureTarget();
+    public DesktopPaste(IPastePlatform platform, Func<PasteTarget?>? capture = null) { _platform = platform; _capture = capture; }
+    public PasteTarget? CaptureTarget() => _native?.CaptureTarget() ?? _capture?.Invoke();
     public async Task<PasteOutcome> Paste(PasteTarget? target)
     {
         if (target is null || !_platform.Valid(target)) return PasteOutcome.NoTarget;
