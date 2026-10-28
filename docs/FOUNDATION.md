@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.7.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.8.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -259,3 +259,30 @@ migration. Primary API basis: Microsoft WPF DoDragDrop / Drop documentation.
 An OLE effect acknowledges a target operation; SendInput acknowledges submitted
 input. Neither proves that another application saved a document. Recoverable
 Trash and unchanged originals are the recovery route.
+
+
+## 0.8.0: low-distraction presence and reliable dismissal
+
+IdleDockOpacity is a visual preference (default 20), separate from the existing
+background-only opacity. The whole native WPF window fades while away from the
+pointer. Busy interactions and a brief explicit-show pulse hold it visible.
+Transition timers stop after settling; motion-off applies values immediately.
+Settings preview uses the same DockStrip at the selected idle opacity.
+
+A non-activating window can leave the previous external HWND foreground, so an
+outside click may not generate a foreground change and Escape may still route
+to that external thread. PopupDismiss observes pointer-down/foreground and Escape
+only for an open owned menu. Outside input passes through; Escape closes the menu.
+It records no text/clipboard content and detaches all native observers on close,
+hide or movement. More expands inline, retaining the original clip/group snapshot.
+
+NotifyIcon's native MouseClick route replaces double-click-only activation.
+WinForms suppresses the second MouseClick in its double-click sequence. The tray
+controls all enabled docks, while the existing shortcut keeps target-screen scope.
+Minimized is distinct from hidden; Show normalizes WindowState before revealing.
+Background Undo uses the existing persistent deletion batch, not a new history.
+Data schema stays 4; this iteration adds no new content/history model.
+
+Primary sources: Microsoft LowLevelMouseProc/SetWindowsHookEx, ContextMenu.StaysOpen,
+MenuItem.StaysOpenOnClick, and dotnet/winforms NotifyIcon implementation. Physical
+mixed-DPI monitor acceptance and real target-app gestures retain earlier limits.

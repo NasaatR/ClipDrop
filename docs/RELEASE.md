@@ -1,14 +1,11 @@
-One-use clips, keep pins, batch selection and drag reordering.
+A quieter dock, compact menus and reliable show/hide.
 
-- After a dispatched paste or accepted external Copy drop, unprotected clips move straight into persistent Trash. The corner 📌 keeps a clip after use. It appears on hover and stays visible while on; Library/group menus expose the same action.
-- Copy, cancelled/Esc drags, failed paste input/focus and clipboard-only fallback keep clips. Originals, clipboard blobs and image assets are never deleted by use cleanup.
-- Select clips: plain clicks choose items without insertion. Ctrl toggles members, Shift selects a range. A count, Trash action and Exit selection make batch removal available without shortcuts. Right-click uses the selected group.
-- Drag a clip/group within any linked dock to reorder. The insertion line and edge scrolling guide placement. Internal reorder keeps clips and shares the order across mirrors; new captures still append right. Library clips can be inserted into the dock.
-- Manual deletion can remove protected clips too. Library → Trash → Restore or Ctrl+Z restores a deletion batch and protection, including after restart.
-- Updated roadmap separates this workflow from physical monitor feedback, named/recently closed panels and later backup/history features.
+- Whole panel defaults to 20% visibility away from the pointer, full visibility on hover/menu/transfer. Settings → Dock → Idle visibility changes it (5–100%), with an idle preview. Existing background-only Opacity remains separate. Motion preferences are respected.
+- Right-click clips: Delete first, Keep/Use once, Copy, More. Secondary actions expand only on request; unavailable actions are omitted. Outside click and Esc dismiss the menu, including over the same external foreground app. Menus also close when their dock hides or moves.
+- One left tray click shows/hides enabled docks together. Double-click performs one toggle; Hide all also stays hidden after a display reconnects. The small Hide control fully hides one dock; minimized docks restore directly. Ctrl+Alt+Space retains per-display targeting.
+- Right-click free dock space for Hide, Undo removal and Library. Undo restores the last deletion batch without opening Library.
+- Temporary dismissal observers are released when menus close. Hover uses transition timers rather than continuous polling. The staged roadmap keeps saved/recently closed sets and clipboard history separate.
 
-The installer upgrades the existing installation and preserves data. Quit from the tray first. Runtime included; unsigned Windows x64 preview.
+The installer upgrades the existing installation and preserves data. Quit from the tray first. Runtime included; unsigned Windows x64 preview. Data schema remains 4; previous migration backups, saved clips, clipboard formats and original files are retained.
 
-Schema 4 migrates data from 1/2/3, retaining monitor layouts and order. It keeps an immutable `shelf.json.schema-<old>-before-v4.bak` before the first save. Older releases refuse the new schema.
-
-“Paste requested” means the input was dispatched; OLE cleanup uses the target's Copy acknowledgement. Neither proves that the destination saved a document. ClipDrop retains recoverable Trash and all originals. Monitor mirroring remains a preview pending physical mixed-DPI hardware feedback. No clipboard monitoring, accounts, network or codec bundle is added.
+Monitor mirroring remains a preview pending physical mixed-DPI feedback. One-use clips still move to ClipDrop Trash after a dispatched paste or accepted external Copy drop; cancellation/fallback and protected clips stay. Restore remains available in Library and from dock Undo. No accounts, clipboard history monitoring, network or codec bundle is added.

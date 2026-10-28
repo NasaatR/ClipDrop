@@ -24,7 +24,7 @@ public static class ClipMenu
         MenuItem Add(string header, string id, string icon, Action run, string shortcut = "")
         {
             var glyph = new AppIcon { Kind = icon, Width = 15, Height = 15 };
-            var item = new MenuItem { Header = header, Tag = id, Icon = glyph, InputGestureText = shortcut, Padding = new Thickness(6, 3, 6, 3), FontSize = 11.5 };
+            var item = new MenuItem { Header = header, Tag = id, Icon = glyph, InputGestureText = dock ? "" : shortcut, Padding = new Thickness(6, 3, 6, 3), FontSize = 11.5 };
             item.Click += (_, _) => { menu.IsOpen = false; owner.Dispatcher.BeginInvoke(run, DispatcherPriority.Background); };
             menu.Items.Add(item); return item;
         }

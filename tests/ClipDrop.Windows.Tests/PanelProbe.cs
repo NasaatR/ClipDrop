@@ -96,7 +96,11 @@ internal static class PanelProbe
             source.Current = new[] { a }; coordinator.RefreshDisplays();
             check(coordinator.Views.Count == 1 && coordinator.Views.Single().Assignment!.Temporary && settings.Docks.Any(d => d.DisplayId == b.Id),
                 "Disconnect replaces the missing dock with one fallback while preserving its layout");
+            coordinator.HideAll();
             source.Current = new[] { b, a }; coordinator.RefreshDisplays(); coordinator.RefreshDisplays();
+            check(coordinator.Views.All(v => !v.IsShown) && settings.Docks.All(d => !d.Visible),
+                "Hide all persists for disconnected monitor records and stays hidden after reconnect");
+            coordinator.ToggleAll(); check(coordinator.Views.All(v => v.IsShown), "Global tray toggle restores enabled dock views after reconnect");
             check(coordinator.Views.Count == 1 && coordinator.Views.Single().Assignment!.Display.Id == b.Id && !coordinator.Views.Single().Assignment!.Temporary,
                 "Repeated reconnect restores the enabled home dock without duplicate HWNDs");
             var screenSettings = new SettingsWindow(settings, () => session.Change(), session.TrySave, session.Report, session.Root, coordinator);

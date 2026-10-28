@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0 — 2026-10-29
+
+- Whole dock defaults to 20% idle visibility and reveals on hover/menu/transfer;
+  saved 5–100% appearance control, idle preview, short interruptible fades and no
+  continuous hover polling. Background opacity remains separate.
+- Compact Delete/Keep/Copy/More clip menu with secondary actions on request.
+  Temporary outside-click/foreground/Escape observation fixes non-activating menus
+  that otherwise remain open over the same external foreground window. Observers
+  detach on close; hiding/moving closes popups and only one menu remains open.
+- Single-click tray toggle for enabled docks, no double-toggle on double-click,
+  small Hide button and direct minimized restore. Targeted hotkeys are retained.
+- Dock background Hide/Undo removal/Library menu gives quick batch recovery.
+- Updated staged plan; data schema 4, clipboard payloads and original files remain
+  unchanged. Named/recently closed sets and clipboard history stay separate.
+
 ## 0.7.0 — 2026-10-28
 
 - Dispatched paste and accepted external Copy drops archive unprotected clips to

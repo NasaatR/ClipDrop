@@ -167,7 +167,7 @@ stage 3b; do not bundle saved-set/history work into this interaction iteration.
   A temporary pointer-down observer closes a menu even if the external foreground
   window never changed. Release observers on close/hide/move; one popup at a time.
 - Single left tray click toggles enabled docks together; native double-click does
-  not cause a second toggle. Right-click retains tray commands. Shortcut targets
+  not cause a second toggle. Hide/show intent includes disconnected layouts. Right-click retains tray commands. Shortcut targets
   remain per active external display. Restore minimized/hidden docks directly.
 - Small Hide control and background menu (Hide, Undo removal, Library) provide
   quick exits and recovery without new persistent content models.

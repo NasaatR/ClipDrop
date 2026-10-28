@@ -143,8 +143,15 @@ public sealed class DockCoordinator : IDisposable
     public void ShowLibrary() { var view = Target(); if (view is not null) ShowLibrary(view); else _library.ShowShelf(); }
     public void ShowLibrary(DockWindow view) { _library.AttachDock(view); _library.ShowShelf(); }
     public void ToggleAll() { if (_views.Values.Any(v => v.IsShown)) HideAll(); else ShowAll(); }
-    public void ShowAll() { foreach (var view in _views.Values) view.ShowDock(); }
-    public void HideAll() { foreach (var view in _views.Values) view.HideDock(); }
+    public void ShowAll() => SetAllVisibility(true);
+    public void HideAll() => SetAllVisibility(false);
+    private void SetAllVisibility(bool visible)
+    {
+        // Preserve global intent for disconnected displays as well as live views.
+        foreach (var layout in _session.State.Settings.Docks) layout.Visible = visible;
+        foreach (var view in _views.Values) { if (visible) view.ShowDock(); else view.HideDock(); }
+        _session.Change(false);
+    }
     public void Dispose()
     {
         if (_disposed) return; _disposed = true;

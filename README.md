@@ -25,13 +25,20 @@ Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.7.0
+## Features in 0.8.0
 
 - One-use clips: dispatched paste / accepted outgoing Copy drop moves unprotected cards
   to persistent Trash; a corner pin keeps a clip after use. Originals stay intact.
 - Select mode, Ctrl/Shift selection, one-action batch removal and group context menus.
 - Drag inside a linked dock to reorder one clip or a selected group, with an insertion
   line and edge scrolling. Drag out to transfer. Reordering never consumes clips.
+- Low-distraction dock: 20% whole-panel idle visibility by default, full on hover,
+  menu or transfer. Settings → Dock changes idle visibility with a live preview.
+- Compact four-row clip menu: Delete, Keep/Use once, Copy, More. Outside click,
+  Escape, hiding or moving the owner dismisses it. More reveals secondary actions.
+- Single left tray click shows/hides enabled docks together; double-click does not
+  double-toggle. Small dock Hide control, direct minimized restore and background
+  Undo removal provide quick recovery. Ctrl+Alt+Space keeps its per-display behavior.
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
 - Drag either surface by any empty background; buttons, cards, editors and resizing keep their gestures.
@@ -66,6 +73,18 @@ from Trash, including after restarting.
 - Local operation; no accounts, subscription, telemetry, clipboard monitoring,
   app-initiated network requests or cloud storage.
 
+## Visibility and compact actions
+
+Move the pointer away to fade the dock to **20% visibility**; hover to restore it.
+Menus and transfers keep it visible. **Settings → Dock → Idle visibility** controls
+this (5–100%); **Preview idle visibility** shows it in Settings. **Opacity** remains
+background-only. The Hide control fully hides the dock; one tray click restores it.
+A minimized dock also restores directly. **Ctrl+Alt+Space** toggles the target screen.
+
+Right-click a clip for Delete, Keep/Use once, Copy and More. Advanced actions expand
+only when requested. Outside click and Esc close the menu. Right-click a free
+area for Hide, **Undo removal** and Library. Undo returns the last deletion batch.
+
 ## Temporary clips and selection
 
 - Click a clip to paste. A dispatched request moves it into Trash; click its corner
@@ -94,7 +113,7 @@ from Trash, including after restarting.
 | Delete / Ctrl+Z | Remove cards / undo removal |
 | Escape | Clear search, then hide |
 
-Double-click the tray icon to show the target dock. Its menu opens Library/Settings and provides **Show all docks**, **Hide all docks** and **Quit ClipDrop**.
+Click the tray icon once to show/hide enabled docks. Double-click performs one toggle. Its menu opens Library/Settings and provides **Show all docks**, **Hide all docks** and **Quit ClipDrop**.
 Shortcut conflicts are reported; tray access still works.
 
 ## Compatibility and limits
