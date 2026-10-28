@@ -101,7 +101,7 @@ internal static class UsageProbe
             check(loaded.Items.Single(i => i.Id == e.Id).KeepAfterUse, "Corner protection survives saving and restart");
             foreach (var item in state.Items) item.IsPinned = false; session.Change(); UiProbe.Pump();
             var hint = (TextBlock)strip.FindName("EmptyHint");
-            var atHint = hint.TranslatePoint(new Point(hint.ActualWidth / 2, hint.ActualHeight / 2), strip.PinnedItems);
+            var atHint = hint.TranslatePoint(new Point(hint.ActualWidth / 2, hint.ActualHeight / 2), dock.Pins);
             check(strip.InsertionAt(atHint) == 0, "An empty dock exposes its visible drop hint as insertion slot zero");
         }
         finally { dock.DisposeView(); mirror.DisposeView(); receiver.Close(); IconAssets.Initialize(root); originalDock.ShowDock(); library.ShowShelf(); }
