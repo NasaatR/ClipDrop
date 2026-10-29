@@ -60,7 +60,9 @@ internal static class IndependentProbe
             UiProbe.DragTo(bInTwo, beforeC);
             check(Ids(two).SequenceEqual(new[] { b.Id, c.Id }) && Ids(one).SequenceEqual(new[] { b.Id }),
                 "Independent native reorder changes only the requested set");
+            UiProbe.Hover(one.QuickSave);
             UiProbe.CaptureWindow(one, Path.Combine(output, "independent-references-screen.png"));
+            UiProbe.Hover(two.QuickSave);
             UiProbe.CaptureWindow(two, Path.Combine(output, "independent-assets-screen.png"));
             var priorSecond = WindowPlacement.PixelBounds(two);
             UiProbe.Drag(one, new Point(3, one.ActualHeight / 2), 25, 35);
@@ -87,7 +89,8 @@ internal static class IndependentProbe
             panels.SelectedItem = panels.Items.Cast<PanelsWindow.Row>().Single(r => r.Panel.Id == first.Id);
             UiProbe.Click((Button)manager.FindName("OpenButton")); UiProbe.Pump();
             one = coordinator.IndependentViews.Single(v => v.PanelId == first.Id);
-            check(one.IsShown && first.Window.Layout.OffsetX == savedX && first.Window.Layout.OffsetY == savedY && state.ActivePanelId == main,
+            check(one.IsShown && first.Window.Layout.OffsetX == savedX && first.Window.Layout.OffsetY == savedY && state.ActivePanelId == main &&
+                ((PanelsWindow.Row)panels.SelectedItem).Panel.Id == first.Id,
                 "Recently closed restores the actual window at its saved position without switching the main dock");
             manager.Close();
             coordinator.HideAll(); check(coordinator.Views.All(v => !v.IsShown), "Global Hide includes independent windows");

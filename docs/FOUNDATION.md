@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.10.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.11.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -346,3 +346,36 @@ ordered queue, authenticated local transport, stable destinations and ACK/retry
 requirements, with real Figma Desktop execution as a future gate. The current
 ClipDrop release starts no helper/listener and adds no network client. Schema 5
 and previous clipboard/native transfer/hardware boundaries remain unchanged.
+
+## 0.11.0: compact presence and independent named-set views
+
+Idle presence collapses the painted surface after 650 ms, retains hidden content
+layout/virtualization and uses alpha-zero pixels outside the capsule for native
+input pass-through. No native per-frame resize/reposition is required on hover,
+so the Save anchor and Library attachment remain stable. Hover/drop/menu/drag/
+selection reveal content immediately; brief surface/fade feedback respects motion.
+CollapseWhenIdle is a behavior preference, separate from style presets/opacity.
+The shared DockStrip implements both live and compact Settings previews.
+
+Per-pixel hit testing basis:
+https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#layered-windows
+The platform contract is exercised by real Windows input into an underlying
+test window; visual masking alone is insufficient evidence of pass-through.
+
+Schema 6 adds one optional independent window record per set (maximum 12 open),
+using display-relative layout, visibility and closed timestamp. IsPinned/PinOrder
+remain the main active-set projection; explicit scoped operations update another
+set without switching that projection. A revision cache shares item/pin lookups.
+All views retain one session/store/clipboard/thumbnail owner.
+
+Coordinator reconciliation owns both mirrored main docks and independent set
+HWNDs. Close window is separate from closing a logical saved set; Recently closed
+can restore the independent window/layout. Global show/hide includes open windows.
+Missing-display fallbacks never overwrite saved geometry; explicit movement can
+retarget an independent window. Library adopts the invoking set for membership/
+filter actions. Core/native checks and real hardware/target-app checks retain
+distinct boundaries; physical mixed-DPI acceptance remains open.
+
+Migrate schemas 1–5, preserving existing sets/pins/order/styles/layout and exact
+before-v6 metadata. Old builds refuse schema 6 rather than erasing window records.
+Backup/version UI, opt-in clipboard monitoring and Send to Figma remain separate.

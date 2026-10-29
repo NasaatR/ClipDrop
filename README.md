@@ -27,7 +27,12 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.10.0
+## Features in 0.11.0
+
+- Compact idle Save capsule with immediate hover/drop expansion and click-through
+  empty space; existing transparency remains adjustable separately.
+- Independent named-set windows, scoped collection/order and closed-window restore
+  alongside the main dock/mirrors. One shared Library and original payload store.
 
 - Save-only resting dock, contextual utility menu and double-click Library access.
 - Library-only intake, automatic selection of new clips, checkboxes and a counted
@@ -105,7 +110,15 @@ Mirrored docks share the active set. Membership/order is separate per set, while
 payloads and Trash remain shared: deleting or consuming an unprotected clip
 removes it from every visible set until restored. Use the corner keep pin for
 repeated use. **Clear** preserves clips belonging to any open or closed saved set.
-Independent simultaneous set windows remain the next stage.
+Choose **Open window** for a separate floating dock for that set; **Use in dock**
+switches the main dock/mirrors. One window per set, up to 12 open. Windows display
+their set name; Save/drop and membership/order actions affect that set. Internal
+cross-set drops add target membership while retaining source clips.
+
+Dock menu → **Close window** keeps its saved set and position. **Recently closed →
+Restore window** returns that window without switching the main dock. Hide keeps
+it open; tray Show/Hide all includes it. Drag independent windows across displays;
+temporary missing-display placement preserves the original layout for reconnect.
 
 ## Collect directly in Library
 
@@ -123,9 +136,15 @@ use cleanup are the same from either surface.
 
 ## Visibility and compact actions
 
-Move the pointer away to fade the dock to **20% visibility**; hover to restore it.
+By default the dock becomes a small Save capsule after the pointer leaves, while
+fading to **20% visibility**. Hover expands immediately; supported drops, menus,
+selection and movement hold it open. Blank space beside the capsule passes input
+to other apps, and Save stays at the same position.
 Menus and transfers keep it visible. **Settings → Dock → Idle visibility** controls
-this (5–100%); **Preview idle visibility** shows it in Settings. **Opacity** remains
+this (5–100%); **Preview idle visibility** shows it in Settings.
+**Settings → Dock → Collapse when idle** can keep the whole row visible.
+**Preview compact state** shows the actual capsule; appearance presets preserve
+the collapse preference. **Opacity** remains
 background-only. The dock menu → **Hide dock** fully hides it; one tray click restores it.
 A minimized dock also restores directly. **Ctrl+Alt+Space** toggles the target screen.
 
@@ -217,7 +236,7 @@ the content. The request archives one-use clips into recoverable Trash. OLE clea
 uses the target’s Copy acknowledgement; it does not delete source files. It leaves the clipboard ready for manual Ctrl+V and never restores it
 on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
 
-Metadata schema 5 migrates schema-1/2/3/4 libraries and keeps an immutable `shelf.json.schema-<old>-before-v5.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
+Metadata schema 6 migrates schema-1/2/3/4/5 libraries and keeps an immutable `shelf.json.schema-<old>-before-v6.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals or time-delete exported payloads. Accepted transfers archive
@@ -226,9 +245,10 @@ Research and manual acceptance: [foundation notes](docs/FOUNDATION.md).
 Incremental stages and the two-monitor mirror design: [roadmap](docs/ROADMAP.md).
 Monitor mirroring is a preview. Native window checks and simulated topologies pass
 through CI; physical mixed-DPI dual-monitor, sleep/reconnect testing remains open.
-Drag a dock within its assigned display; choose a different display in Settings.
-Independent simultaneous panel windows and an optional Send to Figma image adapter
-remain planned; the latter is not enabled in this release. PNG icons: ≤5 MB, ≤2048 × 2048;
+Drag a main/mirrored dock within its assigned display; choose a different display
+in Settings. Independent set windows can be moved between displays.
+Backup/version UI and an optional Send to Figma image adapter remain planned;
+the latter is not enabled in this release. PNG icons: ≤5 MB, ≤2048 × 2048;
 managed copies render at bounded size. Missing assets fall back to emoji.
 Video frames/playback depend on installed Windows providers/codecs. No FFmpeg or codec installer is bundled.
 

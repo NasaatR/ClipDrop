@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0 — 2026-10-29
+
+- Compact idle Save capsule with delayed collapse, immediate hover/drop expansion
+  and menu/selection/drag holds. Keep native geometry/content containers in place,
+  hide unused painted content and allow real input through alpha-zero pixels.
+- Saved collapse behavior and shared compact preview; presets preserve behavior,
+  animations stop with motion disabled and no hover polling is introduced.
+- Independent named-set windows with scoped save/membership/reorder, per-window
+  display-relative layout, hide/show, closed-window restore and reconnect recovery.
+- Cross-set internal Copy adds target membership while retaining source clips.
+  Main/mirrored docks keep their shared active set; Library actions use the invoking
+  set's context. Shared payloads/Trash/protection retain prior semantics.
+- Reuse per-revision pin/item indexes across windows and reduce passive feedback
+  popups. One store/session/clipboard service and thumbnail cache remain.
+- Schema 6 preserves window records against old releases, migrates 1–5 and keeps
+  immutable pre-upgrade bytes; no automatic history or Figma integration.
+
+
 ## 0.10.0 — 2026-10-29
 
 - Reduce the resting dock to Save and clip content. Remove grip, permanent utility

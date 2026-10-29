@@ -48,7 +48,11 @@ public partial class PanelsWindow : Window
         if (_closed) panels = panels.OrderByDescending(p => p.ClosedUtc ?? p.Window?.ClosedUtc);
         var rows = panels.Select(p => {
             var count = p.ClipIds.Count(live.Contains); var trash = p.ClipIds.Count - count;
-            return new Row(p, $"{count} {(count == 1 ? "clip" : "clips")}" + (trash > 0 ? $" · {trash} in Trash" : ""), (p.Id == _session.State.ActivePanelId ? "Main" : "") + (p.Window?.IsOpen == true ? " · Window" : p.Window?.ClosedUtc is not null && p.ClosedUtc is null ? " · Window closed" : ""));
+            var labels = new List<string>();
+            if (p.Id == _session.State.ActivePanelId) labels.Add("Main");
+            if (p.Window?.IsOpen == true) labels.Add("Window");
+            else if (p.Window?.ClosedUtc is not null && p.ClosedUtc is null) labels.Add("Window closed");
+            return new Row(p, $"{count} {(count == 1 ? "clip" : "clips")}" + (trash > 0 ? $" · {trash} in Trash" : ""), string.Join(" · ", labels));
         }).ToArray();
         _refreshing = true;
         try
@@ -82,8 +86,10 @@ public partial class PanelsWindow : Window
     private void OnNew(object sender, RoutedEventArgs e)
     { _closed = false; _session.PanelAction(() => PanelSets.Create(_session.State, NewName("Panel")), "Empty panel created"); SelectActive(); }
     private void SelectActive()
+        => SelectPanel(_session.State.ActivePanelId);
+    private void SelectPanel(string id)
     {
-        var active = PanelList.Items.Cast<Row>().FirstOrDefault(r => r.Panel.Id == _session.State.ActivePanelId);
+        var active = PanelList.Items.Cast<Row>().FirstOrDefault(r => r.Panel.Id == id);
         if (active is not null) { PanelList.SelectedItems.Clear(); PanelList.SelectedItem = active; PanelList.ScrollIntoView(active); }
     }
     private void OnSnapshot(object sender, RoutedEventArgs e)
@@ -106,13 +112,13 @@ public partial class PanelsWindow : Window
         if (_closed && row.Panel.Window is not null && _docks is not null) _docks.OpenPanelWindow(row.Panel.Id);
         else _session.PanelAction(() => { if (_closed) PanelSets.Restore(_session.State, row.Panel.Id); else PanelSets.Activate(_session.State, row.Panel.Id); }, "Panel opened");
         // Keep the manager available for arranging several sets in sequence.
-        _closed = false; Refresh();
+        _closed = false; Refresh(); SelectPanel(row.Panel.Id);
     }
     private void OnWindow(object sender, RoutedEventArgs e)
     {
         if (_docks is null || Selected() is not [var row]) return;
         _docks.OpenPanelWindow(row.Panel.Id);
-        _closed = false; Refresh();
+        _closed = false; Refresh(); SelectPanel(row.Panel.Id);
     }
     private void OnDoubleClick(object sender, MouseButtonEventArgs e)
     {

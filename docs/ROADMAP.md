@@ -13,14 +13,14 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Delivered in 0.7 |
 | 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Delivered in 0.8 |
 | 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | Delivered in 0.9 |
-| 3f · Collect and transfer | Save-only dock, contextual commands, direct Library intake, checkbox selection and group drag | Current 0.10 iteration |
-| 3g · Compact idle state | Save capsule, immediate hover/drop expansion, click-through empty area and preview | In progress for 0.11 |
+| 3f · Collect and transfer | Save-only dock, contextual commands, direct Library intake, checkbox selection and group drag | Delivered in 0.10 |
+| 3g · Compact idle state | Save capsule, immediate hover/drop expansion, click-through empty area and preview | Delivered in 0.11 |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
-| 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | In progress for 0.11 |
+| 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | Delivered in 0.11 |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
-| 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.10 |
+| 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.11 |
 
 ## Stage 1: complete daily actions
 
@@ -252,40 +252,46 @@ multi-file group drag and cancellation, no originals changed, narrow/light/dark
 captures, existing 5,000-row stability and installer upgrade. No schema change. Native Windows checks cover this slice, including an actual
 OS-composited narrow/light Library capture; timings remain runner-specific.
 
-Then implement 4b after feedback: independent simultaneous set windows,
-set/window identity, per-set view placement, reconnect/restore and no accidental
-cross-set edits. Continue the physical two-screen acceptance table in parallel;
-its hardware gate remains open. Keep content versions/backup UI and opt-in
-clipboard history in stages 5/6 instead of bundling them into 4b.
+Stage 4b follows in 0.11 below: independent simultaneous set windows, scoped
+collection/order, per-window placement and close/restore. Continue the physical
+two-screen acceptance table with user hardware feedback; its gate remains open.
+Next: stage 5a, explicit backup export/import with manifest validation, a restore
+preview and conflict-safe merge. Content editing/version restore follows as 5b;
+opt-in clipboard monitoring stays in stage 6.
 
 ## Current 0.11 slice: compact presence and independent windows
 
-- [ ] Keep a stable native geometry/Save anchor and shrink the painted/hit-testable
+- [x] Keep a stable native geometry/Save anchor and shrink the painted/hit-testable
   surface into a capsule after 650 ms away. Retain the virtualized content layout
   hidden in place; transparent pixels pass mouse input to underlying applications.
   Hover/drop/menu/source transfer/movement/selection reveals the content immediately.
   Avoid per-frame native resize/reposition and permanent input polling/hooks.
-- [ ] Save Collapse when idle as a behavior setting, default on. Style presets and
+- [x] Save Collapse when idle as a behavior setting, default on. Style presets and
   appearance reset preserve it; provide actual shared compact/idle previews.
-- [ ] Add independent window records per named set (one per set, at most 12 open),
+- [x] Add independent window records per named set (one per set, at most 12 open),
   with visibility, display-relative placement and recently-closed timestamp.
   Schema 6 migrates 1–5 without changing existing membership/order/layout, keeps
   immutable before-v6 bytes and prevents old releases from discarding window data.
-- [ ] Scope save/drop/membership/reorder to the invoked set without changing the
+- [x] Scope save/drop/membership/reorder to the invoked set without changing the
   main active set. Keep one shared Library, clipboard service, store and media cache.
   Cross-set internal drop copies membership into the destination, keeping sources;
   global Trash/use cleanup and KeepAfterUse remain shared payload behavior.
-- [ ] Saved panels offers Use in dock and Open window. Close window preserves the
+- [x] Saved panels offers Use in dock and Open window. Close window preserves the
   set/payload and its position; Recently closed restores the same independent view.
   Closing a logical set also closes its independent view. Mirroring still shows the
   shared main active set; tray Show/Hide all includes open independent views.
-- [ ] Reconcile missing/reconnected screens without duplicate views or overwriting
+- [x] Reconcile missing/reconnected screens without duplicate views or overwriting
   the absent display layout. Permit explicit independent-window movement across
   screens; keep the existing assigned-display behavior for mirrored main docks.
-- [ ] Verify scoped order/membership, migration/restart/closed recovery, real
+- [x] Verify scoped order/membership, migration/restart/closed recovery, real
   click-through behind the collapsed area, hover and supported drops, no false
   paste while opening, menu/selection/drag holds, two independent HWNDs alongside
   mirrored views, native scoped/cross-set OLE, geometry stability and installer upgrade.
+
+Windows preflight passed 89 Core and 180 native checks, published startup/shutdown
+and previous-version installer upgrade/uninstall. Real screen captures cover
+compact/expanded surfaces and named windows; native input confirms blank-area
+click-through. These checks do not prove physical mixed-DPI or target-app gestures.
 
 Physical mixed-DPI hardware feedback stays open. Backup/version UI, opt-in history
 and Send to Figma remain later releases; do not add them to this data/UI slice.
@@ -333,8 +339,6 @@ or Figma document write is included in the current UX release.
 
 - Advanced media: hover scrubbing, timeline filmstrips, HDR/ProRes-specific
   decoding, an optional licensed codec backend and audio waveforms.
-- Independent simultaneous named-set windows: per-view assignment/placement,
-  recently-closed window restoration and explicit mirrored-vs-independent behavior.
 - Backup/version work: conflict-safe import/merge, previews before restore,
   preservation of opaque clipboard formats and original external references.
 - Clipboard history: explicit enable/pause, sensible limits and exclusion policy;
