@@ -24,6 +24,7 @@ public sealed class SettingsWindow : Window
     private readonly TextBlock _notice = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
     private bool _sync;
     private bool _previewIdle;
+    private bool _previewCompact;
     private StackPanel _section = null!;
     private WrapPanel? _fields;
     private readonly List<FrameworkElement> _fieldBoxes = new();
@@ -76,8 +77,12 @@ public sealed class SettingsWindow : Window
         var idlePreview = new CheckBox { Content = "Preview idle visibility", Margin = new Thickness(0, 4, 0, 0) };
         idlePreview.Checked += (_, _) => { _previewIdle = true; UpdatePreviewOpacity(); };
         idlePreview.Unchecked += (_, _) => { _previewIdle = false; UpdatePreviewOpacity(); };
+        var compactPreview = new CheckBox { Content = "Preview compact state", Margin = new Thickness(0, 2, 0, 0) };
+        compactPreview.Checked += (_, _) => { _previewCompact = true; UpdatePreviewOpacity(); };
+        compactPreview.Unchecked += (_, _) => { _previewCompact = false; UpdatePreviewOpacity(); };
         previewLayout.Children.Add(new Viewbox { Child = Preview, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Center, MaxHeight = 110 });
         previewLayout.Children.Add(idlePreview);
+        previewLayout.Children.Add(compactPreview);
         Preview.Apply(settings); Preview.SetPins(new[] { ShelfItem.FromText("Saved note"), ShelfItem.FromText("https://example.com") }, 2);
         _section.Children.Add(previewStage);
         _presets.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, "Style preset");
@@ -143,6 +148,7 @@ public sealed class SettingsWindow : Window
         Range("Corners", () => settings.DockRadius, 0, 24, value => settings.DockRadius = value);
         Range("Opacity", () => settings.DockOpacity, 0, 100, value => settings.DockOpacity = value);
         Range("Idle visibility", () => settings.IdleDockOpacity, 5, 100, value => settings.IdleDockOpacity = value);
+        Check("Collapse when idle", () => settings.CollapseWhenIdle, value => settings.CollapseWhenIdle = value, false);
         Hint("Idle visibility fades the whole dock away from the pointer. Hover, menus and transfers reveal it. Opacity changes only the background.");
         if (docks is not null)
         {
@@ -151,7 +157,7 @@ public sealed class SettingsWindow : Window
         }
         Section("Library");
         Check("Follow dock", () => settings.LibraryFollowsDock, value => settings.LibraryFollowsDock = value, false);
-        Hint("Move Library to detach it. Use its link button to attach again.");
+        Hint("Move Library to detach it. More → Follow dock attaches it again.");
         Choice("Palette", () => settings.LibraryPalette, new[] { "Shared", "Dark", "Light", "Midnight" }, new[] { "App theme", "Graphite", "Paper", "Midnight" }, value => settings.LibraryPalette = value);
         ColorField("Background", () => settings.LibraryColor, value => settings.LibraryColor = value);
         Range("Text size", () => settings.FontSize, 11, 18, value => settings.FontSize = value);
@@ -186,7 +192,11 @@ public sealed class SettingsWindow : Window
             WindowPlacement.Clamp(this); FitFields();
         };
     }
-    private void UpdatePreviewOpacity() => Preview.Opacity = _previewIdle ? Appearance.Bound(_settings.IdleDockOpacity, 5, 100, 20) / 100 : 1;
+    private void UpdatePreviewOpacity()
+    {
+        Preview.Opacity = _previewIdle ? Appearance.Bound(_settings.IdleDockOpacity, 5, 100, 20) / 100 : 1;
+        Preview.SetCompact(_previewCompact && _settings.CollapseWhenIdle);
+    }
     public void SetStorageStatus(string text) => _notice.Text = text;
     private void ApplyStyle(AppearanceStyle style)
     {

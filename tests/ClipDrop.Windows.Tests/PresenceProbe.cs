@@ -35,7 +35,7 @@ internal static class PresenceProbe
     public static void Run(MainWindow library, DockWindow original, string root, string output, Action<bool, string> check, Action<FrameworkElement, string> render)
     {
         original.HideDock(); library.Hide();
-        var store = new StateStore(Path.Combine(root, "presence")); var state = store.Load(); state.Settings.AnimationsEnabled = false;
+        var store = new StateStore(Path.Combine(root, "presence")); var state = store.Load(); state.Settings.AnimationsEnabled = false; state.Settings.CollapseWhenIdle = false;
         state.Settings.DockLeft = 40; state.Settings.DockTop = 50;
         using var session = new ShelfSession(store, state);
         var clip = ShelfItem.FromText("Menu target"); session.Add(new[] { clip });

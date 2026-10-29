@@ -16,6 +16,9 @@ namespace ClipDrop.Windows;
 public partial class DockWindow : Window
 {
     public ClipDrop.Core.DockAssignment? Assignment { get; set; }
+    public string? PanelId { get; }
+    public Action<DockWindow>? CloseWindowRequested { get; set; }
+    public Action<IReadOnlyList<ShelfItem>>? OpenPanelsRequested { get; set; }
     public event Action<DockWindow>? GeometryCommitted;
     private readonly bool _managed;
     private readonly DockPresence _presence;
@@ -24,7 +27,7 @@ public partial class DockWindow : Window
     public ShelfSession Session { get; }
     public Button QuickSave => Strip.SaveButton;
     public ItemsControl Pins => Strip.PinnedItems;
-    private Border DockBody => Strip.Body;
+    private Border DockBody => Strip.Surface;
     private readonly Action _library;
     private readonly Action _settings;
     private readonly Action<ClipDrop.Core.ShelfItem>? _edit;
@@ -40,19 +43,19 @@ public partial class DockWindow : Window
     private bool _suppressClick;
     private readonly ToolTip _feedback = new() { Placement = PlacementMode.Top, StaysOpen = true };
     private readonly DispatcherTimer _feedbackTimer = new() { Interval = TimeSpan.FromSeconds(3) };
-    public DockWindow(ShelfSession session, Action library, Action settings, Action<ClipDrop.Core.ShelfItem>? edit = null, bool managed = false)
+    public DockWindow(ShelfSession session, Action library, Action settings, Action<ClipDrop.Core.ShelfItem>? edit = null, bool managed = false, string? panelId = null)
     {
-        _managed = managed; Session = session; _library = library; _settings = settings; _edit = edit;
+        _managed = managed; PanelId = panelId; Session = session; _library = library; _settings = settings; _edit = edit;
         InitializeComponent();
         PopupDismiss.Attach(ContextMenu, this);
         ContextMenuOpening += (_, _) => UpdateMenu();
-        _presence = new DockPresence(this, () => Session.State.Settings);
+        _presence = new DockPresence(this, () => Session.State.Settings, compact => Strip.SetCompact(compact));
         Strip.KeepRequested += (sender, _) => { if (sender is Button { DataContext: ItemRow row }) Session.ToggleKeep(new[] { row.Item }); };
         Strip.DoneRequested += (_, _) => { _selectMode = false; _selection.Clear(); Refresh(); };
         Strip.SelectionRequested += (sender, _) => {
             if (sender is FrameworkElement target && SelectedClips() is { Length: > 0 } clips)
             {
-                target.ContextMenu = ClipMenu.Create(Session, clips, this, true, edit: _edit);
+                target.ContextMenu = ClipMenu.Create(Session, clips, this, true, edit: _edit, panelId: PanelId);
                 ClipMenu.Show(target.ContextMenu, target, true);
             }
         };
@@ -77,7 +80,13 @@ public partial class DockWindow : Window
             WindowPlacement.Clamp(this);
         };
         SizeChanged += (_, _) => { if (IsLoaded && !_managed) WindowPlacement.Clamp(this); };
-        Closing += (_, e) => { if (!_disposing && !Dispatcher.HasShutdownStarted && (Application.Current as App)?.IsQuitting != true) { e.Cancel = true; HideDock(); } };
+        Closing += (_, e) => {
+            if (_disposing || Dispatcher.HasShutdownStarted || (Application.Current as App)?.IsQuitting == true) return;
+            e.Cancel = true;
+            if (PanelId is not null && CloseWindowRequested is not null)
+                Dispatcher.BeginInvoke(() => { if (!_disposing) CloseWindowRequested?.Invoke(this); }, DispatcherPriority.Background);
+            else HideDock();
+        };
         DragLeave += (_, e) => {
             var point = e.GetPosition(this);
             if (point.X < 0 || point.Y < 0 || point.X > ActualWidth || point.Y > ActualHeight) { _dropHover = false; UpdatePresence(); ApplySurface(false); Strip.ShowInsertion(null); }
@@ -89,7 +98,7 @@ public partial class DockWindow : Window
         Refresh(); UpdateMenu();
     }
     public bool IsShown => IsVisible && WindowState != WindowState.Minimized;
-    private void UpdatePresence() => _presence.Busy(_transferring || _dropHover || _moving);
+    private void UpdatePresence() => _presence.Busy(_transferring || _dropHover || _moving || _selectMode || _selection.Ids.Count > 0);
     public void ShowDock()
     {
         if (_disposing) return;
@@ -111,15 +120,16 @@ public partial class DockWindow : Window
         if (_disposing) return;
         Appearance.Apply(Session.State.Settings, this, true);
         var settings = Session.State.Settings; Strip.Apply(settings); _presence.Refresh();
-        if (_panelId != Session.State.ActivePanelId) { _panelId = Session.State.ActivePanelId; _selection.Clear(); _selectMode = false; }
-        Strip.SetPanelName(PanelSets.Active(Session.State).Name);
+        if (_panelId != (PanelId ?? Session.State.ActivePanelId)) { _panelId = PanelId ?? Session.State.ActivePanelId; _selection.Clear(); _selectMode = false; }
+        var name = Session.PanelName(PanelId); Strip.SetPanelName(name, PanelId is not null);
+        Title = PanelId is null ? "ClipDrop Dock" : "ClipDrop · " + name;
         Topmost = settings.AlwaysOnTop;
         FontSize = Appearance.Bound(settings.FontSize, 11, 18, 13);
-        var pins = Session.State.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).ToArray();
+        var pins = Session.Pins(PanelId);
         var available = Assignment is { } a ? a.Display.Width / WindowPlacement.Scale(this) : IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
         var size = Appearance.Bound(settings.DockButtonSize, 30, 48, 36) + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
         _selection.Trim(pins.Select(i => i.Id));
-        var fixedWidth = 64 + size + (_selection.Ids.Count > 0 ? 125 : _selectMode ? 50 : 0);
+        var fixedWidth = 64 + size + (PanelId is not null ? 100 : 0) + (_selection.Ids.Count > 0 ? 125 : _selectMode ? 50 : 0);
         var slots = Math.Max(1, (int)((available - fixedWidth) / size));
         if (pins.Length > slots) slots--;
         var capacity = Math.Max(1, Math.Min(12, slots));
@@ -128,7 +138,7 @@ public partial class DockWindow : Window
         _knownPins.Clear(); foreach (var pin in pins) _knownPins.Add(pin.Id);
         Strip.SetPins(pins, capacity);
         Strip.SetSelection(_selection.Ids, _selectMode);
-        ApplySurface(false);
+        UpdatePresence(); ApplySurface(false);
     }
     private void ApplySurface(bool dropping)
     {
@@ -142,11 +152,11 @@ public partial class DockWindow : Window
     }
     private void ShowFeedback(string message)
     {
-        if (!IsVisible) return;
+        if (!IsVisible || !(IsMouseOver || _transferring || _dropHover || _moving || PopupDismiss.IsOpenFor(this))) return;
         _feedback.Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 320 };
         _feedback.IsOpen = false; _feedback.IsOpen = true; _feedbackTimer.Stop(); _feedbackTimer.Start();
     }
-    private void OnSave(object sender, RoutedEventArgs e) => Session.SaveClipboard();
+    private void OnSave(object sender, RoutedEventArgs e) => Session.SaveClipboard(true, PanelId);
     private void OnLibrary(object sender, RoutedEventArgs e) => _library();
     private void UpdateMenu()
     {
@@ -160,7 +170,7 @@ public partial class DockWindow : Window
             menu.Items.Add(item);
         }
         Add("Library", "Library", _library);
-        Add("Saved panels", "Panels", () => Session.ShowPanels(selected));
+        Add("Saved panels", "Panels", () => { if (OpenPanelsRequested is not null) OpenPanelsRequested(selected); else Session.ShowPanels(selected); });
         Add(_selectMode ? "Finish selection" : "Select clips", "Select", () => {
             _selectMode = !_selectMode; if (!_selectMode) _selection.Clear(); Refresh();
         }, Pins.Items.Count > 0 || _selectMode);
@@ -169,6 +179,7 @@ public partial class DockWindow : Window
         menu.Items.Add(new Separator());
         Add("Settings", "Settings", _settings);
         Add("Hide dock", "Hide", HideDock);
+        if (PanelId is not null && CloseWindowRequested is not null) Add("Close window", "CloseWindow", () => CloseWindowRequested(this));
     }
     private void OnUseItem(object sender, RoutedEventArgs e)
     {
@@ -189,7 +200,7 @@ public partial class DockWindow : Window
         Session.Paster?.CaptureTarget();
         if (_selection.Ids.Count > 0 && !_selection.Ids.Contains(row.Item.Id)) { _selection.Single(row.Item.Id); Refresh(); }
         var targets = _selection.Ids.Contains(row.Item.Id) ? SelectedClips() : new[] { row.Item };
-        button.ContextMenu = ClipMenu.Create(Session, targets, this, true, edit: _edit);
+        button.ContextMenu = ClipMenu.Create(Session, targets, this, true, edit: _edit, panelId: PanelId);
         ClipMenu.Show(button.ContextMenu, button);
     }
     private void OnPinLoaded(object sender, RoutedEventArgs e)
@@ -225,18 +236,26 @@ public partial class DockWindow : Window
         catch (Exception ex) { Session.Error("Drag", ex); }
         finally { _transferring = false; _dropHover = false; UpdatePresence(); ApplySurface(false); Strip.ShowInsertion(null); if (implicitSelection) { _selection.Clear(); Refresh(); } }
     }
-    private string[] PinIds() => Session.State.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).Select(i => i.Id).ToArray();
-    private ShelfItem[] SelectedClips() => Session.State.Items.Where(i => i.IsPinned && _selection.Ids.Contains(i.Id)).OrderBy(i => i.PinOrder).ToArray();
+    private string[] PinIds() => Session.Pins(PanelId).Select(i => i.Id).ToArray();
+    private ShelfItem[] SelectedClips() => Session.Pins(PanelId).Where(i => _selection.Ids.Contains(i.Id)).ToArray();
     private void OnDragOver(object sender, DragEventArgs e)
     {
         if (Session.OwnDrag(e.Data) is not null)
         {
-            var index = Strip.InsertionAt(e.GetPosition(Strip.PinnedItems));
+            _dropHover = true; UpdatePresence(); Strip.UpdateLayout();
+            var index = DropIndex(e);
             _dropHover = index is not null; UpdatePresence();
             Strip.ShowInsertion(index); ApplySurface(index is not null && Strip.PinnedItems.Items.Count == 0); e.Effects = index is not null ? DragDropEffects.Copy : DragDropEffects.None;
         }
         else { var supported = TransferService.Supports(e.Data); _dropHover = supported; UpdatePresence(); ApplySurface(supported); e.Effects = supported ? DragDropEffects.Copy : DragDropEffects.None; }
         e.Handled = true;
+    }
+    private int? DropIndex(DragEventArgs e)
+    {
+        var point = e.GetPosition(QuickSave);
+        if (point.X >= 0 && point.Y >= 0 && point.X <= QuickSave.ActualWidth && point.Y <= QuickSave.ActualHeight)
+            return Pins.Items.Count;
+        return Strip.InsertionAt(e.GetPosition(Strip.PinnedItems));
     }
     private void OnDrop(object sender, DragEventArgs e)
     {
@@ -244,12 +263,12 @@ public partial class DockWindow : Window
         if (Session.OwnDrag(e.Data) is { } own)
         {
             own.InternalHandled = true;
-            if (Strip.InsertionAt(e.GetPosition(Strip.PinnedItems)) is int index)
-            { Session.Reorder(own.Items, index); e.Effects = DragDropEffects.Copy; }
+            if (DropIndex(e) is int index)
+            { Session.Reorder(own.Items, index, PanelId); e.Effects = DragDropEffects.Copy; }
             return;
         }
         if (!TransferService.Supports(e.Data)) return;
-        try { if (Session.Capture(e.Data)) e.Effects = DragDropEffects.Copy; }
+        try { if (Session.Capture(e.Data, true, PanelId)) e.Effects = DragDropEffects.Copy; }
         catch (Exception ex) { Session.Error("Drop", ex); }
     }
     private async void OnThumbnailLoaded(object sender, RoutedEventArgs e)

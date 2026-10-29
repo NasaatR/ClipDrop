@@ -14,7 +14,7 @@ internal static class PanelsProbe
 {
     public static void Run(string root, string output, Action<bool, string> check, Action<FrameworkElement, string> render)
     {
-        var store = new StateStore(Path.Combine(root, "panel-ui")); var state = store.Load(); state.Settings.AnimationsEnabled = false;
+        var store = new StateStore(Path.Combine(root, "panel-ui")); var state = store.Load(); state.Settings.AnimationsEnabled = false; state.Settings.CollapseWhenIdle = false;
         using var session = new ShelfSession(store, state);
         var clips = new[] { ShelfItem.FromText("Panel alpha"), ShelfItem.FromText("Panel beta"), ShelfItem.FromText("Panel gamma") }; session.Add(clips);
         var main = PanelSets.Active(state);

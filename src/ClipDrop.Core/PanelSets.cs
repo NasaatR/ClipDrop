@@ -9,6 +9,7 @@ namespace ClipDrop.Core;
 public static class PanelSets
 {
     public const int Maximum = 100;
+    public const int MaximumWindows = 12;
     public static PanelSet Active(ShelfState state) => state.Panels.Single(p => p.Id == state.ActivePanelId && p.ClosedUtc is null);
     public static void Migrate(ShelfState state)
     {
@@ -28,6 +29,67 @@ public static class PanelSets
                 if (deleted.Contains(active.ClipIds[i])) pins.Insert(Math.Min(i, pins.Count), active.ClipIds[i]);
         }
         if (!active.ClipIds.SequenceEqual(pins)) active.ClipIds = pins;
+    }
+    public static ShelfItem[] Items(ShelfState state, string? panelId = null)
+    {
+        if (panelId is null || panelId == state.ActivePanelId)
+            return state.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).ToArray();
+        var panel = Find(state, panelId);
+        var live = state.Items.ToDictionary(i => i.Id);
+        return panel.ClipIds.Where(live.ContainsKey).Select(id => live[id]).ToArray();
+    }
+    private static PanelSet Find(ShelfState state, string id) =>
+        state.Panels.SingleOrDefault(p => p.Id == id && p.ClosedUtc is null) ?? throw new InvalidOperationException("Panel unavailable.");
+    public static bool SetMembership(ShelfState state, string panelId, IEnumerable<string> ids, bool add)
+    {
+        var panel = Find(state, panelId);
+        var requested = ids.Distinct().ToArray(); var live = state.Items.Select(i => i.Id).ToHashSet();
+        if (requested.Any(id => !live.Contains(id))) throw new InvalidOperationException("A clip is no longer in Library.");
+        CaptureActive(state);
+        var next = panel.ClipIds.ToList();
+        if (add) { var known = next.ToHashSet(); foreach (var id in requested) if (known.Add(id)) next.Add(id); }
+        else { var selected = requested.ToHashSet(); next.RemoveAll(selected.Contains); }
+        if (panel.ClipIds.SequenceEqual(next)) return false;
+        panel.ClipIds = next;
+        if (panelId == state.ActivePanelId) ApplyActive(state);
+        return true;
+    }
+    public static bool Move(ShelfState state, string panelId, IEnumerable<string> ids, int insertionIndex)
+    {
+        var panel = Find(state, panelId);
+        if (panelId == state.ActivePanelId)
+        {
+            var changed = PinOrdering.Move(state, ids, insertionIndex); CaptureActive(state); return changed;
+        }
+        var requested = ids.Distinct().ToArray(); var selected = requested.ToHashSet();
+        var live = state.Items.Select(i => i.Id).ToHashSet();
+        if (requested.Any(id => !live.Contains(id))) throw new InvalidOperationException("A clip is no longer in Library.");
+        var before = panel.ClipIds.Where(live.Contains).ToList();
+        var moving = before.Where(selected.Contains).Concat(requested.Where(id => !before.Contains(id))).ToArray();
+        var slot = Math.Clamp(insertionIndex, 0, before.Count);
+        var adjusted = slot - before.Take(slot).Count(selected.Contains);
+        var next = before.Where(id => !selected.Contains(id)).ToList(); next.InsertRange(adjusted, moving);
+        if (before.SequenceEqual(next)) return false;
+        var deleted = state.Trash.Select(t => t.Item.Id).ToHashSet();
+        for (var i = 0; i < panel.ClipIds.Count; i++)
+            if (deleted.Contains(panel.ClipIds[i])) next.Insert(Math.Min(i, next.Count), panel.ClipIds[i]);
+        panel.ClipIds = next; return true;
+    }
+    public static void OpenWindow(ShelfState state, string id, string displayId)
+    {
+        var panel = state.Panels.SingleOrDefault(p => p.Id == id) ?? throw new InvalidOperationException("Panel unavailable.");
+        if (panel.Window?.IsOpen != true && state.Panels.Count(p => p.Window?.IsOpen == true) >= MaximumWindows)
+            throw new InvalidOperationException("Up to 12 independent panel windows can be open.");
+        if (string.IsNullOrWhiteSpace(displayId) || displayId.Length > 1024) throw new InvalidOperationException("Display unavailable.");
+        panel.ClosedUtc = null; panel.Window ??= new PanelWindowState();
+        panel.Window.IsOpen = true; panel.Window.ClosedUtc = null; panel.Window.Layout.Visible = true;
+        if (panel.Window.Layout.DisplayId.Length == 0) panel.Window.Layout.DisplayId = displayId;
+    }
+    public static void CloseWindow(ShelfState state, string id)
+    {
+        var panel = state.Panels.SingleOrDefault(p => p.Id == id) ?? throw new InvalidOperationException("Panel unavailable.");
+        if (panel.Window is not { IsOpen: true } window) return;
+        window.IsOpen = false; window.ClosedUtc = DateTimeOffset.UtcNow;
     }
     public static void ApplyActive(ShelfState state)
     {
@@ -78,7 +140,7 @@ public static class PanelSets
         var remaining = state.Panels.FirstOrDefault(p => p.ClosedUtc is null && !selected.Contains(p.Id));
         if (remaining is null && state.Panels.Count >= Maximum) throw new InvalidOperationException("Keep one panel open at the panel limit.");
         CaptureActive(state);
-        var now = DateTimeOffset.UtcNow; foreach (var panel in closing) panel.ClosedUtc = now;
+        var now = DateTimeOffset.UtcNow; foreach (var panel in closing) { panel.ClosedUtc = now; CloseWindow(state, panel.Id); }
         if (remaining is null) { remaining = new PanelSet { Name = "Main" }; state.Panels.Add(remaining); }
         if (closing.Any(p => p.Id == state.ActivePanelId)) { state.ActivePanelId = remaining.Id; ApplyActive(state); }
     }

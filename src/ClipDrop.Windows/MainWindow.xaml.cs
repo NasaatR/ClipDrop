@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     public DockCoordinator? Docks { get; set; }
     private bool _placing;
     private string _filter = "All";
+    private string? PanelContext => _dock?.PanelId is string id && Session.State.Panels.Any(p => p.Id == id && p.ClosedUtc is null) ? id : null;
     private bool _updatingGroups;
     private ShelfItem? _editing;
     public Diagnostics DiagnosticLog => Session.Diagnostics;
@@ -75,12 +76,13 @@ public partial class MainWindow : Window
         if (_dock is not null) DetachDock(_dock);
         _dock = dock;
         dock.LocationChanged += DockMoved; dock.SizeChanged += DockResized; dock.IsVisibleChanged += DockVisibility;
-        PositionNearDock();
+        PositionNearDock(); if (IsVisible) Refresh();
     }
     public void DetachDock(DockWindow dock)
     {
         if (!ReferenceEquals(_dock, dock)) return;
         dock.LocationChanged -= DockMoved; dock.SizeChanged -= DockResized; dock.IsVisibleChanged -= DockVisibility; _dock = null;
+        if (IsVisible) Refresh();
     }
     private void DockMoved(object? sender, EventArgs e) => PositionNearDock();
     private void DockResized(object sender, SizeChangedEventArgs e) => PositionNearDock();
@@ -123,11 +125,11 @@ public partial class MainWindow : Window
         var window = Application.Current.Windows.OfType<PanelsWindow>().FirstOrDefault();
         if (window is null)
         {
-            window = new PanelsWindow(Session) { Owner = IsVisible ? this : null,
+            window = new PanelsWindow(Session, Docks) { Owner = IsVisible ? this : null,
                 WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen };
-            window.OfferSelection(clips); window.Show();
+            window.SetSource(PanelContext); window.OfferSelection(clips); window.Show();
         }
-        else { window.OfferSelection(clips); window.Activate(); }
+        else { window.SetSource(PanelContext); window.OfferSelection(clips); window.Activate(); }
     }
     private void OnPanels(object sender, RoutedEventArgs e) => OpenPanels(Selected());
     private static double Bound(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
@@ -160,11 +162,13 @@ public partial class MainWindow : Window
         { GroupFilter.ItemsSource = groups; GroupFilter.SelectedItem = groups.Contains(group) ? group : "All groups"; }
         _updatingGroups = false;
         group = GroupFilter.SelectedItem as string ?? "All groups";
+        var inPanel = Session.Pins(PanelContext).Select(i => i.Id).ToHashSet();
+        PinnedFilter.ToolTip = "Clips in " + Session.PanelName(PanelContext);
         var source = _filter == "Trash" ? Session.State.Trash.OrderByDescending(t => t.DeletedUtc).Select(t => t.Item) : Session.State.Items.AsEnumerable();
         var available = Session.State.Items.Concat(Session.State.Trash.Select(t => t.Item)).Select(i => i.Id).ToHashSet();
         foreach (var id in _rowCache.Keys.Where(id => !available.Contains(id)).ToArray()) _rowCache.Remove(id);
         var next = new System.Collections.Generic.List<ItemRow>();
-        foreach (var item in source.Where(i => (_filter != "Pinned" || i.IsPinned) && (group == "All groups" || i.Group == group)).OrderByDescending(i => i.IsPinned).ThenByDescending(i => i.CreatedUtc))
+        foreach (var item in source.Where(i => (_filter != "Pinned" || inPanel.Contains(i.Id)) && (group == "All groups" || i.Group == group)).OrderByDescending(i => inPanel.Contains(i.Id)).ThenByDescending(i => i.CreatedUtc))
             if (query.Length == 0 || item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Content.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Group.Contains(query, StringComparison.OrdinalIgnoreCase))
             {
                 if (!_rowCache.TryGetValue(item.Id, out var row)) _rowCache[item.Id] = row = new ItemRow(item);
@@ -313,7 +317,7 @@ public partial class MainWindow : Window
     {
         var selected = Selected(); if (selected.Count == 0) return;
         Session.Paster?.CaptureTarget();
-        ClipMenu.Show(ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem), (FrameworkElement)sender, true);
+        ClipMenu.Show(ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem, PanelContext), (FrameworkElement)sender, true);
     }
     public void EditItem(ShelfItem item)
     {
@@ -333,7 +337,7 @@ public partial class MainWindow : Window
         var selected = Selected(); if (selected.Count == 0) return;
         Session.Paster?.CaptureTarget();
         var target = ItemList.ItemContainerGenerator.ContainerFromItem(ItemList.SelectedItem) as FrameworkElement ?? ItemList;
-        ItemList.ContextMenu = ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem);
+        ItemList.ContextMenu = ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem, PanelContext);
         ClipMenu.Show(ItemList.ContextMenu, target, e.CursorLeft < 0);
     }
     private void OnFilter(object sender, RoutedEventArgs e)

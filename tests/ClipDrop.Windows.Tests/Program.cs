@@ -69,7 +69,7 @@ internal static class Program
             Check(transfers.Import(Clipboard.GetDataObject() ?? throw new Exception("Clipboard unavailable")).Single().Content == note.Content,
                 "Copying and pasting a ClipDrop text card keeps it a text card");
             Clipboard.Clear();
-            var store = new StateStore(root); var state = store.Load();
+            var store = new StateStore(root); var state = store.Load(); state.Settings.CollapseWhenIdle = false;
             state.Items.AddRange(new[] { note, image, file, ShelfItem.FromText("A long Cyrillic reference: Проверка очень длинного названия изображения для рабочего проекта") });
             state.Items[0].IsPinned = true;
             Console.WriteLine("CHECKPOINT Library creation");
@@ -119,6 +119,8 @@ internal static class Program
             PresenceProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             PanelsProbe.Run(root, output, Check, (element, path) => RenderElement(element, path));
             CollectProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
+            CompactProbe.Run(window, dock, root, output, Check);
+            IndependentProbe.Run(window, dock, root, output, Check);
             MediaProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             Render(dock, Path.Combine(output, "dock-video.png"));
             Render(window, Path.Combine(output, "library-video.png"));

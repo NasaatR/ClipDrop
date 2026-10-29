@@ -51,7 +51,7 @@ internal static class PanelSetChecks
         var oldStore = new StateStore(legacyRoot); var migrated = oldStore.Load(); oldStore.Save(migrated); oldStore.Save(migrated);
         check(PanelSets.Active(migrated).Name == "Main" && PanelSets.Active(migrated).ClipIds.SequenceEqual(new[] { b.Id, a.Id }) && migrated.Settings.DockOpacity == 0,
             "Schema-4 pins migrate to Main in their existing visual order and retain appearance");
-        check(File.ReadAllBytes(Path.Combine(legacyRoot, "shelf.json.schema-4-before-v5.bak")).SequenceEqual(bytes), "Schema-5 upgrade retains immutable original schema-4 bytes after repeated saves");
+        check(File.ReadAllBytes(Path.Combine(legacyRoot, "shelf.json.schema-4-before-v" + ShelfState.CurrentSchema + ".bak")).SequenceEqual(bytes), "Schema migration retains immutable original schema-4 bytes after repeated saves");
         var asyncRoot = Path.Combine(root, "async-save"); var asyncStore = new StateStore(asyncRoot); var asyncState = asyncStore.Load();
         asyncState.Items.Add(ShelfItem.FromText("before"));
         var pending = asyncStore.SaveAsync(asyncState); asyncState.Items[0].Content = "after"; pending.GetAwaiter().GetResult();

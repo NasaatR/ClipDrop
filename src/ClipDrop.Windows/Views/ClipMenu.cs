@@ -15,9 +15,10 @@ namespace ClipDrop.Windows.Views;
 
 public static class ClipMenu
 {
-    public static ContextMenu Create(ShelfSession session, IReadOnlyList<ShelfItem> items, Window owner, bool dock, bool trash = false, Action<ShelfItem>? edit = null)
+    public static ContextMenu Create(ShelfSession session, IReadOnlyList<ShelfItem> items, Window owner, bool dock, bool trash = false, Action<ShelfItem>? edit = null, string? panelId = null)
     {
         var selected = items.ToArray();
+        var targetPanel = panelId ?? session.State.ActivePanelId;
         var menu = new ContextMenu { MaxWidth = 280, FontSize = 11.5 }; Appearance.Apply(session.State.Settings, menu, dock);
         PopupDismiss.Attach(menu, owner);
         System.Windows.Automation.AutomationProperties.SetName(menu, "Clip actions");
@@ -52,8 +53,9 @@ public static class ClipMenu
             }
             if (!trash && selected.Length > 0)
             {
-                var pinned = selected.All(i => i.IsPinned);
-                Add(pinned ? "Remove from dock" : "Add to dock", "Pin", "Pin", () => session.TogglePin(selected));
+                var members = session.Pins(targetPanel).Select(i => i.Id).ToHashSet();
+                var pinned = selected.All(i => members.Contains(i.Id));
+                Add(pinned ? "Remove from this panel" : "Add to this panel", "Pin", "Pin", () => session.TogglePin(selected, targetPanel)).ToolTip = session.PanelName(targetPanel);
                 Add("Save as panel…", "SavePanel", "Panels", () => session.ShowPanels(selected));
                 if (single && edit is not null) Add("Rename / group", "Edit", "Edit", () => edit(selected[0]), "F2");
             }

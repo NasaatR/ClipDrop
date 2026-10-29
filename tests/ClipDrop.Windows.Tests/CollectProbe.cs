@@ -26,7 +26,7 @@ internal static class CollectProbe
     {
         previousLibrary.Hide(); previousDock.HideDock();
         var store = new StateStore(Path.Combine(root, "collect")); var state = store.Load();
-        state.Settings.AnimationsEnabled = false; state.Settings.LibraryFollowsDock = false;
+        state.Settings.AnimationsEnabled = false; state.Settings.CollapseWhenIdle = false; state.Settings.LibraryFollowsDock = false;
         state.Settings.DockLeft = 40; state.Settings.DockTop = 35; state.Settings.Left = 40; state.Settings.Top = 150;
         using var session = new ShelfSession(store, state);
         var held = ShelfItem.FromText("Temporary dock reference"); session.Add(new[] { held });

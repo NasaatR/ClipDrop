@@ -8,7 +8,7 @@ using Microsoft.Win32;
 namespace ClipDrop.Windows.Services;
 
 // Owns views, never a second store, clipboard hook, tray or foreground tracker.
-public sealed class DockCoordinator : IDisposable
+public sealed partial class DockCoordinator : IDisposable
 {
     private readonly ShelfSession _session;
     private readonly MainWindow _library;
@@ -17,8 +17,8 @@ public sealed class DockCoordinator : IDisposable
     private readonly DispatcherTimer _displayChange = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private bool _sync, _disposed, _startHidden;
     private string _layoutSignature = "";
-    private string LayoutSignature() => _session.State.Settings.HomeDisplayId + "|" + _session.State.Settings.MirrorDocks + "|" + string.Join(";", _session.State.Settings.Docks.Select(d => $"{d.DisplayId}:{d.Enabled}:{d.Visible}:{d.OffsetX}:{d.OffsetY}"));
-    public IReadOnlyCollection<DockWindow> Views => _views.Values;
+    private string LayoutSignature() => _session.State.Settings.HomeDisplayId + "|" + _session.State.Settings.MirrorDocks + "|" + string.Join(";", _session.State.Settings.Docks.Select(d => $"{d.DisplayId}:{d.Enabled}:{d.Visible}:{d.OffsetX}:{d.OffsetY}")) + WindowSignature();
+    public IReadOnlyCollection<DockWindow> Views => _views.Values.Concat(_panelViews.Values).ToArray();
     public IReadOnlyList<DisplayArea> Displays { get; private set; } = Array.Empty<DisplayArea>();
     public event Action? DisplaysChanged;
     public DockCoordinator(ShelfSession session, MainWindow library, bool startHidden = false, IDisplaySource? displays = null)
@@ -72,6 +72,7 @@ public sealed class DockCoordinator : IDisposable
                     DockWindow? created = null;
                     created = new DockWindow(_session, () => ShowLibrary(created!), _library.OpenSettings, item => { ShowLibrary(created!); _library.EditItem(item); }, managed: true);
                     view = created; _views.Add(assignment.Display.Id, view);
+                    view.OpenPanelsRequested = clips => { _library.AttachDock(created!); _session.ShowPanels(clips); };
                     view.GeometryCommitted += SaveGeometry;
                     view.IsVisibleChanged += (_, _) => SaveVisibility(created);
                     view.SizeChanged += (_, _) => QueuePlacement(created);
@@ -93,6 +94,7 @@ public sealed class DockCoordinator : IDisposable
                 if (show) view.ShowDock(); else view.HideDock();
                 Place(view);
             }
+            ReconcileWindows();
             if (initial || _startHidden || settings.Docks.Count != previousRecords) _session.Change(false);
         }
         finally { _layoutSignature = LayoutSignature(); _sync = false; }
@@ -100,7 +102,7 @@ public sealed class DockCoordinator : IDisposable
     private void QueuePlacement(DockWindow view)
     {
         if (_sync || _disposed) return;
-        view.Dispatcher.BeginInvoke(() => { if (!_disposed && _views.Values.Contains(view)) Place(view); }, DispatcherPriority.Loaded);
+        view.Dispatcher.BeginInvoke(() => { if (!_disposed && Views.Contains(view)) Place(view); }, DispatcherPriority.Loaded);
     }
     private void Place(DockWindow view)
     {
@@ -123,13 +125,17 @@ public sealed class DockCoordinator : IDisposable
     private void SaveGeometry(DockWindow view)
     {
         if (_sync || _disposed) return;
+        if (view.PanelId is not null) RetargetWindowAfterMove(view);
         if (view.Assignment is { } assignment) WindowPlacement.ClampTo(view, assignment.Display);
-        CaptureGeometry(view); _session.Change(false);
+        CaptureGeometry(view); _session.Change(false); _layoutSignature = LayoutSignature();
     }
     private void SaveVisibility(DockWindow view)
     {
         if (_sync || _disposed || view.Assignment is not { } assignment) return;
         assignment.Layout.Visible = view.IsVisible; _session.Change(false);
+        if (view.PanelId is string id && _session.State.Panels.Single(p => p.Id == id).Window is { } window)
+            window.Layout.Visible = view.IsVisible;
+        _layoutSignature = LayoutSignature();
         if (view.IsVisible) QueuePlacement(view);
     }
     private DockWindow? Target()
@@ -142,22 +148,23 @@ public sealed class DockCoordinator : IDisposable
     public void ShowTarget() => Target()?.ShowDock();
     public void ShowLibrary() { var view = Target(); if (view is not null) ShowLibrary(view); else _library.ShowShelf(); }
     public void ShowLibrary(DockWindow view) { _library.AttachDock(view); _library.ShowShelf(); }
-    public void ToggleAll() { if (_views.Values.Any(v => v.IsShown)) HideAll(); else ShowAll(); }
+    public void ToggleAll() { if (Views.Any(v => v.IsShown)) HideAll(); else ShowAll(); }
     public void ShowAll() => SetAllVisibility(true);
     public void HideAll() => SetAllVisibility(false);
     private void SetAllVisibility(bool visible)
     {
         // Preserve global intent for disconnected displays as well as live views.
         foreach (var layout in _session.State.Settings.Docks) layout.Visible = visible;
-        foreach (var view in _views.Values) { if (visible) view.ShowDock(); else view.HideDock(); }
-        _session.Change(false);
+        foreach (var panel in _session.State.Panels.Where(p => p.Window?.IsOpen == true)) panel.Window!.Layout.Visible = visible;
+        foreach (var view in Views) { if (visible) view.ShowDock(); else view.HideDock(); }
+        _session.Change(false); _layoutSignature = LayoutSignature();
     }
     public void Dispose()
     {
         if (_disposed) return; _disposed = true;
         _displayChange.Stop(); SystemEvents.DisplaySettingsChanged -= OnDisplayChange; SystemEvents.PowerModeChanged -= OnPowerChange;
         _session.Changed -= OnSessionChange;
-        foreach (var view in _views.Values) { _library.DetachDock(view); view.DisposeView(); }
-        _views.Clear();
+        foreach (var view in Views) { _library.DetachDock(view); view.DisposeView(); }
+        _views.Clear(); _panelViews.Clear();
     }
 }

@@ -19,6 +19,9 @@ public sealed class ShelfSession : IDisposable
     private bool _disposed;
     private long _revision, _persistedRevision;
     private Task? _saving;
+    private long _pinRevision = -1;
+    private Dictionary<string, ShelfItem> _itemIndex = new();
+    private readonly Dictionary<string, ShelfItem[]> _pinCache = new();
     public ShelfState State { get; }
     public TransferService Transfer { get; }
     public Diagnostics Diagnostics { get; } = new();
@@ -106,28 +109,45 @@ public sealed class ShelfSession : IDisposable
         Notify(operation + " failed — " + detail);
     }
 
-    public int Add(IEnumerable<ShelfItem> incoming, bool pin = true)
+    public ShelfItem[] Pins(string? panelId = null)
+    {
+        if (_pinRevision != _revision || _itemIndex.Count != State.Items.Count)
+        { _pinRevision = _revision; _itemIndex = State.Items.ToDictionary(i => i.Id); _pinCache.Clear(); }
+        var id = panelId ?? State.ActivePanelId;
+        if (_pinCache.TryGetValue(id, out var cached)) return cached;
+        var panel = State.Panels.SingleOrDefault(p => p.Id == id && p.ClosedUtc is null) ?? throw new InvalidOperationException("Panel unavailable.");
+        return _pinCache[id] = id == State.ActivePanelId ? State.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).ToArray() :
+            panel.ClipIds.Where(_itemIndex.ContainsKey).Select(key => _itemIndex[key]).ToArray();
+    }
+    public string PanelName(string? panelId = null) => State.Panels.Single(p => p.Id == (panelId ?? State.ActivePanelId)).Name;
+    public int Add(IEnumerable<ShelfItem> incoming, bool pin = true, string? panelId = null)
     {
         var added = 0; var promoted = false; var full = false;
+        var scoped = pin && panelId is not null && panelId != State.ActivePanelId;
+        if (scoped && !State.Panels.Any(p => p.Id == panelId && p.ClosedUtc is null)) throw new InvalidOperationException("Panel unavailable.");
+        var members = new List<string>();
         var nextOrder = PinOrdering.Next(State);
         foreach (var item in incoming)
         {
             var existing = State.Items.FirstOrDefault(i => i.SameContent(item));
             if (existing is not null)
             {
-                if (pin && !existing.IsPinned) { existing.IsPinned = true; existing.PinOrder = nextOrder++; promoted = true; }
+                if (scoped) members.Add(existing.Id);
+                else if (pin && !existing.IsPinned) { existing.IsPinned = true; existing.PinOrder = nextOrder++; promoted = true; }
                 continue;
             }
             if (State.Items.Count >= 5000) { full = true; break; }
-            item.IsPinned = pin; item.PinOrder = nextOrder++; State.Items.Add(item); added++;
+            item.IsPinned = pin && !scoped; item.PinOrder = nextOrder++; State.Items.Add(item); added++;
+            if (scoped) members.Add(item.Id);
         }
+        if (scoped) promoted |= PanelSets.SetMembership(State, panelId!, members, true);
         if (added > 0 || promoted) Change();
         if (full) Notify("Library limit reached. Some items were not added.");
         return added;
     }
 
     public void SaveClipboard() => SaveClipboard(true);
-    public void SaveClipboard(bool pin)
+    public void SaveClipboard(bool pin, string? panelId = null)
     {
         try
         {
@@ -143,17 +163,17 @@ public sealed class ShelfSession : IDisposable
             if (items.Count == 0 && snapshot is not null) items.Add(new ShelfItem { Kind = ItemKind.Clipboard, Title = "Clipboard item" });
             if (items.Count == 1) items[0].Clipboard = snapshot;
             if (items.Count == 0) { Notify("No supported clipboard content"); return; }
-            var count = Add(items, pin);
+            var count = Add(items, pin, panelId);
             if (TrySave()) Notify(snapshot?.Partial == true ? "Saved · some app-only formats unavailable" : count > 0 ? (pin ? "Saved to dock" : "Saved to Library") + " · original clipboard formats kept" : "Already in your library");
         }
         catch (Exception ex) { Error("Save clipboard", ex); }
     }
 
-    public bool Capture(IDataObject data, bool pin = true)
+    public bool Capture(IDataObject data, bool pin = true, string? panelId = null)
     {
         var items = Transfer.Import(data);
         if (items.Count == 0) { Notify("No supported files, image or text"); return false; }
-        var count = Add(items, pin);
+        var count = Add(items, pin, panelId);
         if (TrySave()) Notify(count > 0 ? $"Saved {count} {(count == 1 ? "item" : "items")} · " + (pin ? "pinned to dock" : "in Library") : "Already in your library");
         return true;
     }
@@ -166,9 +186,9 @@ public sealed class ShelfSession : IDisposable
         foreach (var item in current) item.KeepAfterUse = keep;
         Change(); Notify(keep ? "Kept after use" : "Move to Trash after use");
     }
-    public void Reorder(IReadOnlyList<ShelfItem> items, int insertionIndex)
+    public void Reorder(IReadOnlyList<ShelfItem> items, int insertionIndex, string? panelId = null)
     {
-        if (PinOrdering.Move(State, items.Select(i => i.Id), insertionIndex)) { Change(); Notify("Dock order updated"); }
+        if (PanelSets.Move(State, panelId ?? State.ActivePanelId, items.Select(i => i.Id), insertionIndex)) { Change(); Notify("Panel updated"); }
     }
     public ClipDrag BeginDrag(IReadOnlyList<ShelfItem> items)
     {
@@ -195,13 +215,16 @@ public sealed class ShelfSession : IDisposable
         }
         catch (InvalidOperationException ex) { Diagnostics.Record("Archive used clips", ex); Notify(action + " · Trash full; clips kept"); }
     }
-    public void TogglePin(IReadOnlyList<ShelfItem> items)
+    public void TogglePin(IReadOnlyList<ShelfItem> items, string? panelId = null)
     {
         if (items.Count == 0) return;
-        var pin = !items.All(i => i.IsPinned);
-        var next = PinOrdering.Next(State);
-        foreach (var item in items) { if (pin && !item.IsPinned) item.PinOrder = next++; item.IsPinned = pin; }
-        Change();
+        try
+        {
+            var target = panelId ?? State.ActivePanelId; var members = Pins(target).Select(i => i.Id).ToHashSet();
+            var pin = !items.All(i => members.Contains(i.Id));
+            if (PanelSets.SetMembership(State, target, items.Select(i => i.Id), pin)) Change();
+        }
+        catch (Exception ex) { Error("Panel membership", ex); }
     }
 
     public void Remove(List<ShelfItem> items)

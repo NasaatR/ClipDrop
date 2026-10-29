@@ -66,6 +66,7 @@ public sealed class ShelfSettings : AppearanceStyle
     public double? DockTop { get; set; }
     public bool LibraryFollowsDock { get; set; } = true;
     public bool AnimationsEnabled { get; set; } = true;
+    public bool CollapseWhenIdle { get; set; } = true;
     public bool MirrorDocks { get; set; }
     public string HomeDisplayId { get; set; } = "";
     public List<DockLayout> Docks { get; set; } = new();
@@ -74,7 +75,7 @@ public sealed class ShelfSettings : AppearanceStyle
 
 public sealed class ShelfState
 {
-    public const int CurrentSchema = 5;
+    public const int CurrentSchema = 6;
     public int SchemaVersion { get; set; } = CurrentSchema;
     public List<ShelfItem> Items { get; set; } = new();
     public List<TrashEntry> Trash { get; set; } = new();
@@ -93,6 +94,14 @@ public sealed class PanelSet
     public string Name { get; set; } = "Panel";
     public List<string> ClipIds { get; set; } = new();
     public DateTimeOffset? ClosedUtc { get; set; }
+    public PanelWindowState? Window { get; set; }
+}
+
+public sealed class PanelWindowState
+{
+    public bool IsOpen { get; set; }
+    public DateTimeOffset? ClosedUtc { get; set; }
+    public DockLayout Layout { get; set; } = new() { Enabled = true };
 }
 
 public sealed class TrashEntry

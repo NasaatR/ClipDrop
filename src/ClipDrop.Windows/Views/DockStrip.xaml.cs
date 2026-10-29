@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using ClipDrop.Core;
 using ClipDrop.Windows.Services;
 namespace ClipDrop.Windows.Views;
@@ -22,10 +23,40 @@ public partial class DockStrip : UserControl
     private ItemRow? _cue;
     private long _lastScroll;
     private string _surfaceSignature = "";
-    public DockStrip() { InitializeComponent(); PinnedItems.ItemsSource = _rows; }
+    public bool IsCompact { get; private set; }
+    public DockStrip()
+    {
+        InitializeComponent(); PinnedItems.ItemsSource = _rows;
+        Body.SizeChanged += (_, _) => SurfaceSize(false);
+    }
+    private double CompactWidth => (double)Resources["DockSize"] + ((Thickness)Resources["DockGap"]).Left * 2 + Body.Padding.Left + Body.Padding.Right + 2;
+    private void SurfaceSize(bool animate)
+    {
+        if (!Resources.Contains("DockSize")) return;
+        var width = IsCompact ? CompactWidth : Body.ActualWidth;
+        if (width <= 0) return;
+        var previous = Surface.ActualWidth;
+        Surface.BeginAnimation(WidthProperty, null); Surface.Width = width; Surface.Height = Body.ActualHeight;
+        if (animate && IsCompact && Motion.Allowed && previous > width + 1)
+            Surface.BeginAnimation(WidthProperty, new DoubleAnimation(previous, width, TimeSpan.FromMilliseconds(140)) {
+                FillBehavior = FillBehavior.Stop, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            });
+    }
+    public void SetCompact(bool compact)
+    {
+        if (IsCompact == compact) return;
+        IsCompact = compact;
+        // Hidden retains virtualization and geometry; alpha-zero pixels outside
+        // the small surface pass native input through instead of blocking apps.
+        Details.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
+        Stage.Background = compact ? null : new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+        SurfaceSize(true);
+        if (!compact) Motion.Reveal(Details);
+    }
     public void Apply(ShelfSettings settings)
     {
         Appearance.Apply(settings, this, true);
+        if (!Motion.Allowed && Surface.HasAnimatedProperties) SurfaceSize(false);
         var signature = string.Join("|", settings.DockButtonSize, settings.DockSpacing, settings.DockRadius, settings.DockOpacity,
             ((SolidColorBrush)FindResource("Surface")).Color, ((SolidColorBrush)FindResource("Ink")).Color);
         if (_surfaceSignature == signature) return;
@@ -40,6 +71,7 @@ public partial class DockStrip : UserControl
         var background = new SolidColorBrush(bg); background.Freeze(); Resources["DockBackground"] = background;
         var ink = ((SolidColorBrush)FindResource("Ink")).Color; ink.A = 28;
         var outline = new SolidColorBrush(ink); outline.Freeze(); Resources["DockOutline"] = outline;
+        SurfaceSize(false);
     }
     public void SetPins(IEnumerable<ShelfItem> pins, int capacity)
     {
@@ -119,7 +151,13 @@ public partial class DockStrip : UserControl
     private void OnDone(object sender, RoutedEventArgs e) => DoneRequested?.Invoke(sender, e);
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(sender, e);
     private void OnLibrary(object sender, RoutedEventArgs e) => LibraryRequested?.Invoke(sender, e);
-    public void SetPanelName(string name) => Body.ToolTip = name + " · double-click free space for Library · right-click for options · drag free space to move";
+    public void SetPanelName(string name, bool independent = false)
+    {
+        Body.ToolTip = name + " · double-click free space for Library · right-click for options · drag free space to move";
+        SaveButton.ToolTip = "Save to " + name + " · right-click for Library and options";
+        PanelTitle.Text = name; PanelTitle.ToolTip = name;
+        PanelTitle.Visibility = independent ? Visibility.Visible : Visibility.Collapsed;
+    }
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(sender, e);
     private void OnPinLoaded(object sender, RoutedEventArgs e) => PinLoaded?.Invoke(sender, e);
     private void OnImageContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) ImageLoaded?.Invoke(sender, new RoutedEventArgs()); }

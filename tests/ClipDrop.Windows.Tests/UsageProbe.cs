@@ -31,7 +31,7 @@ internal static class UsageProbe
     public static void Run(MainWindow library, DockWindow originalDock, string root, string output, Action<bool, string> check, Action<FrameworkElement, string> render)
     {
         library.Hide(); originalDock.Hide();
-        var store = new StateStore(Path.Combine(root, "usage")); var state = store.Load(); state.Settings.AnimationsEnabled = false;
+        var store = new StateStore(Path.Combine(root, "usage")); var state = store.Load(); state.Settings.AnimationsEnabled = false; state.Settings.CollapseWhenIdle = false;
         state.Settings.DockLeft = 30; state.Settings.DockTop = 30;
         using var session = new ShelfSession(store, state);
         var a = ShelfItem.FromText("One use A"); var b = ShelfItem.FromText("Kept B"); var c = ShelfItem.FromText("External drop C"); var d = ShelfItem.FromText("Cancel D"); b.KeepAfterUse = true;

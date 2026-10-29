@@ -20,6 +20,14 @@ public readonly record struct PixelPosition(double X, double Y);
 
 public static class DockPlanning
 {
+    public static DockAssignment? PanelWindow(PanelSet panel, IReadOnlyList<DisplayArea> displays)
+    {
+        if (panel.ClosedUtc is not null || panel.Window is not { IsOpen: true } window || displays.Count == 0) return null;
+        var display = displays.FirstOrDefault(d => Same(d.Id, window.Layout.DisplayId));
+        if (display is not null) return new DockAssignment(display, window.Layout);
+        var primary = displays.FirstOrDefault(d => d.Primary) ?? displays[0];
+        return new DockAssignment(primary, new DockLayout { DisplayId = primary.Id, Enabled = true, Visible = window.Layout.Visible }, true);
+    }
     public static IReadOnlyList<DockAssignment> Plan(ShelfSettings settings, IReadOnlyList<DisplayArea> displays)
     {
         if (displays.Count == 0) return Array.Empty<DockAssignment>();

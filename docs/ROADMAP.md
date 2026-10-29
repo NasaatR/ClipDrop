@@ -14,9 +14,10 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Delivered in 0.8 |
 | 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | Delivered in 0.9 |
 | 3f · Collect and transfer | Save-only dock, contextual commands, direct Library intake, checkbox selection and group drag | Current 0.10 iteration |
+| 3g · Compact idle state | Save capsule, immediate hover/drop expansion, click-through empty area and preview | In progress for 0.11 |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
-| 4b · Independent views | Simultaneous windows showing different sets | After feedback on 4a |
+| 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | In progress for 0.11 |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
 | 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.10 |
@@ -256,6 +257,38 @@ set/window identity, per-set view placement, reconnect/restore and no accidental
 cross-set edits. Continue the physical two-screen acceptance table in parallel;
 its hardware gate remains open. Keep content versions/backup UI and opt-in
 clipboard history in stages 5/6 instead of bundling them into 4b.
+
+## Current 0.11 slice: compact presence and independent windows
+
+- [ ] Keep a stable native geometry/Save anchor and shrink the painted/hit-testable
+  surface into a capsule after 650 ms away. Retain the virtualized content layout
+  hidden in place; transparent pixels pass mouse input to underlying applications.
+  Hover/drop/menu/source transfer/movement/selection reveals the content immediately.
+  Avoid per-frame native resize/reposition and permanent input polling/hooks.
+- [ ] Save Collapse when idle as a behavior setting, default on. Style presets and
+  appearance reset preserve it; provide actual shared compact/idle previews.
+- [ ] Add independent window records per named set (one per set, at most 12 open),
+  with visibility, display-relative placement and recently-closed timestamp.
+  Schema 6 migrates 1–5 without changing existing membership/order/layout, keeps
+  immutable before-v6 bytes and prevents old releases from discarding window data.
+- [ ] Scope save/drop/membership/reorder to the invoked set without changing the
+  main active set. Keep one shared Library, clipboard service, store and media cache.
+  Cross-set internal drop copies membership into the destination, keeping sources;
+  global Trash/use cleanup and KeepAfterUse remain shared payload behavior.
+- [ ] Saved panels offers Use in dock and Open window. Close window preserves the
+  set/payload and its position; Recently closed restores the same independent view.
+  Closing a logical set also closes its independent view. Mirroring still shows the
+  shared main active set; tray Show/Hide all includes open independent views.
+- [ ] Reconcile missing/reconnected screens without duplicate views or overwriting
+  the absent display layout. Permit explicit independent-window movement across
+  screens; keep the existing assigned-display behavior for mirrored main docks.
+- [ ] Verify scoped order/membership, migration/restart/closed recovery, real
+  click-through behind the collapsed area, hover and supported drops, no false
+  paste while opening, menu/selection/drag holds, two independent HWNDs alongside
+  mirrored views, native scoped/cross-set OLE, geometry stability and installer upgrade.
+
+Physical mixed-DPI hardware feedback stays open. Backup/version UI, opt-in history
+and Send to Figma remain later releases; do not add them to this data/UI slice.
 
 ## Future: optional Send to Figma integration
 

@@ -95,7 +95,7 @@ public sealed class StateStore
         originalVersion = state.SchemaVersion;
         if (state.SchemaVersion == 1) state.SchemaVersion = ShelfState.CurrentSchema;
         else if (!document.RootElement.TryGetProperty("Trash", out _)) throw new InvalidDataException("The saved trash structure is incomplete.");
-        if (originalVersion is 1 or 2 or 3 or 4) state.SchemaVersion = ShelfState.CurrentSchema;
+        if (originalVersion is 1 or 2 or 3 or 4 or 5) state.SchemaVersion = ShelfState.CurrentSchema;
         if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null || state.Trash is null)
             throw new InvalidDataException("Invalid shelf structure.");
         if (state.Trash.Any(t => t is null || t.Item is null || !Guid.TryParse(t.Batch, out _))) throw new InvalidDataException("Invalid trash entry.");
@@ -113,6 +113,12 @@ public sealed class StateStore
                 p.ClipIds.Count > identities.Count || p.ClipIds.Distinct().Count() != p.ClipIds.Count || p.ClipIds.Any(id => !identities.Contains(id))) ||
             state.Panels.Select(p => p.Id).Distinct().Count() != state.Panels.Count || !state.Panels.Any(p => p.Id == state.ActivePanelId && p.ClosedUtc is null))
             throw new InvalidDataException("Invalid saved panels.");
+        if (state.Panels.Count(p => p.Window?.IsOpen == true) > PanelSets.MaximumWindows ||
+            state.Panels.Any(p => p.Window is { } w && (w.Layout is null || string.IsNullOrWhiteSpace(w.Layout.DisplayId) ||
+                w.Layout.DisplayId.Length > 1024 || w.IsOpen && (w.ClosedUtc is not null || p.ClosedUtc is not null) ||
+                w.Layout.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) ||
+                w.Layout.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000))))
+            throw new InvalidDataException("Invalid independent panel windows.");
         PanelSets.ApplyActive(state);
         foreach (var item in all.Where(i => i.Clipboard is not null))
         {

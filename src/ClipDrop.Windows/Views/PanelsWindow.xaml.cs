@@ -14,11 +14,14 @@ public partial class PanelsWindow : Window
     public sealed record Row(PanelSet Panel, string Details, string ActiveLabel)
     { public string Name => Panel.Name; }
     private readonly ShelfSession _session;
+    private readonly DockCoordinator? _docks;
+    private string? _sourcePanel;
     private bool _closed, _refreshing;
     private string[] _pending = Array.Empty<string>();
-    public PanelsWindow(ShelfSession session)
+    public PanelsWindow(ShelfSession session, DockCoordinator? docks = null)
     {
-        _session = session; InitializeComponent();
+        _session = session; _docks = docks; InitializeComponent();
+        WindowButton.Visibility = docks is null ? Visibility.Collapsed : Visibility.Visible;
         _ = new WindowDrag(this, () => { }, () => { });
         _session.Changed += Refresh;
         SizeChanged += (_, _) => Dispatcher.BeginInvoke(() => {
@@ -27,6 +30,7 @@ public partial class PanelsWindow : Window
         Closed += (_, _) => _session.Changed -= Refresh;
         Refresh();
     }
+    public void SetSource(string? panelId) => _sourcePanel = panelId;
     public void OfferSelection(IReadOnlyList<ShelfItem>? clips)
     {
         _pending = clips?.Select(i => i.Id).Distinct().ToArray() ?? Array.Empty<string>();
@@ -40,11 +44,11 @@ public partial class PanelsWindow : Window
     {
         Appearance.Apply(_session.State.Settings, this); Topmost = _session.State.Settings.AlwaysOnTop;
         var selected = SelectedIds().ToHashSet(); var live = _session.State.Items.Select(i => i.Id).ToHashSet();
-        var panels = _session.State.Panels.Where(p => (p.ClosedUtc is not null) == _closed);
-        if (_closed) panels = panels.OrderByDescending(p => p.ClosedUtc);
+        var panels = _session.State.Panels.Where(p => _closed ? p.ClosedUtc is not null || p.Window?.ClosedUtc is not null : p.ClosedUtc is null);
+        if (_closed) panels = panels.OrderByDescending(p => p.ClosedUtc ?? p.Window?.ClosedUtc);
         var rows = panels.Select(p => {
             var count = p.ClipIds.Count(live.Contains); var trash = p.ClipIds.Count - count;
-            return new Row(p, $"{count} {(count == 1 ? "clip" : "clips")}" + (trash > 0 ? $" · {trash} in Trash" : ""), p.Id == _session.State.ActivePanelId ? "Active" : "");
+            return new Row(p, $"{count} {(count == 1 ? "clip" : "clips")}" + (trash > 0 ? $" · {trash} in Trash" : ""), (p.Id == _session.State.ActivePanelId ? "Main" : "") + (p.Window?.IsOpen == true ? " · Window" : p.Window?.ClosedUtc is not null && p.ClosedUtc is null ? " · Window closed" : ""));
         }).ToArray();
         _refreshing = true;
         try
@@ -57,14 +61,17 @@ public partial class PanelsWindow : Window
         PanelCount.Text = rows.Length.ToString(); EmptyHint.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         OpenFilter.SetResourceReference(BackgroundProperty, _closed ? "Raised" : "Selected");
         ClosedFilter.SetResourceReference(BackgroundProperty, _closed ? "Selected" : "Raised");
-        OpenButton.Content = _closed ? "Restore & open" : "Open";
+        OpenButton.Content = _closed ? "Restore & open" : "Use in dock";
         ClosePanelButton.Visibility = MergeButton.Visibility = _closed ? Visibility.Collapsed : Visibility.Visible;
         UpdateActions();
     }
     private void UpdateActions()
     {
         var selected = Selected();
-        OpenButton.IsEnabled = RenameButton.IsEnabled = selected.Length == 1;
+        OpenButton.IsEnabled = RenameButton.IsEnabled = WindowButton.IsEnabled = selected.Length == 1;
+        if (_closed && selected is [var closed] && closed.Panel.Window is not null && _docks is not null)
+            OpenButton.Content = "Restore window";
+        else OpenButton.Content = _closed ? "Restore & open" : "Use in dock";
         ClosePanelButton.IsEnabled = selected.Length > 0; MergeButton.IsEnabled = selected.Length > 1;
         NameEditor.Text = selected.Length == 1 ? selected[0].Name : selected.Length > 1 ? "Combined" : "";
         Hint.Text = selected.Length > 1 ? $"{selected.Length} panels · combine keeps the source panels" : "Ctrl/Shift to select several · closing keeps your clips";
@@ -81,7 +88,7 @@ public partial class PanelsWindow : Window
     }
     private void OnSnapshot(object sender, RoutedEventArgs e)
     {
-        var ids = _session.State.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).Select(i => i.Id).ToArray();
+        var ids = _session.Pins(_sourcePanel).Select(i => i.Id).ToArray();
         _closed = false; _session.PanelAction(() => PanelSets.Create(_session.State, NewName("Saved dock"), ids), "Dock saved as a panel");
         SelectActive();
     }
@@ -96,8 +103,15 @@ public partial class PanelsWindow : Window
     private void OnOpen(object sender, RoutedEventArgs e)
     {
         if (Selected() is not [var row]) return;
-        _session.PanelAction(() => { if (_closed) PanelSets.Restore(_session.State, row.Panel.Id); else PanelSets.Activate(_session.State, row.Panel.Id); }, "Panel opened");
+        if (_closed && row.Panel.Window is not null && _docks is not null) _docks.OpenPanelWindow(row.Panel.Id);
+        else _session.PanelAction(() => { if (_closed) PanelSets.Restore(_session.State, row.Panel.Id); else PanelSets.Activate(_session.State, row.Panel.Id); }, "Panel opened");
         // Keep the manager available for arranging several sets in sequence.
+        _closed = false; Refresh();
+    }
+    private void OnWindow(object sender, RoutedEventArgs e)
+    {
+        if (_docks is null || Selected() is not [var row]) return;
+        _docks.OpenPanelWindow(row.Panel.Id);
         _closed = false; Refresh();
     }
     private void OnDoubleClick(object sender, MouseButtonEventArgs e)
