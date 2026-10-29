@@ -33,6 +33,7 @@ public partial class DockWindow : Window
     private readonly HashSet<string> _arrivingPins = new();
     private readonly ClipSelection _selection = new();
     private bool _selectMode;
+    private string _panelId = "";
     private ModifierKeys _clickModifiers;
     private Point? _origin;
     private Button? _dragButton;
@@ -52,6 +53,7 @@ public partial class DockWindow : Window
         Strip.DoneRequested += (_, _) => { _selectMode = false; _selection.Clear(); Refresh(); };
         Strip.DeleteSelectedRequested += (_, _) => Session.Remove(SelectedClips().ToList());
         Strip.SaveRequested += OnSave; Strip.SettingsRequested += OnSettings; Strip.LibraryRequested += OnLibrary;
+        Strip.PanelsRequested += (_, _) => Session.ShowPanels();
         Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
         Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove; Strip.PinMenu += OnPinMenu;
         _ = new WindowDrag(this, () => { _feedback.IsOpen = false; _moving = true; UpdatePresence(); }, () => {
@@ -102,13 +104,15 @@ public partial class DockWindow : Window
         if (_disposing) return;
         Appearance.Apply(Session.State.Settings, this, true);
         var settings = Session.State.Settings; Strip.Apply(settings); _presence.Refresh();
+        if (_panelId != Session.State.ActivePanelId) { _panelId = Session.State.ActivePanelId; _selection.Clear(); _selectMode = false; }
+        Strip.SetPanelName(PanelSets.Active(Session.State).Name);
         Topmost = settings.AlwaysOnTop;
         FontSize = Appearance.Bound(settings.FontSize, 11, 18, 13);
         var pins = Session.State.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).ToArray();
         var available = Assignment is { } a ? a.Display.Width / WindowPlacement.Scale(this) : IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
         var size = Appearance.Bound(settings.DockButtonSize, 30, 48, 36) + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
         _selection.Trim(pins.Select(i => i.Id));
-        var fixedWidth = 104 + 4 * size + (_selection.Ids.Count > 0 ? 20 + 2 * size : _selectMode ? size : 0);
+        var fixedWidth = 104 + 5 * size + (_selection.Ids.Count > 0 ? 20 + 2 * size : _selectMode ? size : 0);
         var slots = Math.Max(1, (int)((available - fixedWidth) / size));
         if (pins.Length > slots) slots--;
         var capacity = Math.Max(1, Math.Min(8, slots));
@@ -124,8 +128,10 @@ public partial class DockWindow : Window
         var key = dropping ? "Selected" : "Surface";
         var color = ((SolidColorBrush)Strip.FindResource(key)).Color;
         color.A = dropping ? (byte)255 : (byte)Math.Round(255 * Appearance.Bound(Session.State.Settings.DockOpacity, 0, 100, 100) / 100);
-        DockBody.Background = new SolidColorBrush(color);
-        DockBody.BorderBrush = (Brush)Strip.FindResource(dropping ? "Ink" : "DockOutline");
+        if (DockBody.Background is not SolidColorBrush current || current.Color != color)
+        { var brush = new SolidColorBrush(color); brush.Freeze(); DockBody.Background = brush; }
+        var outline = (Brush)Strip.FindResource(dropping ? "Ink" : "DockOutline");
+        if (!ReferenceEquals(DockBody.BorderBrush, outline)) DockBody.BorderBrush = outline;
     }
     private void ShowFeedback(string message)
     {

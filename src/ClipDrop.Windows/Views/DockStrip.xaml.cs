@@ -17,15 +17,21 @@ public partial class DockStrip : UserControl
 {
     public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded, KeepRequested, SelectRequested, DeleteSelectedRequested, DoneRequested, HideRequested;
     public event MouseButtonEventHandler? PinDown, PinUp, PinMenu;
+    public event RoutedEventHandler? PanelsRequested;
     public event MouseEventHandler? PinMove;
     private readonly ObservableCollection<ItemRow> _rows = new();
     private double _slot = 40;
     private ItemRow? _cue;
     private long _lastScroll;
+    private string _surfaceSignature = "";
     public DockStrip() { InitializeComponent(); PinnedItems.ItemsSource = _rows; }
     public void Apply(ShelfSettings settings)
     {
         Appearance.Apply(settings, this, true);
+        var signature = string.Join("|", settings.DockButtonSize, settings.DockSpacing, settings.DockRadius, settings.DockOpacity,
+            ((SolidColorBrush)FindResource("Surface")).Color, ((SolidColorBrush)FindResource("Ink")).Color);
+        if (_surfaceSignature == signature) return;
+        _surfaceSignature = signature;
         Resources["DockSize"] = Appearance.Bound(settings.DockButtonSize, 30, 48, 36);
         _slot = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
         Resources["DockSlot"] = _slot;
@@ -33,10 +39,9 @@ public partial class DockStrip : UserControl
         Resources["DockRadius"] = new CornerRadius(Appearance.Bound(settings.DockRadius, 0, 24, 11));
         var bg = ((SolidColorBrush)FindResource("Surface")).Color;
         bg.A = (byte)Math.Round(255 * Appearance.Bound(settings.DockOpacity, 0, 100, 100) / 100);
-        Resources["DockBackground"] = new SolidColorBrush(bg);
+        var background = new SolidColorBrush(bg); background.Freeze(); Resources["DockBackground"] = background;
         var ink = ((SolidColorBrush)FindResource("Ink")).Color; ink.A = 28;
-        Resources["DockOutline"] = new SolidColorBrush(ink);
-        Body.Effect ??= new DropShadowEffect { Color = Colors.Black, BlurRadius = 16, ShadowDepth = 3.25, Direction = 270, Opacity = .38 };
+        var outline = new SolidColorBrush(ink); outline.Freeze(); Resources["DockOutline"] = outline;
     }
     public void SetPins(IEnumerable<ShelfItem> pins, int capacity)
     {
@@ -44,10 +49,11 @@ public partial class DockStrip : UserControl
         var ids = all.Select(i => i.Id).ToHashSet();
         for (var i = _rows.Count - 1; i >= 0; i--) if (!ids.Contains(_rows[i].Item.Id)) _rows.RemoveAt(i);
         var inserted = false;
+        var lookup = _rows.ToDictionary(r => r.Item.Id);
         for (var i = 0; i < all.Length; i++)
         {
             if (i < _rows.Count && _rows[i].Item.Id == all[i].Id) { _rows[i].Refresh(); continue; }
-            var existing = _rows.FirstOrDefault(r => r.Item.Id == all[i].Id);
+            lookup.TryGetValue(all[i].Id, out var existing);
             if (existing is not null) _rows.Move(_rows.IndexOf(existing), i);
             else { _rows.Insert(i, new ItemRow(all[i])); inserted = true; }
         }
@@ -116,6 +122,8 @@ public partial class DockStrip : UserControl
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(sender, e);
     private void OnSettings(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke(sender, e);
     private void OnLibrary(object sender, RoutedEventArgs e) => LibraryRequested?.Invoke(sender, e);
+    private void OnPanels(object sender, RoutedEventArgs e) => PanelsRequested?.Invoke(sender, e);
+    public void SetPanelName(string name) => PanelsButton.ToolTip = "Saved panels · " + name;
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(sender, e);
     private void OnPinLoaded(object sender, RoutedEventArgs e) => PinLoaded?.Invoke(sender, e);
     private void OnImageContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) ImageLoaded?.Invoke(sender, new RoutedEventArgs()); }

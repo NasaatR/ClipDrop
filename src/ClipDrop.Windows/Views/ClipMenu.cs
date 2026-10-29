@@ -54,6 +54,7 @@ public static class ClipMenu
             {
                 var pinned = selected.All(i => i.IsPinned);
                 Add(pinned ? "Remove from dock" : "Add to dock", "Pin", "Pin", () => session.TogglePin(selected));
+                Add("Save as panel…", "SavePanel", "Panels", () => session.ShowPanels(selected));
                 if (single && edit is not null) Add("Rename / group", "Edit", "Edit", () => edit(selected[0]), "F2");
             }
         };

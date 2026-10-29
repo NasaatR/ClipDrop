@@ -10,6 +10,7 @@
    <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" ToolTip="Save clipboard" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><views:AppIcon Kind="Save" /></Button>
    <Button x:Name="SettingsButton" Style="{StaticResource DockButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><views:AppIcon Kind="Settings" /></Button>
    <Button x:Name="LibraryButton" Style="{StaticResource DockButton}" Click="OnLibrary" ToolTip="Library · Ctrl+Alt+L" AutomationProperties.Name="Open Library"><views:AppIcon Kind="Library" /></Button>
+   <Button x:Name="PanelsButton" Style="{StaticResource DockButton}" Click="OnPanels" ToolTip="Saved panels" AutomationProperties.Name="Saved panels"><views:AppIcon Kind="Panels"/></Button>
    <Button x:Name="SelectButton" Style="{StaticResource DockButton}" Click="OnSelect" ToolTip="Select clips · Ctrl/Shift+click" AutomationProperties.Name="Select clips"><views:AppIcon Kind="Select"/></Button>
    <Border Width="1" Background="{DynamicResource DockOutline}" Margin="6,7"/>
    <TextBlock x:Name="EmptyHint" Text="Drop here" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" Margin="8,0" FontSize="11" IsHitTestVisible="False"/>

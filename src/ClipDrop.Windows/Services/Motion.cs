@@ -43,7 +43,8 @@ public static class Motion
         void Update()
         {
             if (button.RenderTransform is not ScaleTransform scale) return;
-            var next = button.IsPressed ? .94 : button.IsMouseOver && button.IsEnabled ? 1.035 : 1;
+            // Never grow beyond the cell: zero-spacing virtualized rows clip it.
+            var next = button.IsPressed ? .94 : 1;
             Animate(scale, ScaleTransform.ScaleXProperty, Allowed ? next : 1, 110);
             Animate(scale, ScaleTransform.ScaleYProperty, Allowed ? next : 1, 110);
         }
@@ -57,7 +58,7 @@ public static class Motion
     {
         var from = (double)target.GetValue(property);
         target.BeginAnimation(property, null); target.SetValue(property, value);
-        if (Allowed) target.BeginAnimation(property, new DoubleAnimation(from, value, TimeSpan.FromMilliseconds(ms)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }, FillBehavior = FillBehavior.Stop });
+        if (Allowed && Math.Abs(from - value) > .001) target.BeginAnimation(property, new DoubleAnimation(from, value, TimeSpan.FromMilliseconds(ms)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }, FillBehavior = FillBehavior.Stop });
     }
     public static void Reveal(FrameworkElement surface)
     {

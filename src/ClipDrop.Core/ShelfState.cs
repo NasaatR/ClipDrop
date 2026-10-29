@@ -74,11 +74,25 @@ public sealed class ShelfSettings : AppearanceStyle
 
 public sealed class ShelfState
 {
-    public const int CurrentSchema = 4;
+    public const int CurrentSchema = 5;
     public int SchemaVersion { get; set; } = CurrentSchema;
     public List<ShelfItem> Items { get; set; } = new();
     public List<TrashEntry> Trash { get; set; } = new();
     public ShelfSettings Settings { get; set; } = new();
+    public List<PanelSet> Panels { get; set; } = new();
+    public string ActivePanelId { get; set; } = "";
+    public ShelfState()
+    {
+        var main = new PanelSet { Name = "Main" }; Panels.Add(main); ActivePanelId = main.Id;
+    }
+}
+
+public sealed class PanelSet
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "Panel";
+    public List<string> ClipIds { get; set; } = new();
+    public DateTimeOffset? ClosedUtc { get; set; }
 }
 
 public sealed class TrashEntry

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace ClipDrop.Core;
 
@@ -14,6 +15,8 @@ public sealed class StateStore
     private int? _migrationVersion;
     private string? _migrationSource;
     private readonly object _gate = new();
+    private readonly object _queue = new();
+    private Task _writeTail = Task.CompletedTask;
     private static readonly JsonSerializerOptions Json = new() {
         WriteIndented = true, Converters = { new JsonStringEnumConverter() }
     };
@@ -92,7 +95,7 @@ public sealed class StateStore
         originalVersion = state.SchemaVersion;
         if (state.SchemaVersion == 1) state.SchemaVersion = ShelfState.CurrentSchema;
         else if (!document.RootElement.TryGetProperty("Trash", out _)) throw new InvalidDataException("The saved trash structure is incomplete.");
-        if (originalVersion is 1 or 2 or 3) state.SchemaVersion = ShelfState.CurrentSchema;
+        if (originalVersion is 1 or 2 or 3 or 4) state.SchemaVersion = ShelfState.CurrentSchema;
         if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null || state.Trash is null)
             throw new InvalidDataException("Invalid shelf structure.");
         if (state.Trash.Any(t => t is null || t.Item is null || !Guid.TryParse(t.Batch, out _))) throw new InvalidDataException("Invalid trash entry.");
@@ -101,6 +104,16 @@ public sealed class StateStore
             throw new InvalidDataException("Invalid shelf item.");
         if (originalVersion is 1 or 2) PinOrdering.Migrate(state);
         if (all.Select(i => i.Id).Distinct().Count() != all.Length) throw new InvalidDataException("Duplicate shelf identities.");
+        if (originalVersion < 5) PanelSets.Migrate(state);
+        else if (!document.RootElement.TryGetProperty("Panels", out _) || !document.RootElement.TryGetProperty("ActivePanelId", out _))
+            throw new InvalidDataException("The saved panel structure is incomplete.");
+        var identities = all.Select(i => i.Id).ToHashSet();
+        if (state.Panels is null || state.Panels.Count is < 1 or > PanelSets.Maximum ||
+            state.Panels.Any(p => p is null || !Guid.TryParse(p.Id, out _) || string.IsNullOrWhiteSpace(p.Name) || p.Name.Length > 60 || p.ClipIds is null ||
+                p.ClipIds.Count > identities.Count || p.ClipIds.Distinct().Count() != p.ClipIds.Count || p.ClipIds.Any(id => !identities.Contains(id))) ||
+            state.Panels.Select(p => p.Id).Distinct().Count() != state.Panels.Count || !state.Panels.Any(p => p.Id == state.ActivePanelId && p.ClosedUtc is null))
+            throw new InvalidDataException("Invalid saved panels.");
+        PanelSets.ApplyActive(state);
         foreach (var item in all.Where(i => i.Clipboard is not null))
         {
             var snapshot = item.Clipboard!;
@@ -123,7 +136,22 @@ public sealed class StateStore
         return state;
     }
 
-    public void Save(ShelfState state)
+    public void Save(ShelfState state) => SaveAsync(state).GetAwaiter().GetResult();
+
+    public Task SaveAsync(ShelfState state)
+    {
+        if (!_loaded) throw new InvalidOperationException("Load the shelf before saving it.");
+        PanelSets.CaptureActive(state);
+        // Encode while the caller owns mutable state. The disk worker only receives
+        // immutable bytes, and the queue preserves call order even after a failure.
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(state, Json);
+        lock (_queue)
+        {
+            return _writeTail = _writeTail.ContinueWith(_ => SaveBytes(bytes),
+                System.Threading.CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+        }
+    }
+    private void SaveBytes(byte[] bytes)
     {
         lock (_gate)
         {
@@ -135,7 +163,6 @@ public sealed class StateStore
                 if (!File.Exists(backup)) File.Copy(source, backup, false);
                 _migrationVersion = null; _migrationSource = null;
             }
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(state, Json);
             var temporary = _path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try
             {

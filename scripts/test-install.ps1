@@ -28,8 +28,8 @@ try {
 } finally { if (!$app.HasExited) { Stop-Process -Id $app.Id -Force } }
 $kept = Get-Content (Join-Path $data 'shelf.json') -Raw | ConvertFrom-Json
 if ($kept.Items[0].Content -ne 'Привет — upgrade preserved' -or $kept.Settings.DockOpacity -ne 0) { throw 'Upgrade lost contents or zero preferences' }
-if ($kept.SchemaVersion -ne 4 -or !(Test-Path (Join-Path $data 'shelf.json.schema-1-before-v4.bak'))) { throw 'Schema migration backup was not preserved' }
-if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json.schema-1-before-v4.bak')) -ne $fixture) { throw 'Migration backup changed the original legacy data' }
+if ($kept.SchemaVersion -ne 5 -or !(Test-Path (Join-Path $data 'shelf.json.schema-1-before-v5.bak'))) { throw 'Schema migration backup was not preserved' }
+if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json.schema-1-before-v5.bak')) -ne $fixture) { throw 'Migration backup changed the original legacy data' }
 $process = Start-Process "$target/unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
 if ($process.ExitCode -ne 0 -or (Test-Path "$target/ClipDrop.exe")) { throw 'Uninstallation failed' }
 if (!(Test-Path (Join-Path $data 'shelf.json'))) { throw 'Uninstaller removed user data' }

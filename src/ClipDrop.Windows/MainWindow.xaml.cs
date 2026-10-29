@@ -18,7 +18,11 @@ namespace ClipDrop.Windows;
 public partial class MainWindow : Window
 {
     public ShelfSession Session { get; }
-    private readonly ObservableCollection<ItemRow> _rows = new();
+    private readonly RowCollection _rows = new();
+    private readonly System.Collections.Generic.Dictionary<string, ItemRow> _rowCache = new();
+    private bool _refreshing;
+    private double _rowSpacing = double.NaN;
+    private readonly System.Windows.Threading.DispatcherTimer _searchDelay = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly ThumbnailCache _thumbnails = ThumbnailCache.Shared;
     private Point? _origin;
     private ItemRow? _pendingSingle;
@@ -38,8 +42,11 @@ public partial class MainWindow : Window
         if (ContextMenu is not null) PopupDismiss.Attach(ContextMenu, this);
         _ = new WindowDrag(this, () => { Session.State.Settings.LibraryFollowsDock = false; UpdateAttachment(); }, QueueGeometrySave);
         ItemList.ItemsSource = _rows;
+        _searchDelay.Tick += (_, _) => { _searchDelay.Stop(); Refresh(); };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) _searchDelay.Stop(); };
         Session.Changed += Refresh;
         Session.StatusChanged += SetStatus;
+        Session.PanelsRequested += OpenPanels;
         Loaded += (_, _) => {
             WindowPlacement.Restore(this, Session.State.Settings.Left, Session.State.Settings.Top,
                 Session.State.Settings.Width, Session.State.Settings.Height);
@@ -104,6 +111,20 @@ public partial class MainWindow : Window
         Session.StatusChanged += StorageStatus; settings.Closed += (_, _) => Session.StatusChanged -= StorageStatus;
         settings.SetStorageStatus(Session.StorageStatus); settings.Show();
     }
+    public void OpenPanels(System.Collections.Generic.IReadOnlyList<ShelfItem>? clips = null)
+    {
+        Session.Paster?.CaptureTarget();
+        var window = Application.Current.Windows.OfType<PanelsWindow>().FirstOrDefault();
+        if (window is null)
+        {
+            window = new PanelsWindow(Session) { Owner = IsVisible ? this : null,
+                WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen };
+            window.OfferSelection(clips); window.Show();
+        }
+        else { window.OfferSelection(clips); window.Activate(); }
+    }
+    private void OnPanels(object sender, RoutedEventArgs e) => OpenPanels();
+    private void OnSavePanel(object sender, RoutedEventArgs e) => OpenPanels(Selected());
     private static double Bound(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
     public void ApplyAppearance()
     {
@@ -112,9 +133,14 @@ public partial class MainWindow : Window
         UpdateAttachment(); PositionNearDock();
         Topmost = settings.AlwaysOnTop; TopIcon.Opacity = Topmost ? 1 : 0.35;
         FontSize = Bound(settings.FontSize, 11, 18, 13);
-        var style = new Style(typeof(ListBoxItem), (Style)Application.Current.FindResource(typeof(ListBoxItem)));
-        style.Setters.Add(new Setter(MarginProperty, new Thickness(0, 0, 0, Bound(settings.RowSpacing, 0, 12, 4))));
-        ItemList.ItemContainerStyle = style;
+        var spacing = Bound(settings.RowSpacing, 0, 12, 4);
+        if (_rowSpacing != spacing)
+        {
+            _rowSpacing = spacing;
+            var style = new Style(typeof(ListBoxItem), (Style)Application.Current.FindResource(typeof(ListBoxItem)));
+            style.Setters.Add(new Setter(MarginProperty, new Thickness(0, 0, 0, spacing))); style.Seal();
+            ItemList.ItemContainerStyle = style;
+        }
     }
     private void Refresh()
     {
@@ -130,11 +156,23 @@ public partial class MainWindow : Window
         _updatingGroups = false;
         group = GroupFilter.SelectedItem as string ?? "All groups";
         var source = _filter == "Trash" ? Session.State.Trash.OrderByDescending(t => t.DeletedUtc).Select(t => t.Item) : Session.State.Items.AsEnumerable();
-        _rows.Clear();
+        var available = Session.State.Items.Concat(Session.State.Trash.Select(t => t.Item)).Select(i => i.Id).ToHashSet();
+        foreach (var id in _rowCache.Keys.Where(id => !available.Contains(id)).ToArray()) _rowCache.Remove(id);
+        var next = new System.Collections.Generic.List<ItemRow>();
         foreach (var item in source.Where(i => (_filter != "Pinned" || i.IsPinned) && (group == "All groups" || i.Group == group)).OrderByDescending(i => i.IsPinned).ThenByDescending(i => i.CreatedUtc))
             if (query.Length == 0 || item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Content.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Group.Contains(query, StringComparison.OrdinalIgnoreCase))
-                _rows.Add(new ItemRow(item));
-        foreach (var row in _rows.Where(r => selected.Contains(r.Item.Id))) ItemList.SelectedItems.Add(row);
+            {
+                if (!_rowCache.TryGetValue(item.Id, out var row)) _rowCache[item.Id] = row = new ItemRow(item);
+                else row.Refresh();
+                next.Add(row);
+            }
+        _refreshing = true;
+        try
+        {
+            _rows.Reconcile(next.ToArray());
+            foreach (var row in _rows.Where(r => selected.Contains(r.Item.Id) && !ItemList.SelectedItems.Contains(r))) ItemList.SelectedItems.Add(row);
+        }
+        finally { _refreshing = false; }
         EmptyState.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyTitle.Text = _filter == "Trash" ? "Trash is empty" : query.Length > 0 ? "No matching items" : "Your library is ready";
         TrashFilter.Content = "Trash " + Session.State.Trash.Count;
@@ -149,14 +187,15 @@ public partial class MainWindow : Window
     {
         var selected = Selected();
         CopyButton.IsEnabled = PinButton.IsEnabled = RemoveButton.IsEnabled = PasteButton.IsEnabled = selected.Count > 0;
+        SavePanelButton.IsEnabled = selected.Count > 0;
         var unpin = selected.Count > 0 && selected.All(i => i.IsPinned);
         PinButton.ToolTip = unpin ? "Remove selection from dock" : "Add selection to dock";
         PinActionIcon.Opacity = unpin ? 1 : .65;
         RestoreButton.IsEnabled = selected.Count > 0; EditButton.IsEnabled = selected.Count == 1;
         System.Windows.Automation.AutomationProperties.SetName(PinButton, unpin ? "Remove selection from dock" : "Add selection to dock");
     }
-    private void OnSelection(object sender, SelectionChangedEventArgs e) => UpdateSelection();
-    private void OnSearch(object sender, TextChangedEventArgs e) => Refresh();
+    private void OnSelection(object sender, SelectionChangedEventArgs e) { if (!_refreshing) UpdateSelection(); }
+    private void OnSearch(object sender, TextChangedEventArgs e) { _searchDelay.Stop(); _searchDelay.Start(); }
     private void QueueGeometrySave()
     {
         if (WindowState != WindowState.Normal) return;
@@ -266,7 +305,11 @@ public partial class MainWindow : Window
     private void OnCopyText(object sender, RoutedEventArgs e) => Session.Copy(Selected(), true);
     private void OnPin(object sender, RoutedEventArgs e) => Session.TogglePin(Selected());
     private void OnRemove(object sender, RoutedEventArgs e) { if (_filter != "Trash") Session.Remove(Selected()); }
-    private void OnClear(object sender, RoutedEventArgs e) => Session.Remove(Session.State.Items.Where(i => !i.IsPinned).ToList());
+    private void OnClear(object sender, RoutedEventArgs e)
+    {
+        var saved = Session.State.Panels.SelectMany(p => p.ClipIds).ToHashSet();
+        Session.Remove(Session.State.Items.Where(i => !i.IsPinned && !saved.Contains(i.Id)).ToList());
+    }
     private void OnOpen(object sender, MouseButtonEventArgs e)
     {
         if (Container(e.OriginalSource as DependencyObject) is not { DataContext: ItemRow row }) return;
@@ -283,6 +326,7 @@ public partial class MainWindow : Window
     private void OnThumbnailContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) OnThumbnailLoaded(sender, new RoutedEventArgs()); }
     private async void OnThumbnailLoaded(object sender, RoutedEventArgs e)
     {
+        if (sender is Image { DataContext: ItemRow availability }) _ = availability.CheckAvailability();
         if (sender is Image cleared) cleared.Source = null;
         if (sender is Image image && image.DataContext is ItemRow { Item.FilePath: string path } row && (row.Item.Kind == ItemKind.Image || row.IsVideo))
         {

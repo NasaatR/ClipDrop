@@ -34,8 +34,8 @@ internal static class UsageChecks
         state.SchemaVersion = 3; var before = JsonSerializer.SerializeToUtf8Bytes(state); File.WriteAllBytes(Path.Combine(folder, "shelf.json"), before);
         var store = new StateStore(folder); var loaded = store.Load(); store.Save(loaded); store.Save(loaded);
         var reopened = new StateStore(folder).Load();
-        check(reopened.SchemaVersion == 4 && reopened.Items.Single(i => i.Id == clips[1].Id).KeepAfterUse && reopened.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).Select(i => i.Id).SequenceEqual(state.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).Select(i => i.Id)),
+        check(reopened.SchemaVersion == ShelfState.CurrentSchema && reopened.Items.Single(i => i.Id == clips[1].Id).KeepAfterUse && reopened.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).Select(i => i.Id).SequenceEqual(state.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).Select(i => i.Id)),
             "Schema-3 migration preserves ordered pins and keep-after-use flags through restart");
-        check(File.ReadAllBytes(Path.Combine(folder, "shelf.json.schema-3-before-v4.bak")).SequenceEqual(before), "Schema-4 migration keeps the immutable pre-upgrade bytes after repeated saves");
+        check(File.ReadAllBytes(Path.Combine(folder, "shelf.json.schema-3-before-v" + ShelfState.CurrentSchema + ".bak")).SequenceEqual(before), "Schema-4 migration keeps the immutable pre-upgrade bytes after repeated saves");
     }
 }

@@ -19,19 +19,27 @@ public sealed class AppIcon : Grid
         ("Clipboard", "App clipboard clip", "📋"), ("Video", "Video clip", "🎬"),
         ("Reveal", "Open in app", "↗️"), ("Restore", "Restore", "♻️"), ("Grip", "Move panel", "↔️"),
         ("Hide", "Hide dock", "👁️"), ("Keep", "Keep after use", "📌"), ("Select", "Select clips", "☑️"),
+        ("Panels", "Saved panels", "🗃️"),
         ("Play", "Play", "▶️"), ("Pause", "Pause", "⏸️")
     };
     public static readonly DependencyProperty KindProperty = DependencyProperty.Register(nameof(Kind), typeof(string), typeof(AppIcon), new PropertyMetadata("File"));
     public string Kind { get => (string)GetValue(KindProperty); set => SetValue(KindProperty, value); }
     private readonly TextBlock _emoji = new() { FontFamily = new FontFamily("Segoe UI Emoji"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center };
-    private readonly Image _image = new() { Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
+    private readonly Image _image = new() { Stretch = Stretch.Uniform, Margin = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
+    private string? _role;
     public AppIcon()
     {
         Width = 20; Height = 20; IsHitTestVisible = false;
-        Children.Add(_emoji); Children.Add(_image);
-        _emoji.FontSize = 16;
+        // Fit the whole measured line box, including emoji ascenders/descenders.
+        // FontSize derived from a tiny square can exceed it and be clipped by WPF.
+        _emoji.FontSize = 32;
+        Children.Add(new Viewbox { Child = _emoji, Margin = new Thickness(1), Stretch = Stretch.Uniform }); Children.Add(_image);
+        var style = new Style(typeof(TextBlock));
+        style.Setters.Add(new Setter(VisibilityProperty, Visibility.Collapsed));
+        var fallback = new DataTrigger { Binding = new Binding(nameof(Image.Source)) { Source = _image }, Value = null };
+        fallback.Setters.Add(new Setter(VisibilityProperty, Visibility.Visible)); style.Triggers.Add(fallback); style.Seal();
+        _emoji.Style = style;
         Loaded += (_, _) => UpdateIcon();
-        SizeChanged += (_, _) => _emoji.FontSize = Math.Max(8, Math.Min(ActualWidth, ActualHeight) * .80);
     }
     protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
     {
@@ -42,13 +50,9 @@ public sealed class AppIcon : Grid
     {
         var role = "File";
         foreach (var entry in Roles) if (entry.Key == Kind) { role = entry.Key; break; }
+        if (_role == role) return; _role = role;
         _emoji.Text = "📄";
         foreach (var entry in Roles) if (entry.Key == role) { _emoji.Text = entry.Emoji; break; }
         _image.SetResourceReference(Image.SourceProperty, "IconImage." + role);
-        var style = new Style(typeof(TextBlock));
-        style.Setters.Add(new Setter(VisibilityProperty, Visibility.Collapsed));
-        var fallback = new DataTrigger { Binding = new Binding(nameof(Image.Source)) { Source = _image }, Value = null };
-        fallback.Setters.Add(new Setter(VisibilityProperty, Visibility.Visible)); style.Triggers.Add(fallback);
-        _emoji.Style = style;
     }
 }

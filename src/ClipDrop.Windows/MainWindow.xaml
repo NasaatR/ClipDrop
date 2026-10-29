@@ -12,12 +12,13 @@
  <Grid>
   <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid Background="{DynamicResource Surface}" Margin="12,0,8,0">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="Library" FontWeight="SemiBold" FontSize="15"/><TextBlock x:Name="CountLabel" Margin="8,2,0,0" Foreground="{DynamicResource Muted}"/></StackPanel>
    <Button x:Name="AttachButton" Grid.Column="1" Style="{StaticResource IconButton}" Click="OnAttach" ToolTip="Attach Library to dock"><views:AppIcon Kind="Link" x:Name="AttachIcon" Width="16" Height="16"/></Button>
    <Button Grid.Column="2" Style="{StaticResource IconButton}" Click="OnToggleTop" ToolTip="Keep above other windows" AutomationProperties.Name="Toggle always on top"><views:AppIcon Kind="Pin" x:Name="TopIcon" Width="16" Height="16"/></Button>
    <Button Grid.Column="3" Style="{StaticResource IconButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><views:AppIcon Kind="Settings" /></Button>
-   <Button Grid.Column="4" Style="{StaticResource IconButton}" Click="OnHide" ToolTip="Hide Library" AutomationProperties.Name="Hide Library"><views:AppIcon Kind="Close" Width="16" Height="16"/></Button>
+   <Button Grid.Column="4" Style="{StaticResource IconButton}" Click="OnPanels" ToolTip="Saved panels" AutomationProperties.Name="Saved panels"><views:AppIcon Kind="Panels"/></Button>
+   <Button Grid.Column="5" Style="{StaticResource IconButton}" Click="OnHide" ToolTip="Hide Library" AutomationProperties.Name="Hide Library"><views:AppIcon Kind="Close" Width="16" Height="16"/></Button>
   </Grid>
   <DockPanel Grid.Row="1" Margin="10,0,10,8" LastChildFill="True">
    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Click="OnPaste" ToolTip="Save clipboard · Ctrl+V" AutomationProperties.Name="Save clipboard"><views:AppIcon Kind="Save" /></Button>
@@ -59,7 +60,7 @@
    <StackPanel Orientation="Horizontal" Margin="0,7,0,0"><Button Content="Save" Click="OnSaveEdit"/><Button Content="Cancel" Click="OnCancelEdit"/></StackPanel>
   </StackPanel></Border>
   <DockPanel Grid.Row="5" Margin="10,2,10,6">
-   <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="Clear" Click="OnClear" ToolTip="Remove unpinned cards; originals are preserved"/>
+   <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="Clear" Click="OnClear" ToolTip="Move clips outside all saved panels to Trash"/>
    <Button x:Name="RestoreButton" Content="Restore" Click="OnRestore" Visibility="Collapsed" ToolTip="Restore selection from Trash"/>
    <WrapPanel x:Name="ActiveActions">
     <Button x:Name="PasteButton" Click="OnPasteSelected" ToolTip="Paste selected into previous app · Enter" AutomationProperties.Name="Paste selection"><StackPanel Orientation="Horizontal"><views:AppIcon Kind="Paste" Width="15" Height="15" Margin="0,0,7,0"/><TextBlock Text="Paste"/></StackPanel></Button>
@@ -67,6 +68,7 @@
     <Button x:Name="PinButton" Style="{StaticResource IconButton}" Click="OnPin" ToolTip="Pin selection" AutomationProperties.Name="Pin selection"><views:AppIcon Kind="Pin" x:Name="PinActionIcon" Width="16" Height="16"/></Button>
     <Button x:Name="EditButton" Style="{StaticResource IconButton}" Click="OnEdit" ToolTip="Rename / group · F2" AutomationProperties.Name="Edit item"><views:AppIcon Kind="Edit" Width="16" Height="16"/></Button>
     <Button x:Name="RemoveButton" Style="{StaticResource IconButton}" Click="OnRemove" ToolTip="Remove cards · Delete" AutomationProperties.Name="Remove selection"><views:AppIcon Kind="Trash" Width="16" Height="16"/></Button>
+    <Button x:Name="SavePanelButton" Style="{StaticResource IconButton}" Click="OnSavePanel" ToolTip="Save selection as a panel" AutomationProperties.Name="Save selection as a panel"><views:AppIcon Kind="Panels" Width="16" Height="16"/></Button>
    </WrapPanel>
   </DockPanel>
   <Grid Grid.Row="6" Margin="14,0,14,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
