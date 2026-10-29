@@ -36,7 +36,9 @@ internal static class DownloadsProbe
                 check(!RecentDownloads.Scan(folder, now: DateTimeOffset.UtcNow.AddSeconds(5)).Files.Any(f => f.Path == b),
                     "A file held by an active Windows writer is omitted from ready downloads");
             UiProbe.Hover(stack.StackButton); UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-expanded-screen.png"));
+            check(((Border)stack.FindName("Details")).ActualHeight < 220, "A short downloads list uses a compact content-sized surface");
             var receiver = new Border { Background = Brushes.SteelBlue, AllowDrop = true };
+            var backgroundClicks = 0; receiver.MouseLeftButtonDown += (_, _) => backgroundClicks++;
             string[]? received = null;
             receiver.DragOver += (_, e) => { e.Effects = DragDropEffects.Copy; e.Handled = true; };
             receiver.Drop += (_, e) => { received = e.Data.GetData(DataFormats.FileDrop) as string[]; e.Effects = DragDropEffects.Copy; e.Handled = true; };
@@ -62,7 +64,8 @@ internal static class DownloadsProbe
                 var save = window.QuickSave.PointToScreen(new Point(18, 18)); UiProbe.DragTo(stack.DragButton, save);
                 check(window.Pins.Items.Count == 2 && state.Items.Count == 2 && state.Trash.Count == 0,
                     "A native downloads-to-dock drop imports the group once without internal reorder tokens or use cleanup");
-                var fresh = Path.Combine(folder, "Newest.psd"); File.WriteAllText(fresh, "photoshop bytes");
+                var fresh = Path.Combine(folder, "Newest.psd"); File.WriteAllText(fresh + ".crdownload", "photoshop bytes");
+                File.Move(fresh + ".crdownload", fresh);
                 check(UiProbe.Until(() => stack.DownloadList.Items.Count == 3, 6000), "The folder watcher adds a completed new file without manual refresh");
                 var before = stack.DownloadList.Items.Cast<DownloadsWindow.Row>().Single(r => r.File.Path == b);
                 File.Delete(fresh);
@@ -73,7 +76,17 @@ internal static class DownloadsProbe
                 check(UiProbe.Until(() => stack.IsCompact) && WindowPlacement.PixelBounds(stack) == native,
                     "Downloads collapses to its capsule without moving its native anchor");
                 UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-compact-screen.png"));
+                WindowPlacement.MovePixels(target, native.Left + 20, native.Top + 20); target.Activate(); UiProbe.Pump();
+                var through = receiver.PointToScreen(new Point(40, 45));
+                UiProbe.ClickAt(through);
+                check(backgroundClicks == 1 && stack.IsCompact, "Clicks through the compact downloads region reach the underlying application");
                 UiProbe.Hover(stack.StackButton); check(!stack.IsCompact, "Hover immediately reveals the downloads list");
+                UiProbe.ClickAt(through);
+                check(backgroundClicks == 2, "Unused space above a short expanded downloads list also passes real clicks through");
+                UiProbe.Click(stack.StackButton); UiProbe.MoveTo(new Point(area.Left + 4, area.Bottom - 4)); UiProbe.Pump(900);
+                check(!stack.IsCompact, "Clicking the capsule keeps downloads open away from the pointer");
+                UiProbe.Click(stack.StackButton); UiProbe.MoveTo(new Point(area.Left + 4, area.Bottom - 4));
+                check(UiProbe.Until(() => stack.IsCompact), "A second capsule click resumes automatic hover collapse");
                 UiProbe.RightClick(stack.StackButton);
                 UiProbe.ClickAt(new Point(area.Left + 4, area.Bottom - 4));
                 check(!stack.ContextMenu.IsOpen, "Downloads context menu dismisses on a real outside click");

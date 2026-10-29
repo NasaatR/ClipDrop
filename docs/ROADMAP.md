@@ -18,7 +18,7 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
 | 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | Delivered in 0.11 |
-| 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Current 0.12 slice |
+| 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Delivered in 0.12 |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
 | 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.11 |
@@ -261,7 +261,7 @@ adds explicit backup export/import with manifest validation, a restore preview
 and conflict-safe merge. Content editing/version restore follows as 5b;
 opt-in clipboard monitoring stays in stage 6.
 
-## Current 0.11 slice: compact presence and independent windows
+## Delivered 0.11 slice: compact presence and independent windows
 
 - [x] Keep a stable native geometry/Save anchor and shrink the painted/hit-testable
   surface into a capsule after 650 ms away. Retain the virtualized content layout
@@ -301,7 +301,8 @@ and Send to Figma remain later releases; do not add them to this data/UI slice.
 ## Current 0.12 slice: Downloads stack
 
 - [x] Separate opt-in floating capsule. Dock/tray → Downloads opens it without
-  adding another permanent button to the main dock. Hover expands recent files;
+  adding another permanent button to the main dock. A short list sizes its painted
+  surface to its content, leaving unused native pixels click-through. Hover expands recent files;
   a click holds it open. Keep original cursor/geometry and alpha-zero pass-through.
 - [x] Resolve the Windows Downloads known folder (including redirection), or watch
   one explicitly chosen folder. Show up to 40 recent files sorted by creation/write
@@ -318,8 +319,12 @@ and Send to Figma remain later releases; do not add them to this data/UI slice.
 - [x] Save enabled/folder/layout/visibility as behavior preferences; presets keep
   them. Default disabled means no folder watcher before opening/enabling it.
   Keep schema 6: the list is derived from disk and adds no new payload/history model.
-- [ ] Run native watcher/rename/selection/OLE/close/reopen/menu/collapse checks,
+- [x] Run native watcher/rename/selection/OLE/close/reopen/menu/collapse checks,
   inspect dark/light expanded and compact captures, then verify installer upgrade.
+
+Preflight passed 100 Core and 200 Windows checks plus installer upgrade, with
+actual expanded/compact/light screen captures. The final release adds explicit
+content-size and blank-region input/latch checks.
 
 Next slices: 5a backup/export/import; 5b content versions. Multiple watched folders,
 filters/fan layouts, browser completion APIs and browser Save As coverage need a

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.12.0 — 2026-10-30
+
+- Opt-in Downloads stack: separate hover capsule, recent files, persistent placement
+  and native checkbox/range group transfer without cluttering the main dock.
+- Resolve the redirected Windows Downloads known folder or watch one custom folder.
+  Filter temporary/empty/nested files, settle fresh entries and reject active writers.
+- Coalesce watcher events; keep one bounded background scan, stable rows/selections
+  and shared thumbnail caching. Missing folders and watcher errors remain recoverable.
+- Native FileDrop copy/drags and explicit Library save preserve source files.
+  Folder-view transfers never consume Library/Trash entries or synthesize clip IDs.
+- Size short expanded lists to content; keep unused native pixels click-through
+  and the selection action area stable. Show an explicit held-open capsule state.
+- Reuse the Library selector style and honor list-row padding through the shared
+  template. Downloads preferences stay separate from appearance presets; schema 6
+  and existing clip/window/clipboard data remain unchanged.
+
 ## 0.11.0 — 2026-10-29
 
 - Compact idle Save capsule with delayed collapse, immediate hover/drop expansion

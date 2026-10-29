@@ -27,8 +27,10 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.11.0
+## Features in 0.12.0
 
+- Optional Downloads hover stack: recent local files, group drag/copy and explicit
+  Library save from a separate capsule.
 - Compact idle Save capsule with immediate hover/drop expansion and click-through
   empty space; existing transparency remains adjustable separately.
 - Independent named-set windows, scoped collection/order and closed-window restore
@@ -133,6 +135,41 @@ does not unpin an existing dock clip. Dropping your dock clips back into Library
 acknowledges that they are already saved; it does not consume or reimport them.
 Clipboard formats, copy-only original file references, protection and recoverable
 use cleanup are the same from either surface.
+
+## Downloads stack
+
+Right-click Save/free dock space → **Downloads**, or use the tray's **Downloads**
+command. A separate capsule appears near the bottom-right of the selected screen.
+Hover to reveal recent files in a list sized to its content; click the capsule to
+keep it open while choosing (click again to resume hover mode).
+Drag its free edge/header to move it. It follows the dock palette, idle visibility
+and animation/collapse preferences. Blank collapsed space passes clicks through.
+
+Select one or several files with the checkboxes, Ctrl/Shift, then drag a selected
+row or **Drag N** to another app. **Copy** keeps the native file clipboard format.
+**Save to Library** explicitly adds file references without pinning them. Dropping
+from the stack into a dock/Library uses the ordinary file import path and keeps
+originals. The stack is a folder view: outgoing transfers keep its entries and do
+not apply clip-use Trash cleanup, even for a file already saved in Library.
+
+**Settings → Downloads** enables/closes the stack and chooses one watched folder;
+**Use Windows Downloads** returns to the current Windows known folder, including
+redirection. The default is disabled, so no folder watcher runs before you open it.
+Enabled state, selected folder, position and global hide/show survive restart.
+Closing the stack stops its watcher; open it again from the dock/tray command.
+
+The list shows up to 40 recent nonempty files from that folder, ordered by creation/
+write metadata. Browser temporary suffixes, nested/hidden/reparse entries and files
+held by active Windows writers are omitted. Fresh files settle before appearing.
+File events trigger coalesced background refreshes; unchanged rows/previews are
+reused. Hover or **Refresh** retries missing folders; **Open folder** opens Explorer.
+
+This is a local folder view, not browser download history or a verified completion
+signal. Downloads saved elsewhere need a folder change here. Empty files are
+omitted; browser progress, automatic multi-folder discovery and recursive scanning
+are separate future work. The scanner reads metadata/readability, not payload bytes;
+image/video previews use the existing bounded thumbnail cache. No browser extension,
+network fetching, file moving/deleting or automatic Library import is introduced.
 
 ## Visibility and compact actions
 

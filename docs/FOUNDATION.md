@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.11.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.12.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -379,3 +379,33 @@ distinct boundaries; physical mixed-DPI acceptance remains open.
 Migrate schemas 1–5, preserving existing sets/pins/order/styles/layout and exact
 before-v6 metadata. Old builds refuse schema 6 rather than erasing window records.
 Backup/version UI, opt-in clipboard monitoring and Send to Figma remain separate.
+
+## 0.12.0: a folder-backed Downloads stack
+
+Downloads is an opt-in local filesystem view, separate from named clip sets. Its
+metadata list is derived from the selected folder, not persisted as new Library
+items, browser history or new payload ownership. Settings keep enabled/folder/
+placement/visibility preferences; appearance reset/presets preserve them. Schema 6
+stays valid because no valuable new clip/window/payload structure is introduced.
+
+Use the Windows known-folder ID for redirected Downloads. Watch one selected root,
+no recursion or browser databases. Omit common temporary suffixes, empty/hidden/
+reparse entries and fresh/actively-written files. Metadata heuristics and readability
+are not proof a browser completed or approved a download. Scan up to 50,000 entries
+in streaming bounded memory, retain only 40 newest candidates and report truncation.
+
+One shared worker bound prevents stuck filesystem calls from spawning replacement
+threads. Watcher callbacks coalesce before dispatch, scans debounce and cancellation
+prevents stale publication. Start the watcher before scanning to avoid a scan/watch
+gap; errors rebuild it, hover/explicit refresh retries missing folders. No permanent
+rescan timer runs. Row identity and selection survive changed snapshots.
+
+DownloadsWindow shares presence, styling, selectors, thumbnails, session and native
+transfer adapters. Its file references stay outside clip sets until explicit save
+or incoming dock/Library drop. BuildDrag without the internal clip marker uses
+ordinary FileDrop and never applies clip-use cleanup to filesystem entries. Main
+clip drag tokens and accepted-transfer/Trash behavior remain unchanged.
+
+The native runner must exercise writer exclusion, group OLE, clipboard file formats,
+watcher updates, collapse/menu dismissal and global visibility; actual browser
+completion and physical mixed-DPI hardware remain separate acceptance boundaries.

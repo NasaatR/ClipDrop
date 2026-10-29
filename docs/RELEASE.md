@@ -1,12 +1,13 @@
-An idle Save capsule and independent floating windows for saved sets.
+A separate Downloads hover stack for recent local files.
 
-- Collapse when idle is on by default. Away from the pointer, the visible dock shrinks to Save after a short delay; hover reveals clips immediately. Supported drops, menus, selection and movement hold it open. Save stays in place, with no native window resizing on hover. Empty transparent pixels let clicks reach the app underneath.
-- Settings → Dock → Collapse when idle changes the behavior live. Preview compact state uses the same dock component. Existing idle opacity remains separate; animation preferences are respected and appearance presets do not reset collapse behavior.
-- Saved panels → Open window gives a named set its own floating dock (one per set, up to 12 open). Saving, adding/removing membership and reordering target that set. Use in dock switches the main dock and its mirrors; it does not retarget independent windows.
-- Internal drops between different sets copy membership to the target without consuming source clips. Library opened from a window scopes its panel filter and membership actions to that set. Payloads, Keep after use and recoverable Trash remain shared.
-- Close window keeps the set and layout in Recently closed. Restore window reopens it in place without switching the main dock. Show/Hide all includes open independent windows; missing/reconnected displays retain layouts and do not create duplicate views.
-- One session/store/clipboard service and shared preview caches serve all windows. Per-revision item/pin indexes avoid rebuilding the same lookup for each view; feedback popups are limited to interacting docks.
+- Open Downloads from the dock's right-click menu or tray. Hover the small capsule to reveal recent files; click to hold open, or drag its free edge/header to move it. The main dock keeps its Save-only layout.
+- Checkbox/Ctrl/Shift selection, native single/group Copy drag, file clipboard Copy and explicit Save to Library. Drag to another app or into a ClipDrop dock/Library. Source files remain in place; folder-view transfers do not consume saved clips into Trash.
+- Settings → Downloads selects the current Windows Downloads known folder (including redirection) or one custom folder. The stack is off until opened/enabled; its folder/layout/visibility are saved separately from appearance presets. Tray Show/Hide all includes it.
+- Show up to 40 recent nonempty files. Skip temporary, nested, hidden/reparse and actively written files; defer freshly created files. One bounded background scan and coalesced watcher events keep disk work off the dispatcher. Unchanged rows and shared thumbnail previews are reused.
+- Close stops the watcher. Hover/Refresh recovers unavailable folders. Open folder opens Explorer. No browser extension, network fetch, automatic Library import or original-file mutation.
 
-Quit from the tray and run the installer over the current version. Runtime included; unsigned Windows x64 preview. Schema 6 migrates 1–5, retaining named memberships/order, monitor layouts, styles, payloads and an immutable shelf.json.schema-<old>-before-v6.bak. Older releases refuse the new schema.
+This is a folder view, not browser download history or proof of completion. Browser Save As destinations outside the selected folder need a folder change in Settings. Empty files, multiple watched folders, browser progress/completion APIs and advanced layouts remain later work.
 
-Physical mixed-DPI dual-monitor feedback remains open. Independent-window records are per saved set, not duplicate payload copies. Backup/version UI, opt-in clipboard history and Send to Figma are later stages; no network client or clipboard monitoring is added here.
+Quit ClipDrop from the tray, then install over the current version. Runtime included; unsigned Windows x64 preview. Data schema remains 6, preserving saved sets/windows, Trash, styles, opaque clipboard payloads and migration backups.
+
+Backup export/import is the next library stage. Physical mixed-DPI hardware and real third-party target-app gestures retain their manual acceptance boundaries.

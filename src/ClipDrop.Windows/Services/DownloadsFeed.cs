@@ -55,7 +55,12 @@ public sealed class DownloadsFeed : IDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
         return null;
     }
-    private void OnFile(object sender, FileSystemEventArgs e) => Queue();
+    private void OnFile(object sender, FileSystemEventArgs e)
+    {
+        if (RecentDownloads.IsTemporary(e.Name ?? "") &&
+            (e is not RenamedEventArgs renamed || RecentDownloads.IsTemporary(renamed.OldName ?? ""))) return;
+        Queue();
+    }
     private void Queue(bool reconnect = false)
     {
         if (_disposed || _dispatcher.HasShutdownStarted) return;

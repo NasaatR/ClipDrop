@@ -53,13 +53,14 @@ public partial class DownloadsWindow : Window
         InitializeComponent(); Files.ItemsSource = _rows;
         _presence = new DockPresence(this, () => session.State.Settings, compact => {
             IsCompact = compact; Details.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
-            Stage.Background = compact ? null : new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+            HoverBridge.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
             if (!compact) Motion.Reveal(Details);
         });
         PopupDismiss.Attach(ContextMenu, this); ContextMenuOpening += (_, _) => Menu();
         SourceInitialized += (_, _) => NativePastePlatform.MakeNonActivating(this);
         _ = new WindowDrag(this, () => { _moving = true; Presence(); }, () => { _moving = false; Presence(); GeometryCommitted?.Invoke(); });
         MouseEnter += (_, _) => _feed.RequestRefresh();
+        SizeChanged += (_, _) => FitDetails();
         Closing += (_, e) => { if (!_disposing) { e.Cancel = true; Dispatcher.BeginInvoke(_close); } };
         _session.Changed += AppearanceChanged; _feed.Changed += Refresh;
         AppearanceChanged(); Refresh(); Menu();
@@ -72,7 +73,7 @@ public partial class DownloadsWindow : Window
     }
     private void Presence() => _presence.Busy(_busy || _moving || _latched);
     public void ShowStack() { Show(); WindowState = WindowState.Normal; _presence.Reveal(); _feed.RequestRefresh(); }
-    public void HideStack() { PopupDismiss.CloseFor(this); _latched = false; Presence(); Hide(); }
+    public void HideStack() { PopupDismiss.CloseFor(this); Latch(false); Hide(); }
     private void Refresh()
     {
         if (_disposing) return;
@@ -102,11 +103,24 @@ public partial class DownloadsWindow : Window
     private void UpdateActions()
     {
         var count = Files.SelectedItems.Count;
-        Actions.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed; DragSelection.Content = "Drag " + count;
+        Actions.Visibility = count > 0 ? Visibility.Visible : Visibility.Hidden; DragSelection.Content = "Drag " + count;
+        FitDetails();
     }
+    private void FitDetails() => Details.Height = Math.Max(90, Math.Min(116 + Math.Max(1, Math.Min(6, _rows.Count)) * 44, Height - 75));
     private void OnSelection(object sender, SelectionChangedEventArgs e) { if (!_refreshing) UpdateActions(); }
-    private void OnCapsule(object sender, RoutedEventArgs e) { _latched = !_latched; Presence(); }
-    private void OnFolder(object sender, RoutedEventArgs e) => Run(() => Process.Start(new ProcessStartInfo(_feed.Folder) { UseShellExecute = true }));
+    private void OnCapsule(object sender, RoutedEventArgs e) => Latch(!_latched);
+    private void Latch(bool value)
+    {
+        _latched = value;
+        Capsule.SetResourceReference(BackgroundProperty, _latched ? "Selected" : "Control");
+        Capsule.ToolTip = _latched ? "Downloads · kept open · click to resume hover mode" : "Downloads · hover to reveal · click to keep open · drag the edge to move · right-click for options";
+        Presence();
+    }
+    private void OnFolder(object sender, RoutedEventArgs e) => Run(() => {
+        if (!Path.IsPathFullyQualified(_feed.Folder) || !Directory.Exists(_feed.Folder)) throw new DirectoryNotFoundException();
+        Process.Start(new ProcessStartInfo(_feed.Folder) { UseShellExecute = true });
+    });
+    private void OnDragHint(object sender, RoutedEventArgs e) => Summary.Text = "Drag this button or a selected row to another app";
     private void Run(Action action) { try { action(); } catch (Exception ex) { _session.Error("Downloads", ex); Summary.Text = "File unavailable · refresh or open folder"; _feed.RequestRefresh(); } }
     private void OnCopy(object sender, RoutedEventArgs e) => Copy(Selected());
     private void Copy(ShelfItem[] items) { if (items.Length > 0 && _session.Copy(items)) Summary.Text = $"Copied {items.Length} · original files kept"; }
@@ -156,7 +170,7 @@ public partial class DownloadsWindow : Window
         void Add(string name, Action action)
         { var item = new MenuItem { Header = name, FontSize = 11.5, Padding = new Thickness(6, 3, 6, 3) }; item.Click += (_, _) => { menu.IsOpen = false; Dispatcher.BeginInvoke(action); }; menu.Items.Add(item); }
         Add("Open downloads folder", () => OnFolder(this, new())); Add("Refresh", _feed.RequestRefresh);
-        Add("Settings", _settings); Add("Hide downloads stack", _close);
+        Add("Settings", _settings); Add("Close downloads stack", _close);
     }
     private void OnRowMenu(object sender, MouseButtonEventArgs e)
     {
@@ -179,7 +193,7 @@ public partial class DownloadsWindow : Window
     private void OnThumbnailContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) OnThumbnail(sender, new()); }
     private void OnKey(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape) { _latched = false; Files.SelectedItems.Clear(); Presence(); e.Handled = true; }
+        if (e.Key == Key.Escape) { Latch(false); Files.SelectedItems.Clear(); e.Handled = true; }
         else if (e.Key == Key.C && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { Copy(Selected()); e.Handled = true; }
     }
     public void DisposeView()
