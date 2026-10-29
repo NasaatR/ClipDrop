@@ -1,6 +1,6 @@
 # ClipDrop — incremental delivery plan
 
-Updated 2026-10-29. Windows first. Each stage ends with a runnable installer,
+Updated 2026-10-30. Windows first. Each stage ends with a runnable installer,
 portable package, targeted checks and user feedback before expanding its scope.
 Main is the working branch. This plan supersedes the older future-stage lists
 in FOUNDATION.md; those sections also document historical releases.
@@ -18,6 +18,7 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
 | 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | Delivered in 0.11 |
+| 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Current 0.12 slice |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
 | 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.11 |
@@ -255,8 +256,9 @@ OS-composited narrow/light Library capture; timings remain runner-specific.
 Stage 4b follows in 0.11 below: independent simultaneous set windows, scoped
 collection/order, per-window placement and close/restore. Continue the physical
 two-screen acceptance table with user hardware feedback; its gate remains open.
-Next: stage 5a, explicit backup export/import with manifest validation, a restore
-preview and conflict-safe merge. Content editing/version restore follows as 5b;
+User priority on 2026-10-30 puts stage 4c first: a Downloads stack. Stage 5a then
+adds explicit backup export/import with manifest validation, a restore preview
+and conflict-safe merge. Content editing/version restore follows as 5b;
 opt-in clipboard monitoring stays in stage 6.
 
 ## Current 0.11 slice: compact presence and independent windows
@@ -295,6 +297,40 @@ click-through. These checks do not prove physical mixed-DPI or target-app gestur
 
 Physical mixed-DPI hardware feedback stays open. Backup/version UI, opt-in history
 and Send to Figma remain later releases; do not add them to this data/UI slice.
+
+## Current 0.12 slice: Downloads stack
+
+- [x] Separate opt-in floating capsule. Dock/tray → Downloads opens it without
+  adding another permanent button to the main dock. Hover expands recent files;
+  a click holds it open. Keep original cursor/geometry and alpha-zero pass-through.
+- [x] Resolve the Windows Downloads known folder (including redirection), or watch
+  one explicitly chosen folder. Show up to 40 recent files sorted by creation/write
+  metadata. Ignore temporary/empty/nested/hidden/reparse entries, defer fresh files
+  and omit files with active Windows writers. This is a folder view, not proof of
+  browser completion, browser history or coverage of all Save As destinations.
+- [x] One bounded background scan at a time, debounced/coalesced watcher events,
+  recovery on watcher error and hover/explicit refresh, cancellation on close and
+  no permanent rescan timer. Retain unchanged rows, selection and preview cache.
+- [x] Checkbox/range selection, native single/group Copy drags, Copy and explicit
+  Save to Library. Incoming dock/Library transfers use ordinary FileDrop, not
+  synthetic internal clip IDs. Download transfers never consume/delete originals
+  or create Library/Trash entries without the explicit save/drop action.
+- [x] Save enabled/folder/layout/visibility as behavior preferences; presets keep
+  them. Default disabled means no folder watcher before opening/enabling it.
+  Keep schema 6: the list is derived from disk and adds no new payload/history model.
+- [ ] Run native watcher/rename/selection/OLE/close/reopen/menu/collapse checks,
+  inspect dark/light expanded and compact captures, then verify installer upgrade.
+
+Next slices: 5a backup/export/import; 5b content versions. Multiple watched folders,
+filters/fan layouts, browser completion APIs and browser Save As coverage need a
+separate design/compatibility slice after feedback. Clipboard monitoring and Send
+to Figma retain their own stages. Physical mixed-DPI hardware acceptance stays open.
+
+Implementation sources (reviewed 2026-10-30): Microsoft
+[known folder IDs](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid),
+[SHGetKnownFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath),
+[FileSystemWatcher events/error/buffer guidance](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher?view=net-10.0).
+Code is original MIT implementation using existing ClipDrop components.
 
 ## Future: optional Send to Figma integration
 

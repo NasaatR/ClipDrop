@@ -19,6 +19,7 @@ public partial class DockWindow : Window
     public string? PanelId { get; }
     public Action<DockWindow>? CloseWindowRequested { get; set; }
     public Action<IReadOnlyList<ShelfItem>>? OpenPanelsRequested { get; set; }
+    public Action? OpenDownloadsRequested { get; set; }
     public event Action<DockWindow>? GeometryCommitted;
     private readonly bool _managed;
     private readonly DockPresence _presence;
@@ -170,6 +171,7 @@ public partial class DockWindow : Window
             menu.Items.Add(item);
         }
         Add("Library", "Library", _library);
+        if (OpenDownloadsRequested is not null) Add("Downloads", "Downloads", OpenDownloadsRequested);
         Add("Saved panels", "Panels", () => { if (OpenPanelsRequested is not null) OpenPanelsRequested(selected); else Session.ShowPanels(selected); });
         Add(_selectMode ? "Finish selection" : "Select clips", "Select", () => {
             _selectMode = !_selectMode; if (!_selectMode) _selection.Clear(); Refresh();

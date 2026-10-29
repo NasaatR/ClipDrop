@@ -155,6 +155,28 @@ public sealed class SettingsWindow : Window
             Section("Screens"); var monitorSettings = new MonitorSettings(settings, docks, () => Change(false));
             _section.Children.Add(monitorSettings); Closed += (_, _) => monitorSettings.Dispose();
         }
+        Section("Downloads");
+        Check("Downloads stack", () => settings.DownloadsEnabled, value => settings.DownloadsEnabled = value, false);
+        Hint("A separate hover stack for recent files. Open it from the dock or tray → Downloads. Select files and drag them to another app, or save them to Library.");
+        var downloadPath = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 6) };
+        downloadPath.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); _section.Children.Add(downloadPath);
+        void SyncDownloadsFolder() => downloadPath.Text = settings.DownloadsFolder.Length > 0 ? settings.DownloadsFolder : "Windows Downloads folder";
+        SyncDownloadsFolder(); _syncControls.Add(SyncDownloadsFolder);
+        var downloadActions = new WrapPanel(); _section.Children.Add(downloadActions);
+        var chooseDownloads = new Button { Content = "Choose folder" }; downloadActions.Children.Add(chooseDownloads);
+        chooseDownloads.Click += (_, _) => {
+            var picker = new Microsoft.Win32.OpenFolderDialog { Title = "Folder for recent downloads", Multiselect = false };
+            if (picker.ShowDialog(this) != true) return;
+            settings.DownloadsFolder = picker.FolderName; Change(false); SyncDownloadsFolder();
+        };
+        var defaultDownloads = new Button { Content = "Use Windows Downloads" }; downloadActions.Children.Add(defaultDownloads);
+        defaultDownloads.Click += (_, _) => { settings.DownloadsFolder = ""; Change(false); SyncDownloadsFolder(); };
+        if (docks is not null)
+        {
+            var showDownloads = new Button { Content = "Show stack" }; downloadActions.Children.Add(showDownloads);
+            showDownloads.Click += (_, _) => { docks.OpenDownloads(); foreach (var sync in _syncControls) sync(); };
+        }
+        Hint("Only the selected folder is watched. Temporary, empty and actively written files are omitted. Other browser save locations need a folder change here. Original files always stay in place.");
         Section("Library");
         Check("Follow dock", () => settings.LibraryFollowsDock, value => settings.LibraryFollowsDock = value, false);
         Hint("Move Library to detach it. More → Follow dock attaches it again.");

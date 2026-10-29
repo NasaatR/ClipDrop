@@ -120,6 +120,12 @@ public sealed class StateStore
                 w.Layout.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000))))
             throw new InvalidDataException("Invalid independent panel windows.");
         PanelSets.ApplyActive(state);
+        var downloads = state.Settings.DownloadsLayout;
+        if (state.Settings.DownloadsFolder is null || state.Settings.DownloadsFolder.Length > 32767 ||
+            downloads is null || downloads.DisplayId is null || downloads.DisplayId.Length > 1024 ||
+            downloads.OffsetX is double dx && (!double.IsFinite(dx) || Math.Abs(dx) > 100000) ||
+            downloads.OffsetY is double dy && (!double.IsFinite(dy) || Math.Abs(dy) > 100000))
+            throw new InvalidDataException("Invalid downloads preferences.");
         foreach (var item in all.Where(i => i.Clipboard is not null))
         {
             var snapshot = item.Clipboard!;

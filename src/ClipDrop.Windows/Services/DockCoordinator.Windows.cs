@@ -44,6 +44,7 @@ public sealed partial class DockCoordinator
                 view = created; _panelViews.Add(panel.Id, view);
                 view.CloseWindowRequested = _ => ClosePanelWindow(panel.Id);
                 view.OpenPanelsRequested = clips => { _library.AttachDock(created!); _session.ShowPanels(clips); };
+                view.OpenDownloadsRequested = OpenDownloads;
                 view.GeometryCommitted += SaveGeometry;
                 view.IsVisibleChanged += (_, _) => SaveVisibility(created);
                 view.SizeChanged += (_, _) => QueuePlacement(created);

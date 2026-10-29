@@ -16,13 +16,13 @@ public sealed class TransferService
     public static bool Supports(IDataObject data) => !data.GetDataPresent("NasaatR.ClipDrop.Internal") &&
         data.GetFormats(false).Any(f => f is "FileDrop" or "PNG" or "Bitmap" or "UnicodeText" or "Text" or "FileGroupDescriptorW");
 
-    public DataObject BuildDrag(IReadOnlyList<ShelfItem> items)
+    public DataObject BuildDrag(IReadOnlyList<ShelfItem> items, bool internalSource = true)
     {
         var data = Build(items);
         var paths = items.Where(i => i.FilePath is not null).Select(i => i.FilePath!).ToArray();
         foreach (var path in paths) if (!File.Exists(path) && !Directory.Exists(path)) throw new FileNotFoundException("An original file is unavailable.");
         if (paths.Length > 0) { var files = new StringCollection(); files.AddRange(paths); data.SetFileDropList(files); }
-        data.SetData("NasaatR.ClipDrop.Internal", "1"); return data;
+        if (internalSource) data.SetData("NasaatR.ClipDrop.Internal", "1"); return data;
     }
 
     public List<ShelfItem> Import(IDataObject data)

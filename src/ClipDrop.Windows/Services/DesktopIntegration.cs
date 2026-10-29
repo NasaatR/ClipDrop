@@ -33,7 +33,7 @@ public sealed class DesktopIntegration : IDisposable
         set { _shakeEnabled = value; if (value) _shake.Start(); else _shake.Stop(); }
     }
 
-    public DesktopIntegration(Action toggle, Action show, Action library, Action save, Action settings, Action quit, Action showAll, Action hideAll, Action? trayToggle = null)
+    public DesktopIntegration(Action toggle, Action show, Action library, Action save, Action settings, Action quit, Action showAll, Action hideAll, Action? trayToggle = null, Action? downloads = null)
     {
         _show = show;
         _source = new HwndSource(new HwndSourceParameters("ClipDrop commands") { ParentWindow = new IntPtr(-3), WindowStyle = 0 });
@@ -50,6 +50,7 @@ public sealed class DesktopIntegration : IDisposable
         menu.Items.Add("Show all docks", null, (_, _) => showAll());
         menu.Items.Add("Hide all docks", null, (_, _) => hideAll());
         menu.Items.Add("Library", null, (_, _) => library());
+        if (downloads is not null) menu.Items.Add("Downloads", null, (_, _) => downloads());
         menu.Items.Add("Save clipboard", null, (_, _) => save());
         menu.Items.Add("Settings", null, (_, _) => settings());
         menu.Items.Add(new Forms.ToolStripSeparator());

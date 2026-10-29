@@ -40,7 +40,7 @@ public partial class App : Application
                 if (!_session.TrySave()) { library.ShowShelf(); return; }
                 IsQuitting = true; Shutdown();
             };
-            _desktop = new DesktopIntegration(_docks.ToggleTarget, _docks.ShowTarget, _docks.ShowLibrary, _session.SaveClipboard, library.OpenSettings, _session.RequestQuit, _docks.ShowAll, _docks.HideAll, _docks.ToggleAll);
+            _desktop = new DesktopIntegration(_docks.ToggleTarget, _docks.ShowTarget, _docks.ShowLibrary, _session.SaveClipboard, library.OpenSettings, _session.RequestQuit, _docks.ShowAll, _docks.HideAll, _docks.ToggleAll, _docks.OpenDownloads);
             _desktop.ShakeEnabled = state.Settings.ShakeToShow;
             _session.Changed += () => _desktop.ShakeEnabled = state.Settings.ShakeToShow;
             if (!_desktop.HotkeyAvailable || !_desktop.LibraryHotkeyAvailable) _session.Notify("A shortcut is in use. Open dock or Library from the tray.");

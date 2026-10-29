@@ -67,6 +67,9 @@ public sealed class ShelfSettings : AppearanceStyle
     public bool LibraryFollowsDock { get; set; } = true;
     public bool AnimationsEnabled { get; set; } = true;
     public bool CollapseWhenIdle { get; set; } = true;
+    public bool DownloadsEnabled { get; set; }
+    public string DownloadsFolder { get; set; } = "";
+    public DockLayout DownloadsLayout { get; set; } = new();
     public bool MirrorDocks { get; set; }
     public string HomeDisplayId { get; set; } = "";
     public List<DockLayout> Docks { get; set; } = new();
