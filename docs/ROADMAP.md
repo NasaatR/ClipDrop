@@ -12,8 +12,10 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3a · Icons and linked monitors | Emoji/PNG roles, append-right pins, one linked dock per selected screen | 0.6 preview; automated acceptance below |
 | 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Current 0.7 iteration |
 | 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Current 0.8 iteration |
+| 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | In progress |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
-| 4 · Saved panels | Named panel sets, separate pin membership, recently closed and restore | After mirrored docks are reliable |
+| 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | In progress after responsiveness fixes |
+| 4b · Independent views | Simultaneous windows showing different sets | After feedback on 4a |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
 
@@ -178,9 +180,37 @@ native NotifyIcon callback sequences, minimized restore and quick dock undo.
 Single-display CI does not establish physical mixed-DPI acceptance. Saved sets and
 clipboard history stay separate; this iteration stabilizes the current shelf.
 
-## Next efficient slice: saved panels
+## Current implementation slice: responsiveness and saved panels
 
-After stage 3b feedback, build named sets as one separate release: a set owns an
+Use the existing C#/WPF surfaces. Keep one Library and one shared active set
+across mirrored docks; do not introduce independent-window state in this slice.
+
+- [ ] Reproduce unchanged refresh/selection churn on a 5,000-clip Library and
+  constrained emoji/PNG layouts. Keep row/container identity and scroll/selection;
+  notify only changed selection properties. Reuse unchanged dock resources.
+- [ ] Move debounced disk flushes off the dispatcher using an immutable encoded
+  state snapshot; serialize writes and drain pending work on explicit save/quit.
+  Keep atomic replacement, recovery and pre-migration backup behavior.
+- [ ] Fit fallback emoji by their measured full text bounds; leave hover/press
+  feedback within zero-spacing card bounds. Inspect actual WPF captures.
+- [ ] Add `PanelSet`/`PanelSets` in Core. Each set owns ordered unique clip IDs;
+  Library/Trash keep the original clip payloads. Schema 5 migrates schema 1–4
+  pins into Main with an immutable backup; reject malformed/newer data.
+- [ ] Add a compact Saved panels manager from dock/Library. Create empty or save
+  current/selected clips, rename, open, combine two or more into a new set in
+  stable order without duplicates; leave source sets available. Close is reversible
+  in Recently closed, separate from clip Trash. Restore after restart.
+- [ ] Run core, native Windows gesture/render, 5,000-row stability and upgrade
+  checks. Review captures and publish a new version only after they pass.
+
+Review focus: an autosave finishing after a newer edit must not mark it saved;
+merge must not rewrite content or discard source panels; closing the active/last
+panel must leave a reachable open panel; Trash restore must respect the active
+set membership; minimum icon size/spacing and long names must remain usable.
+
+## Saved-panel data boundary
+
+Build named sets as one separate release: a set owns an
 ordered list of clip IDs while the Library owns clips. Closing a set creates a
 persistent recently-closed entry, not Trash. Restore returns its membership and
 layout. Start with create/name/switch/close/restore in one dock; add independent

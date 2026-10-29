@@ -32,6 +32,7 @@ internal static class Program
             var app = new ComponentApp { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/ClipDrop;component/Theme.xaml", UriKind.Relative) });
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/ClipDrop;component/Icons.xaml", UriKind.Relative) });
+            StabilityProbe.Run(root, output, Check, (element, path) => RenderElement(element, path));
             var assets = new AssetStore(Path.Combine(root, "assets"));
             var transfers = new TransferService(assets);
             var note = ShelfItem.FromText("Hello\r\nПривет — Bonjour 👋");
