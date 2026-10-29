@@ -22,8 +22,8 @@ internal static class PanelsProbe
         UiProbe.Click(UiProbe.Find<Button>(dock, b => AutomationProperties.GetName(b) == "Saved panels"));
         var manager = Application.Current.Windows.OfType<PanelsWindow>().Single();
         check(manager.IsVisible, "Real dock panel button opens a single Saved panels manager");
-        Button Button(string name) => UiProbe.Find<Button>(manager, b => b.Content as string == name);
-        UiProbe.Click(Button("New empty"));
+        Button ActionButton(string name) => UiProbe.Find<Button>(manager, b => b.Content as string == name);
+        UiProbe.Click(ActionButton("New empty"));
         check(dock.Pins.Items.Count == 0 && state.Items.Count == 3, "New empty panel clears only the dock membership and retains Library clips");
         manager.Close(); library.ShowShelf(); UiProbe.Pump();
         var items = (ListBox)library.FindName("ItemList"); items.SelectedItems.Clear();
@@ -42,21 +42,21 @@ internal static class PanelsProbe
         }
         UiProbe.Click(Container(main.Id)); UiProbe.Click(Container(selection.Id), ModifierKeys.Control);
         check(list.SelectedItems.Count == 2, "Ctrl-click selects multiple saved panels without opening them");
-        UiProbe.Click(Button("Combine selected"));
+        UiProbe.Click(ActionButton("Combine selected"));
         var combined = PanelSets.Active(state);
         check(combined.ClipIds.SequenceEqual(clips.Select(i => i.Id)) && state.Panels.Count == 4 && state.Items.Count == 3 && state.Trash.Count == 0,
             "Real Combine creates a deduplicated ordered panel while preserving source sets and payloads");
         check(((PanelsWindow.Row)list.SelectedItem).Panel.Id == combined.Id, "A newly combined panel becomes the visible active selection");
         ((TextBox)manager.FindName("NameEditor")).Text = "Combined project references with a longer saved panel name";
-        UiProbe.Click(Button("Rename"));
+        UiProbe.Click(ActionButton("Rename"));
         check(combined.Name.StartsWith("Combined project"), "Renaming a saved panel updates its persisted name");
         render((FrameworkElement)manager.Content, Path.Combine(output, "panels-combined.png"));
-        UiProbe.Click(Button("Close panel")); UiProbe.Click(Button("Recently closed"));
+        UiProbe.Click(ActionButton("Close panel")); UiProbe.Click(ActionButton("Recently closed"));
         check(combined.ClosedUtc is not null && list.Items.Count == 1 && state.Trash.Count == 0, "Closing a panel moves it to Recently closed rather than clip Trash");
         session.TrySave(); var reopened = new StateStore(store.Root).Load();
         check(reopened.Panels.Single(p => p.Id == combined.Id).ClosedUtc is not null && reopened.Items.Count == 3, "Closed panel recovery remains available after saving and reopening state");
         render((FrameworkElement)manager.Content, Path.Combine(output, "panels-recently-closed.png"));
-        UiProbe.Click(Button("Restore & open"));
+        UiProbe.Click(ActionButton("Restore & open"));
         check(combined.ClosedUtc is null && state.ActivePanelId == combined.Id && dock.Pins.Items.Count == 3, "Real Restore reopens the closed panel and its original dock membership");
         var loose = ShelfItem.FromText("Outside every saved set"); session.Add(new[] { loose }, false);
         ((Button)library.FindName("ClearButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
