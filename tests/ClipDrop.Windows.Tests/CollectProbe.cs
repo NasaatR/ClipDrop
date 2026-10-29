@@ -93,7 +93,6 @@ internal static class CollectProbe
             check(drag.IsVisible && drag.Content as string == "Drag 2", "Selection shows one counted group-drag action");
             render((FrameworkElement)library.Content, Path.Combine(output, "library-collect-selected.png"));
             library.Width = 320; library.Height = 360; state.Settings.Theme = "Light"; session.Change(); UiProbe.Pump();
-            render((FrameworkElement)library.Content, Path.Combine(output, "library-collect-narrow-light.png"));
             UiProbe.CaptureWindow(library, Path.Combine(output, "library-collect-narrow-light-screen.png"));
             state.Settings.Theme = "Dark"; session.Change();
             var target = source.PointToScreen(new Point(source.ActualWidth / 2, source.ActualHeight / 2));

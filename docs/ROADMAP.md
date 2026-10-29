@@ -12,10 +12,10 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3a · Icons and linked monitors | Emoji/PNG roles, append-right pins, one linked dock per selected screen | 0.6 preview; automated acceptance below |
 | 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Delivered in 0.7 |
 | 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Delivered in 0.8 |
-| 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | Current 0.9 iteration |
-| 3f · Collect and transfer | Save-only dock, contextual commands, direct Library intake, checkbox selection and group drag | In progress for 0.10 |
+| 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | Delivered in 0.9 |
+| 3f · Collect and transfer | Save-only dock, contextual commands, direct Library intake, checkbox selection and group drag | Current 0.10 iteration |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
-| 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Current 0.9 iteration |
+| 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
 | 4b · Independent views | Simultaneous windows showing different sets | After feedback on 4a |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
@@ -248,7 +248,8 @@ acknowledged without importing/archiving the same clips again.
 Acceptance: actual right-click navigation/dismissal, double-click free background,
 unchanged drag/paste gestures, library-only text/files, checkbox toggles, native
 multi-file group drag and cancellation, no originals changed, narrow/light/dark
-captures, existing 5,000-row stability and installer upgrade. No schema change.
+captures, existing 5,000-row stability and installer upgrade. No schema change. Native Windows checks cover this slice, including an actual
+OS-composited narrow/light Library capture; timings remain runner-specific.
 
 Then implement 4b after feedback: independent simultaneous set windows,
 set/window identity, per-set view placement, reconnect/restore and no accidental
