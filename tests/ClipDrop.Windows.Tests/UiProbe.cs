@@ -43,6 +43,8 @@ internal static class UiProbe
     }
     public static void MoveTo(Point point) { SetCursorPos((int)point.X, (int)point.Y); Pump(); }
     public static void ClickAt(Point point) { MoveTo(point); MouseEvent(2); Pump(30); MouseEvent(4); Pump(); }
+    public static void DoubleClickAt(Point point)
+    { MoveTo(point); MouseEvent(2); MouseEvent(4); Pump(35); MouseEvent(2); MouseEvent(4); Pump(); }
     public static void Escape() { KeyEvent(0x1B, false); Pump(30); KeyEvent(0x1B, true); Pump(); }
     public static void RightClickAt(Point point)
     { MoveTo(point); MouseEvent(8); MouseEvent(16); Pump(); }
@@ -154,8 +156,8 @@ internal static class UiProbe
         Drag(library, new Point(80, library.ActualHeight - 115), 25, -25);
         check(Math.Abs(library.Left - before) > 15 && !library.Session.State.Settings.LibraryFollowsDock,
             "Dragging empty Library background detaches and moves it");
-        ((Button)library.FindName("AttachButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        check(library.Session.State.Settings.LibraryFollowsDock, "Link button reattaches Library");
+        ((MenuItem)library.FindName("AttachOption")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        check(library.Session.State.Settings.LibraryFollowsDock, "Follow dock menu command reattaches Library");
         check(!WindowDrag.CanStart((TextBox)library.FindName("SearchBox")) && !WindowDrag.CanStart(dock.QuickSave),
             "Background movement excludes search editors and action buttons");
     }

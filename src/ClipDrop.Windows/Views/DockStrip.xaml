@@ -4,15 +4,10 @@
    <Setter Property="Width" Value="{DynamicResource DockSize}"/><Setter Property="Height" Value="{DynamicResource DockSize}"/><Setter Property="MinHeight" Value="0"/><Setter Property="Margin" Value="{DynamicResource DockGap}"/><Setter Property="Padding" Value="0"/><Setter Property="Focusable" Value="False"/>
   </Style>
  </UserControl.Resources>
- <Border x:Name="Body" Margin="10" Background="{DynamicResource DockBackground}" BorderBrush="{DynamicResource DockOutline}" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}" Padding="12,8" ToolTipService.InitialShowDelay="600">
+ <Border ToolTip="Double-click free space for Library · right-click for options · drag free space to move" x:Name="Body" Margin="10" Background="{DynamicResource DockBackground}" BorderBrush="{DynamicResource DockOutline}" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}" Padding="12,8" ToolTipService.InitialShowDelay="600">
   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-   <Border Width="18" ToolTip="Drag any empty area to move"><views:AppIcon Kind="Grip" Width="14" Height="20"/></Border>
-   <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" ToolTip="Save clipboard" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><views:AppIcon Kind="Save" /></Button>
-   <Button x:Name="SettingsButton" Style="{StaticResource DockButton}" Click="OnSettings" ToolTip="Settings" AutomationProperties.Name="Settings"><views:AppIcon Kind="Settings" /></Button>
-   <Button x:Name="LibraryButton" Style="{StaticResource DockButton}" Click="OnLibrary" ToolTip="Library · Ctrl+Alt+L" AutomationProperties.Name="Open Library"><views:AppIcon Kind="Library" /></Button>
-   <Button x:Name="PanelsButton" Style="{StaticResource DockButton}" Click="OnPanels" ToolTip="Saved panels" AutomationProperties.Name="Saved panels"><views:AppIcon Kind="Panels"/></Button>
-   <Button x:Name="SelectButton" Style="{StaticResource DockButton}" Click="OnSelect" ToolTip="Select clips · Ctrl/Shift+click" AutomationProperties.Name="Select clips"><views:AppIcon Kind="Select"/></Button>
-   <Border Width="1" Background="{DynamicResource DockOutline}" Margin="6,7"/>
+   <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" ToolTip="Save clipboard · right-click for Library and options" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><views:AppIcon Kind="Save" /></Button>
+   <Border x:Name="Divider" Width="1" Background="{DynamicResource DockOutline}" Margin="6,7"/>
    <TextBlock x:Name="EmptyHint" Text="Drop here" VerticalAlignment="Center" Foreground="{DynamicResource Muted}" Margin="8,0" FontSize="11" IsHitTestVisible="False"/>
    <ListBox x:Name="PinnedItems" Background="Transparent" BorderThickness="0" Padding="0" Margin="0" Focusable="False" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" PreviewMouseWheel="OnPinWheel">
    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0"/><Setter Property="Focusable" Value="False"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value></Setter></Style></ListBox.ItemContainerStyle><ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
@@ -36,12 +31,8 @@
     </DataTemplate></ListBox.ItemTemplate>
    </ListBox>
    <Button x:Name="OverflowButton" Style="{StaticResource DockButton}" Click="OnLibrary" ToolTip="More pins in Library" AutomationProperties.Name="Show more pinned items" Visibility="Collapsed"/>
-   <StackPanel x:Name="SelectionActions" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
-    <TextBlock x:Name="SelectedCount" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" MinWidth="20" TextAlignment="Center" FontSize="11"/>
-    <Button x:Name="DeleteSelectedButton" Style="{StaticResource DockButton}" Click="OnDeleteSelected" ToolTip="Move selected clips to Trash" AutomationProperties.Name="Delete selected clips"><views:AppIcon Kind="Trash"/></Button>
-   </StackPanel>
-   <Button x:Name="DoneButton" Style="{StaticResource DockButton}" Click="OnDone" ToolTip="Exit selection" AutomationProperties.Name="Exit selection" Visibility="Collapsed"><views:AppIcon Kind="Close"/></Button>
-   <Button x:Name="HideButton" Click="OnHide" Width="22" Height="24" MinHeight="0" Padding="2" Margin="5,0,0,0" Focusable="False" Background="Transparent" ToolTip="Hide dock · restore from tray" AutomationProperties.Name="Hide dock"><views:AppIcon Kind="Hide" Width="16" Height="16"/></Button>
+   <Button x:Name="SelectedButton" Click="OnSelection" PreviewMouseRightButtonUp="OnSelectionRight" FontSize="11" Padding="7,4" MinHeight="26" Focusable="False" Visibility="Collapsed" ToolTip="Actions for selected clips" AutomationProperties.Name="Selected clip actions"/>
+   <Button x:Name="DoneButton" Content="Done" Click="OnDone" FontSize="11" Padding="7,4" MinHeight="26" Focusable="False" ToolTip="Exit selection" AutomationProperties.Name="Exit selection" Visibility="Collapsed"/>
   </StackPanel>
  </Border>
 </UserControl>

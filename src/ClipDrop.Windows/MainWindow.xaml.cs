@@ -1,11 +1,11 @@
 using System;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using ClipDrop.Core;
@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private Point? _origin;
     private ItemRow? _pendingSingle;
     private bool _dragging;
+    private Point? _batchOrigin;
     private DockWindow? _dock;
     public DockCoordinator? Docks { get; set; }
     private bool _placing;
@@ -39,7 +40,14 @@ public partial class MainWindow : Window
     {
         Session = session;
         InitializeComponent();
-        if (ContextMenu is not null) PopupDismiss.Attach(ContextMenu, this);
+        if (ContextMenu is not null)
+        {
+            PopupDismiss.Attach(ContextMenu, this);
+            ContextMenu.Opened += (_, _) => {
+                var saved = Session.State.Panels.SelectMany(p => p.ClipIds).ToHashSet();
+                ClearOption.IsEnabled = Session.State.Items.Any(i => !i.IsPinned && !saved.Contains(i.Id));
+            };
+        }
         _ = new WindowDrag(this, () => { Session.State.Settings.LibraryFollowsDock = false; UpdateAttachment(); }, QueueGeometrySave);
         ItemList.ItemsSource = _rows;
         _searchDelay.Tick += (_, _) => { _searchDelay.Stop(); Refresh(); };
@@ -87,9 +95,7 @@ public partial class MainWindow : Window
     private void UpdateAttachment()
     {
         var follows = Session.State.Settings.LibraryFollowsDock;
-        AttachIcon.Opacity = follows ? 1 : .4;
-        AttachButton.ToolTip = follows ? "Detach Library from dock" : "Attach Library to dock";
-        System.Windows.Automation.AutomationProperties.SetName(AttachButton, follows ? "Detach Library from dock" : "Attach Library to dock");
+        AttachOption.IsChecked = follows;
     }
     private void OnAttach(object sender, RoutedEventArgs e)
     {
@@ -130,7 +136,7 @@ public partial class MainWindow : Window
         var settings = Session.State.Settings;
         Appearance.Apply(settings, this);
         UpdateAttachment(); PositionNearDock();
-        Topmost = settings.AlwaysOnTop; TopIcon.Opacity = Topmost ? 1 : 0.35;
+        Topmost = settings.AlwaysOnTop; TopOption.IsChecked = Topmost;
         FontSize = Bound(settings.FontSize, 11, 18, 13);
         var spacing = Bound(settings.RowSpacing, 0, 12, 4);
         if (_rowSpacing != spacing)
@@ -176,7 +182,6 @@ public partial class MainWindow : Window
         EmptyTitle.Text = _filter == "Trash" ? "Trash is empty" : query.Length > 0 ? "No matching items" : "Your library is ready";
         TrashFilter.Content = "Trash " + Session.State.Trash.Count;
         foreach (var button in new[] { AllFilter, PinnedFilter, TrashFilter }) button.SetResourceReference(BackgroundProperty, (string)button.Tag == _filter ? "Selected" : "Raised");
-        ActiveActions.Visibility = ClearButton.Visibility = _filter == "Trash" ? Visibility.Collapsed : Visibility.Visible;
         RestoreButton.Visibility = _filter == "Trash" ? Visibility.Visible : Visibility.Collapsed;
         if (_editing is not null && Session.State.Items.All(i => i.Id != _editing.Id)) { EditPanel.Visibility = Visibility.Collapsed; _editing = null; }
         CountLabel.Text = Session.State.Items.Count.ToString(); UpdateSelection();
@@ -185,12 +190,10 @@ public partial class MainWindow : Window
     private void UpdateSelection()
     {
         var selected = Selected();
-        CopyButton.IsEnabled = PinButton.IsEnabled = RemoveButton.IsEnabled = PasteButton.IsEnabled = selected.Count > 0;
-        var unpin = selected.Count > 0 && selected.All(i => i.IsPinned);
-        PinButton.ToolTip = unpin ? "Remove selection from dock" : "Add selection to dock";
-        PinActionIcon.Opacity = unpin ? 1 : .65;
-        RestoreButton.IsEnabled = selected.Count > 0; EditButton.IsEnabled = selected.Count == 1;
-        System.Windows.Automation.AutomationProperties.SetName(PinButton, unpin ? "Remove selection from dock" : "Add selection to dock");
+        ActiveActions.Visibility = _filter != "Trash" && selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        PasteButton.IsEnabled = selected.Count > 0;
+        DragSelectedButton.Content = "Drag " + selected.Count;
+        RestoreButton.IsEnabled = selected.Count > 0;
     }
     private void OnSelection(object sender, SelectionChangedEventArgs e) { if (!_refreshing) UpdateSelection(); }
     private void OnSearch(object sender, TextChangedEventArgs e) { _searchDelay.Stop(); _searchDelay.Start(); }
@@ -203,26 +206,31 @@ public partial class MainWindow : Window
     }
     public bool TrySave() => Session.TrySave();
     private void SetStatus(string text) => StatusLabel.Text = text;
-    private void OnPaste(object sender, RoutedEventArgs e) => Session.SaveClipboard();
+    private void OnPaste(object sender, RoutedEventArgs e) => Session.SaveClipboard(false);
     private void OnPasteSelected(object sender, RoutedEventArgs e) => Session.Paste(Selected());
     private void OnAddFiles(object sender, RoutedEventArgs e)
     {
         var picker = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Title = "Add files to ClipDrop", Filter = "All files|*.*" };
         if (picker.ShowDialog(this) != true) return;
-        try { Session.Add(picker.FileNames.Select(ShelfItem.FromPath).ToList()); }
+        try { Session.Add(picker.FileNames.Select(ShelfItem.FromPath).ToList(), false); }
         catch (Exception ex) { Session.Error("Add files", ex); }
     }
     private void OnDragOver(object sender, DragEventArgs e)
     {
-        var supported = TransferService.Supports(e.Data);
+        var supported = Session.OwnDrag(e.Data) is not null || TransferService.Supports(e.Data);
         e.Effects = supported ? DragDropEffects.Copy : DragDropEffects.None;
         DropCue.Visibility = supported ? Visibility.Visible : Visibility.Collapsed; e.Handled = true;
     }
     private void OnDrop(object sender, DragEventArgs e)
     {
         DropCue.Visibility = Visibility.Collapsed; e.Handled = true; e.Effects = DragDropEffects.None;
+        if (Session.OwnDrag(e.Data) is { } own)
+        {
+            own.InternalHandled = true; e.Effects = DragDropEffects.Copy;
+            Session.Notify("Already in Library · clips kept"); return;
+        }
         if (!TransferService.Supports(e.Data)) return;
-        try { if (Session.Capture(e.Data)) e.Effects = DragDropEffects.Copy; }
+        try { if (Session.Capture(e.Data, false)) e.Effects = DragDropEffects.Copy; }
         catch (Exception ex) { Session.Error("Drop", ex); }
     }
     private static ListBoxItem? Container(DependencyObject? node)
@@ -232,6 +240,7 @@ public partial class MainWindow : Window
     }
     private void OnItemDown(object sender, MouseButtonEventArgs e)
     {
+        if (IsSelector(e.OriginalSource as DependencyObject)) { _origin = null; _pendingSingle = null; return; }
         if (_filter == "Trash" || Container(e.OriginalSource as DependencyObject) is null) { _origin = null; _pendingSingle = null; return; }
         _origin = e.GetPosition(ItemList); _pendingSingle = null;
         if (Container(e.OriginalSource as DependencyObject) is { IsSelected: true, DataContext: ItemRow row } && ItemList.SelectedItems.Count > 1 && Keyboard.Modifiers == ModifierKeys.None)
@@ -248,16 +257,47 @@ public partial class MainWindow : Window
         var current = e.GetPosition(ItemList);
         if (Math.Abs(current.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(current.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         _origin = null; _pendingSingle = null;
-        var selected = Selected(); if (selected.Count == 0) return;
+        StartDrag(ItemList);
+    }
+    private void StartDrag(DependencyObject source)
+    {
+        var selected = Selected().ToArray(); if (_dragging || selected.Length == 0 || _filter == "Trash") return;
         try
         {
             _dragging = true;
             using var transfer = Session.BeginDrag(selected);
-            var result = DragDrop.DoDragDrop(ItemList, transfer.Data, DragDropEffects.Copy);
+            var result = DragDrop.DoDragDrop(source, transfer.Data, DragDropEffects.Copy);
             Session.CompleteDrag(transfer, result);
         }
         catch (Exception ex) { Session.Error("Drag", ex); }
         finally { _dragging = false; DropCue.Visibility = Visibility.Collapsed; }
+    }
+    private static bool IsSelector(DependencyObject? source)
+    {
+        while (source is not null && source is not ListBoxItem)
+        { if (source is ToggleButton) return true; source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source); }
+        return false;
+    }
+    private void OnBatchDown(object sender, MouseButtonEventArgs e) => _batchOrigin = e.GetPosition(this);
+    private void OnBatchUp(object sender, MouseButtonEventArgs e) => _batchOrigin = null;
+    private void OnBatchMove(object sender, MouseEventArgs e)
+    {
+        if (_batchOrigin is not Point start || e.LeftButton != MouseButtonState.Pressed || _dragging) return;
+        var point = e.GetPosition(this);
+        if (Math.Abs(point.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(point.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        _batchOrigin = null; ((Button)sender).ReleaseMouseCapture(); StartDrag((Button)sender);
+    }
+    private void OnDragHint(object sender, RoutedEventArgs e) => Session.SetStatus("Drag this button or any selected clip into your app");
+    private void OnSelectAll(object sender, RoutedEventArgs e) => ItemList.SelectAll();
+    private void OnLibraryMenu(object sender, RoutedEventArgs e)
+    {
+        ClipMenu.Show(ContextMenu, (FrameworkElement)sender, true);
+    }
+    private void OnSelectionMenu(object sender, RoutedEventArgs e)
+    {
+        var selected = Selected(); if (selected.Count == 0) return;
+        Session.Paster?.CaptureTarget();
+        ClipMenu.Show(ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem), (FrameworkElement)sender, true);
     }
     public void EditItem(ShelfItem item)
     {
@@ -310,6 +350,7 @@ public partial class MainWindow : Window
     }
     private void OnOpen(object sender, MouseButtonEventArgs e)
     {
+        if (IsSelector(e.OriginalSource as DependencyObject)) return;
         if (Container(e.OriginalSource as DependencyObject) is not { DataContext: ItemRow row }) return;
         var item = row.Item;
         try
@@ -338,7 +379,7 @@ public partial class MainWindow : Window
         { if (e.Key == Key.Enter) OnSaveEdit(this, e); else OnCancelEdit(this, e); e.Handled = true; return; }
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (e.Key == Key.V && Keyboard.FocusedElement is not TextBox) { Session.SaveClipboard(); e.Handled = true; }
+            if (e.Key == Key.V && Keyboard.FocusedElement is not TextBox) { Session.SaveClipboard(false); e.Handled = true; }
             else if (e.Key == Key.F) { SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; }
             else if (e.Key == Key.O) { OnAddFiles(this, e); e.Handled = true; }
             else if (Keyboard.FocusedElement is not TextBox)

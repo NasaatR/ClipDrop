@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using ClipDrop.Core;
 using ClipDrop.Windows.Services;
 namespace ClipDrop.Windows.Views;
@@ -15,9 +14,8 @@ namespace ClipDrop.Windows.Views;
 // The exact same dock surface renders in the floating window and Settings preview.
 public partial class DockStrip : UserControl
 {
-    public event RoutedEventHandler? SaveRequested, SettingsRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded, KeepRequested, SelectRequested, DeleteSelectedRequested, DoneRequested, HideRequested;
+    public event RoutedEventHandler? SaveRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded, KeepRequested, SelectionRequested, DoneRequested;
     public event MouseButtonEventHandler? PinDown, PinUp, PinMenu;
-    public event RoutedEventHandler? PanelsRequested;
     public event MouseEventHandler? PinMove;
     private readonly ObservableCollection<ItemRow> _rows = new();
     private double _slot = 40;
@@ -62,16 +60,17 @@ public partial class DockStrip : UserControl
         if (inserted && _rows.Count > capacity)
             Dispatcher.BeginInvoke(() => { if (_rows.Count > 0) PinnedItems.ScrollIntoView(_rows[^1]); }, DispatcherPriority.Loaded);
         EmptyHint.Visibility = all.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        Divider.Visibility = all.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         OverflowButton.Visibility = all.Length > capacity ? Visibility.Visible : Visibility.Collapsed;
         OverflowButton.Content = "+" + (all.Length - capacity);
     }
     public void SetSelection(IReadOnlySet<string> selected, bool mode)
     {
         foreach (var row in _rows) row.Selected = selected.Contains(row.Item.Id);
-        SelectedCount.Text = selected.Count.ToString();
-        SelectionActions.Visibility = selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SelectedButton.Content = selected.Count + " selected";
+        SelectedButton.Visibility = selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         DoneButton.Visibility = mode || selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        SelectButton.SetResourceReference(BackgroundProperty, mode ? "Selected" : "Raised");
+        EmptyHint.Text = mode && _rows.Count == 0 ? "No clips to select" : "Drop here";
     }
     public void ShowInsertion(int? index)
     {
@@ -114,16 +113,13 @@ public partial class DockStrip : UserControl
     {
         if (FindScroll(PinnedItems) is { ScrollableWidth: > 0 } scroll) { scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset - Math.Sign(e.Delta) * _slot * 2); e.Handled = true; }
     }
-    private void OnHide(object sender, RoutedEventArgs e) => HideRequested?.Invoke(sender, e);
     private void OnKeep(object sender, RoutedEventArgs e) => KeepRequested?.Invoke(sender, e);
-    private void OnSelect(object sender, RoutedEventArgs e) => SelectRequested?.Invoke(sender, e);
-    private void OnDeleteSelected(object sender, RoutedEventArgs e) => DeleteSelectedRequested?.Invoke(sender, e);
+    private void OnSelection(object sender, RoutedEventArgs e) => SelectionRequested?.Invoke(sender, e);
+    private void OnSelectionRight(object sender, MouseButtonEventArgs e) { e.Handled = true; SelectionRequested?.Invoke(sender, new RoutedEventArgs()); }
     private void OnDone(object sender, RoutedEventArgs e) => DoneRequested?.Invoke(sender, e);
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(sender, e);
-    private void OnSettings(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke(sender, e);
     private void OnLibrary(object sender, RoutedEventArgs e) => LibraryRequested?.Invoke(sender, e);
-    private void OnPanels(object sender, RoutedEventArgs e) => PanelsRequested?.Invoke(sender, e);
-    public void SetPanelName(string name) => PanelsButton.ToolTip = "Saved panels · " + name;
+    public void SetPanelName(string name) => Body.ToolTip = name + " · double-click free space for Library · right-click for options · drag free space to move";
     private void OnPin(object sender, RoutedEventArgs e) => PinRequested?.Invoke(sender, e);
     private void OnPinLoaded(object sender, RoutedEventArgs e) => PinLoaded?.Invoke(sender, e);
     private void OnImageContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) ImageLoaded?.Invoke(sender, new RoutedEventArgs()); }

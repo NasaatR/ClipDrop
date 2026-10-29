@@ -45,15 +45,18 @@ public partial class DockWindow : Window
         _managed = managed; Session = session; _library = library; _settings = settings; _edit = edit;
         InitializeComponent();
         PopupDismiss.Attach(ContextMenu, this);
-        ContextMenuOpening += (_, _) => { foreach (var item in ContextMenu.Items.OfType<MenuItem>()) if (item.Tag as string == "Undo") item.IsEnabled = Session.State.Trash.Count > 0; };
+        ContextMenuOpening += (_, _) => UpdateMenu();
         _presence = new DockPresence(this, () => Session.State.Settings);
-        Strip.HideRequested += (_, _) => HideDock();
         Strip.KeepRequested += (sender, _) => { if (sender is Button { DataContext: ItemRow row }) Session.ToggleKeep(new[] { row.Item }); };
-        Strip.SelectRequested += (_, _) => { _selectMode = !_selectMode; if (!_selectMode) _selection.Clear(); Refresh(); };
         Strip.DoneRequested += (_, _) => { _selectMode = false; _selection.Clear(); Refresh(); };
-        Strip.DeleteSelectedRequested += (_, _) => Session.Remove(SelectedClips().ToList());
-        Strip.SaveRequested += OnSave; Strip.SettingsRequested += OnSettings; Strip.LibraryRequested += OnLibrary;
-        Strip.PanelsRequested += (_, _) => Session.ShowPanels(SelectedClips());
+        Strip.SelectionRequested += (sender, _) => {
+            if (sender is FrameworkElement target && SelectedClips() is { Length: > 0 } clips)
+            {
+                target.ContextMenu = ClipMenu.Create(Session, clips, this, true, edit: _edit);
+                ClipMenu.Show(target.ContextMenu, target, true);
+            }
+        };
+        Strip.SaveRequested += OnSave; Strip.LibraryRequested += OnLibrary;
         Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
         Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove; Strip.PinMenu += OnPinMenu;
         _ = new WindowDrag(this, () => { _feedback.IsOpen = false; _moving = true; UpdatePresence(); }, () => {
@@ -61,6 +64,10 @@ public partial class DockWindow : Window
             if (_managed) GeometryCommitted?.Invoke(this);
             else { Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false); }
         });
+        PreviewMouseLeftButtonDown += (_, e) => {
+            if (e.ClickCount != 2 || !WindowDrag.CanStart(e.OriginalSource as DependencyObject)) return;
+            e.Handled = true; _library();
+        };
         SourceInitialized += (_, _) => NativePastePlatform.MakeNonActivating(this);
         Loaded += (_, _) => {
             if (_managed) return;
@@ -79,7 +86,7 @@ public partial class DockWindow : Window
         Session.Changed += Refresh; Session.Notification += ShowFeedback;
         _feedback.PlacementTarget = DockBody;
         _feedbackTimer.Tick += (_, _) => { _feedback.IsOpen = false; _feedbackTimer.Stop(); };
-        Refresh();
+        Refresh(); UpdateMenu();
     }
     public bool IsShown => IsVisible && WindowState != WindowState.Minimized;
     private void UpdatePresence() => _presence.Busy(_transferring || _dropHover || _moving);
@@ -112,10 +119,10 @@ public partial class DockWindow : Window
         var available = Assignment is { } a ? a.Display.Width / WindowPlacement.Scale(this) : IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
         var size = Appearance.Bound(settings.DockButtonSize, 30, 48, 36) + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
         _selection.Trim(pins.Select(i => i.Id));
-        var fixedWidth = 104 + 5 * size + (_selection.Ids.Count > 0 ? 20 + 2 * size : _selectMode ? size : 0);
+        var fixedWidth = 64 + size + (_selection.Ids.Count > 0 ? 125 : _selectMode ? 50 : 0);
         var slots = Math.Max(1, (int)((available - fixedWidth) / size));
         if (pins.Length > slots) slots--;
-        var capacity = Math.Max(1, Math.Min(8, slots));
+        var capacity = Math.Max(1, Math.Min(12, slots));
         _arrivingPins.Clear();
         foreach (var pin in pins) if (!_knownPins.Contains(pin.Id)) _arrivingPins.Add(pin.Id);
         _knownPins.Clear(); foreach (var pin in pins) _knownPins.Add(pin.Id);
@@ -141,9 +148,28 @@ public partial class DockWindow : Window
     }
     private void OnSave(object sender, RoutedEventArgs e) => Session.SaveClipboard();
     private void OnLibrary(object sender, RoutedEventArgs e) => _library();
-    private void OnSettings(object sender, RoutedEventArgs e) => _settings();
-    private void OnUndo(object sender, RoutedEventArgs e) => Session.UndoRemove();
-    private void OnHide(object sender, RoutedEventArgs e) => HideDock();
+    private void UpdateMenu()
+    {
+        var menu = ContextMenu; menu.Items.Clear(); menu.FontSize = 11.5; menu.MaxWidth = 280;
+        Appearance.Apply(Session.State.Settings, menu, true);
+        var selected = SelectedClips();
+        void Add(string title, string id, Action action, bool enabled = true)
+        {
+            var item = new MenuItem { Header = title, Tag = id, IsEnabled = enabled, Padding = new Thickness(6, 3, 6, 3), FontSize = 11.5 };
+            item.Click += (_, _) => { menu.IsOpen = false; Dispatcher.BeginInvoke(action, DispatcherPriority.Background); };
+            menu.Items.Add(item);
+        }
+        Add("Library", "Library", _library);
+        Add("Saved panels", "Panels", () => Session.ShowPanels(selected));
+        Add(_selectMode ? "Finish selection" : "Select clips", "Select", () => {
+            _selectMode = !_selectMode; if (!_selectMode) _selection.Clear(); Refresh();
+        }, Pins.Items.Count > 0 || _selectMode);
+        Add("Save clipboard to Library", "SaveLibrary", () => Session.SaveClipboard(false));
+        if (Session.State.Trash.Count > 0) Add("Undo removal", "Undo", Session.UndoRemove);
+        menu.Items.Add(new Separator());
+        Add("Settings", "Settings", _settings);
+        Add("Hide dock", "Hide", HideDock);
+    }
     private void OnUseItem(object sender, RoutedEventArgs e)
     {
         if (_suppressClick) { _suppressClick = false; return; }

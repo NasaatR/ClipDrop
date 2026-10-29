@@ -72,10 +72,10 @@ internal static class PresenceProbe
             session.Remove(new() { clip });
             UiProbe.RightClickAt(dock.PointToScreen(new Point(30, dock.ActualHeight / 2)));
             var background = dock.ContextMenu;
-            check(background.IsOpen && background.Items.OfType<MenuItem>().Count() == 3, "Dock background offers a compact hide/undo/library menu");
+            check(background.IsOpen && background.Items.OfType<MenuItem>().Any(i => i.Tag as string == "Undo") && background.Items.OfType<MenuItem>().Any(i => i.Tag as string == "Library") && background.ActualHeight < 240, "Dock background exposes compact Library, undo and visibility commands");
             UiProbe.Click(background.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Undo"));
             check(state.Items.Contains(clip) && state.Trash.Count == 0, "Undo from the dock restores the last deletion without opening Library");
-            UiProbe.Click((Button)strip.FindName("HideButton")); check(!dock.IsVisible, "Small dock hide control hides the panel");
+            UiProbe.RightClick(dock.QuickSave); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Hide")); check(!dock.IsVisible, "Dock menu hides the panel without a permanent eye button");
             using (var integration = new DesktopIntegration(dock.Toggle, dock.ShowDock, () => { }, () => { }, () => { }, () => { }, dock.ShowDock, dock.HideDock))
             {
                 TrayMessage(integration, 0x0201); TrayMessage(integration, 0x0202);

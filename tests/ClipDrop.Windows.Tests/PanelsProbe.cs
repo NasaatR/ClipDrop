@@ -19,9 +19,9 @@ internal static class PanelsProbe
         var clips = new[] { ShelfItem.FromText("Panel alpha"), ShelfItem.FromText("Panel beta"), ShelfItem.FromText("Panel gamma") }; session.Add(clips);
         var main = PanelSets.Active(state);
         var library = new MainWindow(session); var dock = new DockWindow(session, library.ShowShelf, library.OpenSettings); dock.ShowDock(); UiProbe.Pump();
-        UiProbe.Click(UiProbe.Find<Button>(dock, b => AutomationProperties.GetName(b) == "Saved panels"));
+        UiProbe.RightClick(dock.QuickSave); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Panels"));
         var manager = Application.Current.Windows.OfType<PanelsWindow>().Single();
-        check(manager.IsVisible, "Real dock panel button opens a single Saved panels manager");
+        check(manager.IsVisible, "Real dock menu opens a single Saved panels manager");
         Button ActionButton(string name) => UiProbe.Find<Button>(manager, b => b.Content as string == name);
         UiProbe.Click(ActionButton("New empty"));
         check(dock.Pins.Items.Count == 0 && state.Items.Count == 3, "New empty panel clears only the dock membership and retains Library clips");
@@ -59,7 +59,7 @@ internal static class PanelsProbe
         UiProbe.Click(ActionButton("Restore & open"));
         check(combined.ClosedUtc is null && state.ActivePanelId == combined.Id && dock.Pins.Items.Count == 3, "Real Restore reopens the closed panel and its original dock membership");
         var loose = ShelfItem.FromText("Outside every saved set"); session.Add(new[] { loose }, false);
-        ((Button)library.FindName("ClearButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        ((MenuItem)library.FindName("ClearOption")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         check(state.Items.Count == 3 && state.Trash.Single().Item.Id == loose.Id, "Library Clear preserves clips in every open or recently closed saved set");
         manager.Width = 360; manager.Height = 360; UiProbe.Pump();
         render((FrameworkElement)manager.Content, Path.Combine(output, "panels-narrow.png"));

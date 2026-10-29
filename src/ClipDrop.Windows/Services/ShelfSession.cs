@@ -126,7 +126,8 @@ public sealed class ShelfSession : IDisposable
         return added;
     }
 
-    public void SaveClipboard()
+    public void SaveClipboard() => SaveClipboard(true);
+    public void SaveClipboard(bool pin)
     {
         try
         {
@@ -142,18 +143,18 @@ public sealed class ShelfSession : IDisposable
             if (items.Count == 0 && snapshot is not null) items.Add(new ShelfItem { Kind = ItemKind.Clipboard, Title = "Clipboard item" });
             if (items.Count == 1) items[0].Clipboard = snapshot;
             if (items.Count == 0) { Notify("No supported clipboard content"); return; }
-            var count = Add(items);
-            if (TrySave()) Notify(snapshot?.Partial == true ? "Saved · some app-only formats unavailable" : count > 0 ? "Saved · original clipboard formats kept" : "Already in your library");
+            var count = Add(items, pin);
+            if (TrySave()) Notify(snapshot?.Partial == true ? "Saved · some app-only formats unavailable" : count > 0 ? (pin ? "Saved to dock" : "Saved to Library") + " · original clipboard formats kept" : "Already in your library");
         }
         catch (Exception ex) { Error("Save clipboard", ex); }
     }
 
-    public bool Capture(IDataObject data)
+    public bool Capture(IDataObject data, bool pin = true)
     {
         var items = Transfer.Import(data);
         if (items.Count == 0) { Notify("No supported files, image or text"); return false; }
-        var count = Add(items);
-        if (TrySave()) Notify(count > 0 ? $"Saved {count} {(count == 1 ? "item" : "items")} · pinned to dock" : "Already in your library");
+        var count = Add(items, pin);
+        if (TrySave()) Notify(count > 0 ? $"Saved {count} {(count == 1 ? "item" : "items")} · " + (pin ? "pinned to dock" : "in Library") : "Already in your library");
         return true;
     }
 

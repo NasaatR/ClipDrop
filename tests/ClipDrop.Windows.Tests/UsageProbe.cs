@@ -84,7 +84,7 @@ internal static class UsageProbe
             check(dock.Pins.Items.Cast<ItemRow>().Count(r => r.Selected) == 4 && Clipboard.GetText() == "Selection must not paste", "Native Ctrl/Shift-click selects a range without copying or pasting");
             var strip = (DockStrip)dock.FindName("Strip");
             UiProbe.Click((Button)strip.FindName("DoneButton"));
-            UiProbe.Click((Button)strip.FindName("SelectButton")); UiProbe.Click(Pin(dock, d)); UiProbe.Click(Pin(dock, e));
+            UiProbe.RightClick(dock.QuickSave); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Select")); UiProbe.Click(Pin(dock, d)); UiProbe.Click(Pin(dock, e));
             check(dock.Pins.Items.Cast<ItemRow>().Count(r => r.Selected) == 2 && Clipboard.GetText() == "Selection must not paste", "Selection mode lets plain clicks choose multiple clips without insertion");
             render((FrameworkElement)dock.Content, Path.Combine(output, "dock-selection.png"));
             var trashBefore = state.Trash.Count;
@@ -92,7 +92,8 @@ internal static class UsageProbe
             UiProbe.DragTo(Pin(dock, d), afterG);
             check(Order(dock).SequenceEqual(new[] { b.Id, f.Id, g.Id, d.Id, e.Id }) && Order(mirror).SequenceEqual(Order(dock)) && state.Trash.Count == trashBefore,
                 "Real internal OLE drag reorders a selected group on both docks without archiving any member");
-            UiProbe.Click((Button)strip.FindName("DeleteSelectedButton"));
+            UiProbe.Click((Button)strip.FindName("SelectedButton"));
+            UiProbe.Click(((Button)strip.FindName("SelectedButton")).ContextMenu!.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Trash"));
             var deleted = state.Trash.Skip(trashBefore).ToArray();
             check(deleted.Select(t => t.Item.Id).ToHashSet().SetEquals(new[] { d.Id, e.Id }) && deleted.Select(t => t.Batch).Distinct().Count() == 1,
                 "One batch-delete action removes the selected group, including explicitly selected kept clips");

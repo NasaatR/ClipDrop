@@ -11,6 +11,7 @@ public sealed class ItemRow : System.ComponentModel.INotifyPropertyChanged
 {
     public ShelfItem Item { get; }
     public string Title => Item.Title;
+    public string SelectName => "Select clip: " + Title;
     public bool IsVideo => MediaFiles.IsVideo(Item.FilePath);
     public string IconKey => IsVideo ? "Video" : Item.Kind.ToString();
     private bool _selected;

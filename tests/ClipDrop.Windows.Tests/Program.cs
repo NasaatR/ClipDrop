@@ -118,6 +118,7 @@ internal static class Program
             UsageProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             PresenceProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             PanelsProbe.Run(root, output, Check, (element, path) => RenderElement(element, path));
+            CollectProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MediaProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             Render(dock, Path.Combine(output, "dock-video.png"));
             Render(window, Path.Combine(output, "library-video.png"));

@@ -13,11 +13,13 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Delivered in 0.7 |
 | 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Delivered in 0.8 |
 | 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | Current 0.9 iteration |
+| 3f · Collect and transfer | Save-only dock, contextual commands, direct Library intake, checkbox selection and group drag | In progress for 0.10 |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Current 0.9 iteration |
 | 4b · Independent views | Simultaneous windows showing different sets | After feedback on 4a |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
+| 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.10 |
 
 ## Stage 1: complete daily actions
 
@@ -180,7 +182,7 @@ native NotifyIcon callback sequences, minimized restore and quick dock undo.
 Single-display CI does not establish physical mixed-DPI acceptance. Saved sets and
 clipboard history stay separate; this iteration stabilizes the current shelf.
 
-## Current implementation slice: responsiveness and saved panels
+## 0.9 implementation slice: responsiveness and saved panels
 
 Use the existing C#/WPF surfaces. Keep one Library and one shared active set
 across mirrored docks; do not introduce independent-window state in this slice.
@@ -226,11 +228,70 @@ fallback rendering, background snapshots and installer upgrade. Full workflow
 results and actual UI captures remain in Actions; timings describe that runner,
 not a universal performance guarantee.
 
-Next implement 4b only after feedback: independent simultaneous set windows,
+User feedback prioritizes 3f before 4b: keep only Save and clip content permanently
+visible in the dock. Remove the move grip, eye and separate settings/library/panel/
+selection buttons. A compact contextual menu provides Library, saved panels,
+selection, clipboard-to-Library, settings, hide and available undo. Right-click
+Save/background opens it; double-click free background opens Library. Keep ordinary
+background dragging and non-activating click-paste. Selection-only text controls
+appear only while choosing clips. The Settings preview must use the same surface.
+
+Library intake (drop, Add files, clipboard) saves directly to the shared Library,
+without appending every capture to the active dock. Existing membership is never
+removed by re-saving a duplicate. Add checkboxes for selection without Ctrl and a
+counted Drag selection control; dragging any selected row still transfers the group.
+Keep original formats, copy-only external OLE, accepted-transfer cleanup, cancel/
+fallback recovery and per-clip protection. Library menu holds infrequent commands;
+footer actions appear only for a selection. An internal dock-to-Library drop is
+acknowledged without importing/archiving the same clips again.
+
+Acceptance: actual right-click navigation/dismissal, double-click free background,
+unchanged drag/paste gestures, library-only text/files, checkbox toggles, native
+multi-file group drag and cancellation, no originals changed, narrow/light/dark
+captures, existing 5,000-row stability and installer upgrade. No schema change.
+
+Then implement 4b after feedback: independent simultaneous set windows,
 set/window identity, per-set view placement, reconnect/restore and no accidental
 cross-set edits. Continue the physical two-screen acceptance table in parallel;
 its hardware gate remains open. Keep content versions/backup UI and opt-in
 clipboard history in stages 5/6 instead of bundling them into 4b.
+
+## Future: optional Send to Figma integration
+
+Inspected [NasaatR/Send_to_Figma](https://github.com/NasaatR/Send_to_Figma/tree/2c10acf148d44d9493f03c6ab250606a448121a5)
+on 2026-10-29 (README, bridge/model.go, bridge/server.go, bridge/collection.go,
+extension/native-client.js and plugin/main.js). Its current bridge has a persistent
+ordered image queue, native messaging producer, authenticated loopback RPC and a
+paired WebSocket Figma receiver. The plugin creates an ordered managed collection;
+successful insertion returns an acknowledgement/node ID. Existing bounds are
+20 MiB per image, 4096 px per side, 200 pending and 256 MiB queue. This source review
+does not establish actual Figma Desktop execution; that repository also records
+this manual verification gap.
+
+1. Define a versioned optional producer adapter in ClipDrop. Reuse one installed
+   helper and receiver rather than merging both UI/codebases or starting duplicate
+   listeners. Negotiate capabilities/version, pair through an explicit local setup,
+   protect tokens and preserve existing browser/native clients. Do not hardcode or
+   copy another installed app's credentials into ClipDrop or releases.
+2. First supported journey: selected local image clips → Send to Figma → chosen
+   pinned collection → existing append/grid layout. Reserve IDs/sequence before
+   upload, validate image type/size and preserve selection order. Plan explicit
+   adaptation for local files/provenance; do not assume the browser-oriented
+   reserve/upload contract is already a supported desktop-producer API.
+3. Show queued, waiting for receiver, confirmed and failed separately. Preserve
+   operation IDs across retry; a submit/HTTP success is not insertion success.
+   Only a matching receiver ACK may trigger normal recoverable use cleanup for
+   unprotected clips. Do not discard payloads or replay ambiguous requests blindly.
+4. Keep unsupported text/video/folder content available through ordinary native
+   drag/copy. Do not silently fetch link URLs, convert arbitrary files or promise
+   editable browser/Photoshop/Figma nodes. Clipboard monitoring remains separate.
+5. Before delivery verify installed-helper discovery/version mismatch, receiver
+   closed/reopened, wrong destination, lost ACK, retry deduplication, partial batch,
+   restart and recovery. Require real browser → ClipDrop → Figma Desktop execution
+   in an editable document before claiming end-to-end compatibility.
+
+No network client, helper startup, pairing migration, Send-to-Figma repository edit
+or Figma document write is included in the current UX release.
 
 ## Later complexity stays separate
 
