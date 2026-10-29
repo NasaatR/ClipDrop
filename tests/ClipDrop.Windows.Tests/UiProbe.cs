@@ -30,6 +30,12 @@ internal static class UiProbe
         try { Dispatcher.PushFrame(frame); }
         finally { timer.Stop(); }
     }
+    public static bool Until(Func<bool> condition, int timeoutMs = 3000)
+    {
+        var watch = Stopwatch.StartNew();
+        while (!condition() && watch.ElapsedMilliseconds < timeoutMs) Pump(20);
+        return condition();
+    }
     public static T Find<T>(DependencyObject node, Func<T, bool> predicate) where T : DependencyObject
     {
         T? Search(DependencyObject current)

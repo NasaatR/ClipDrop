@@ -31,10 +31,10 @@ internal static class StabilityProbe
             ReferenceEquals(list.SelectedItem, chosen) && ReferenceEquals(list.ItemContainerGenerator.ContainerFromItem(chosen), container),
             "Unchanged 5000-clip refresh keeps rows, containers and selection without collection resets");
         Console.WriteLine($"PERF 5000 clips, 12 unchanged refreshes: {watch.ElapsedMilliseconds} ms");
-        search.Text = "note 4999"; UiProbe.Pump(180);
-        check(list.Items.Count == 1 && ((ItemRow)list.Items[0]).Item.Content == "Large library note 4999", "Debounced search retains the final query on a 5000-clip library");
-        search.Clear(); UiProbe.Pump(180);
-        check(list.Items.Count == 5000 && ReferenceEquals(list.Items[0], rows[0]), "Filtering and clearing search reuse existing Library rows");
+        search.Text = "note 4999";
+        check(UiProbe.Until(() => list.Items.Count == 1 && ((ItemRow)list.Items[0]).Item.Content == "Large library note 4999"), "Debounced search retains the final query on a 5000-clip library");
+        search.Clear();
+        check(UiProbe.Until(() => list.Items.Count == 5000 && ReferenceEquals(list.Items[0], rows[0])), "Filtering and clearing search reuse existing Library rows");
         var row = rows[0]; var notices = new System.Collections.Generic.List<string?>(); row.PropertyChanged += (_, e) => notices.Add(e.PropertyName);
         row.Selected = true; row.DropMark = 1;
         check(notices.SequenceEqual(new[] { "Selected", "DropMark" }), "Selection and insertion cues do not re-evaluate metadata or file bindings");

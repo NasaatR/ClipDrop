@@ -277,7 +277,9 @@ this manual verification gap.
    pinned collection → existing append/grid layout. Reserve IDs/sequence before
    upload, validate image type/size and preserve selection order. Plan explicit
    adaptation for local files/provenance; do not assume the browser-oriented
-   reserve/upload contract is already a supported desktop-producer API.
+   reserve/upload contract is already a supported desktop-producer API. Bind a
+   producer and destination per batch; never change the browser's global default
+   receiver merely to send a ClipDrop selection elsewhere.
 3. Show queued, waiting for receiver, confirmed and failed separately. Preserve
    operation IDs across retry; a submit/HTTP success is not insertion success.
    Only a matching receiver ACK may trigger normal recoverable use cleanup for
