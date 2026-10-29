@@ -45,21 +45,27 @@ internal static class IndependentProbe
             second.Window!.Layout.OffsetX = 420; second.Window.Layout.OffsetY = 230; session.Change(); UiProbe.Pump();
             check(coordinator.Views.Count == 3 && Ids(one).SequenceEqual(new[] { b.Id }) && Ids(two).SequenceEqual(new[] { c.Id }) && state.ActivePanelId == main,
                 "Two independent native dock HWNDs show different sets alongside the unchanged main dock");
+            var initialWidth = WindowPlacement.PixelBounds(one).Width;
             Clipboard.SetText("Saved into References"); UiProbe.Click(one.QuickSave); UiProbe.Pump();
             var added = state.Items.Single(i => i.Content == "Saved into References");
             check(Ids(one).Contains(added.Id) && !Ids(two).Contains(added.Id) && !Ids(home).Contains(added.Id) && !added.IsPinned,
                 "Native Save in an independent window adds only to its own set");
             session.TogglePin(new[] { added }, first.Id); UiProbe.Pump();
             check(!Ids(one).Contains(added.Id) && state.Items.Contains(added), "Scoped removal from a panel keeps the shared Library payload");
+            check(WindowPlacement.PixelBounds(one).Width == initialWidth,
+                "Removing a newly added clip shrinks the native panel back to its content width");
             var originalMain = Ids(home);
             var target = Pin(two, c.Id); var after = target.PointToScreen(new Point(target.ActualWidth - 2, target.ActualHeight / 2));
             UiProbe.DragTo(Pin(one, b.Id), after);
             check(Ids(two).SequenceEqual(new[] { c.Id, b.Id }) && Ids(one).SequenceEqual(new[] { b.Id }) && Ids(home).SequenceEqual(originalMain) && state.Trash.Count == 0,
                 "A real cross-set internal drop adds ordered target membership and keeps source/main clips");
+            var orderedWidth = WindowPlacement.PixelBounds(two).Width;
             var bInTwo = Pin(two, b.Id); var beforeC = Pin(two, c.Id).PointToScreen(new Point(1, target.ActualHeight / 2));
             UiProbe.DragTo(bInTwo, beforeC);
             check(Ids(two).SequenceEqual(new[] { b.Id, c.Id }) && Ids(one).SequenceEqual(new[] { b.Id }),
                 "Independent native reorder changes only the requested set");
+            check(WindowPlacement.PixelBounds(two).Width == orderedWidth,
+                "Finishing an implicit drag removes temporary selection width from the panel");
             UiProbe.Hover(one.QuickSave);
             UiProbe.CaptureWindow(one, Path.Combine(output, "independent-references-screen.png"));
             UiProbe.Hover(two.QuickSave);

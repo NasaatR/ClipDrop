@@ -5,7 +5,7 @@
   </Style>
  </UserControl.Resources>
  <Grid x:Name="Stage" Background="#01000000">
- <Border x:Name="Surface" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top" Background="{DynamicResource DockBackground}" BorderBrush="{DynamicResource DockOutline}" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}"/>
+ <Canvas><Border x:Name="Surface" Margin="10" Background="{DynamicResource DockBackground}" BorderBrush="{DynamicResource DockOutline}" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}"/></Canvas>
  <Border ToolTip="Double-click free space for Library · right-click for options · drag free space to move" x:Name="Body" Margin="10" Background="{x:Null}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}" Padding="12,8" ToolTipService.InitialShowDelay="600">
   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
    <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" ToolTip="Save clipboard · right-click for Library and options" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><views:AppIcon Kind="Save" /></Button>
