@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.0 — 2026-10-29
+
+- Reduce the resting dock to Save and clip content. Remove grip, permanent utility
+  buttons and eye; use a compact right-click command menu and background double-
+  click Library access. Preserve background movement and non-activating paste.
+- Move dock selection entry to its menu, with contextual selected-count/Done text
+  controls. Increase the content viewport to up to 12 clips.
+- Library collects directly without auto-pinning: clipboard, picker and external
+  drops. Newly added clips are selected immediately and expose Drag N; checkbox
+  selection avoids Ctrl. Batch selection refreshes the action bar once.
+- Native group drag works from selected rows or a counted footer control; internal
+  dock-to-Library drops acknowledge existing clips without consuming/reimporting.
+- Simplify Library header/footer; move infrequent actions into More. Compact menu
+  glyph columns collapse when unused; check states remain visible.
+- Plan a separate optional Send_to_Figma adapter after inspecting its actual
+  queue/auth/receiver contracts. No integration or network behavior is introduced.
+- Data schema remains 5; original files, format bytes, saved panels and recovery
+  behavior are retained.
+
+
 ## 0.9.0 — 2026-10-29
 
 - Reconcile and cache Library rows instead of rebuilding every list on a shared

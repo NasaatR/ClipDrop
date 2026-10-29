@@ -206,13 +206,29 @@ public partial class MainWindow : Window
     }
     public bool TrySave() => Session.TrySave();
     private void SetStatus(string text) => StatusLabel.Text = text;
-    private void OnPaste(object sender, RoutedEventArgs e) => Session.SaveClipboard(false);
+    private void OnPaste(object sender, RoutedEventArgs e) => Collect(() => Session.SaveClipboard(false));
+    private void Collect(Action capture)
+    {
+        var before = Session.State.Items.Select(i => i.Id).ToHashSet();
+        capture();
+        var added = Session.State.Items.Where(i => !before.Contains(i.Id)).Select(i => i.Id).ToArray();
+        if (added.Length == 0) return;
+        _filter = "All"; SearchBox.Clear(); GroupFilter.SelectedItem = "All groups"; Refresh();
+        var rows = _rows.ToDictionary(r => r.Item.Id); _refreshing = true;
+        try
+        {
+            ItemList.SelectedItems.Clear();
+            foreach (var id in added) if (rows.TryGetValue(id, out var row)) ItemList.SelectedItems.Add(row);
+        }
+        finally { _refreshing = false; UpdateSelection(); }
+        if (ItemList.SelectedItem is not null) ItemList.ScrollIntoView(ItemList.SelectedItem);
+    }
     private void OnPasteSelected(object sender, RoutedEventArgs e) => Session.Paste(Selected());
     private void OnAddFiles(object sender, RoutedEventArgs e)
     {
         var picker = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Title = "Add files to ClipDrop", Filter = "All files|*.*" };
         if (picker.ShowDialog(this) != true) return;
-        try { Session.Add(picker.FileNames.Select(ShelfItem.FromPath).ToList(), false); }
+        try { Collect(() => Session.Add(picker.FileNames.Select(ShelfItem.FromPath).ToList(), false)); }
         catch (Exception ex) { Session.Error("Add files", ex); }
     }
     private void OnDragOver(object sender, DragEventArgs e)
@@ -230,7 +246,7 @@ public partial class MainWindow : Window
             Session.Notify("Already in Library · clips kept"); return;
         }
         if (!TransferService.Supports(e.Data)) return;
-        try { if (Session.Capture(e.Data, false)) e.Effects = DragDropEffects.Copy; }
+        try { Collect(() => { if (Session.Capture(e.Data, false)) e.Effects = DragDropEffects.Copy; }); }
         catch (Exception ex) { Session.Error("Drop", ex); }
     }
     private static ListBoxItem? Container(DependencyObject? node)
@@ -379,7 +395,7 @@ public partial class MainWindow : Window
         { if (e.Key == Key.Enter) OnSaveEdit(this, e); else OnCancelEdit(this, e); e.Handled = true; return; }
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (e.Key == Key.V && Keyboard.FocusedElement is not TextBox) { Session.SaveClipboard(false); e.Handled = true; }
+            if (e.Key == Key.V && Keyboard.FocusedElement is not TextBox) { Collect(() => Session.SaveClipboard(false)); e.Handled = true; }
             else if (e.Key == Key.F) { SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; }
             else if (e.Key == Key.O) { OnAddFiles(this, e); e.Handled = true; }
             else if (Keyboard.FocusedElement is not TextBox)

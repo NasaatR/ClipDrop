@@ -45,6 +45,15 @@ internal static class UiProbe
     public static void ClickAt(Point point) { MoveTo(point); MouseEvent(2); Pump(30); MouseEvent(4); Pump(); }
     public static void DoubleClickAt(Point point)
     { MoveTo(point); MouseEvent(2); MouseEvent(4); Pump(35); MouseEvent(2); MouseEvent(4); Pump(); }
+    public static void CaptureWindow(Window window, string path)
+    {
+        window.Activate(); Pump(120);
+        var rect = WindowPlacement.PixelBounds(window);
+        using var bitmap = new System.Drawing.Bitmap((int)rect.Width, (int)rect.Height);
+        using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+        graphics.CopyFromScreen((int)rect.Left, (int)rect.Top, 0, 0, bitmap.Size, System.Drawing.CopyPixelOperation.SourceCopy);
+        bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+    }
     public static void Escape() { KeyEvent(0x1B, false); Pump(30); KeyEvent(0x1B, true); Pump(); }
     public static void RightClickAt(Point point)
     { MoveTo(point); MouseEvent(8); MouseEvent(16); Pump(); }

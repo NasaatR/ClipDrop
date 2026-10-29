@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.9.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.10.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -316,3 +316,33 @@ original bytes backed up before-v5; newer/malformed structures never reset.
 Saved panels has create/snapshot/selection/name/open/combine/close/restore in one
 manager. Mirrored displays still share the active set. Independent simultaneous
 set windows and history are later stages; physical mixed-DPI acceptance stays open.
+
+
+## 0.10.0: a content-first dock and direct Library collection
+
+The user explicitly replaces the permanent utility toolbar with Save plus clips.
+Movement stays on free background; a compact right-click menu and free-background
+double-click provide navigation without a grip/eye/gear/Library/panels toolbar.
+Selected-count and Done are contextual text controls. A larger content viewport
+holds up to 12 clips and keeps horizontal virtualization.
+
+Library intake explicitly passes pin=false; dock/tray capture keeps pin=true.
+Duplicates retain existing membership. Newly added IDs are selected as one action-
+bar update, without saving selection state or auto-pinning. Checkboxes use native
+ListBoxItem selection; Ctrl/Shift, row-group drag and keyboard actions remain.
+The counted Drag N source shares the same session/OLE token and accepted/cancelled
+transfer contract as row dragging. Internal dock-to-Library drops acknowledge the
+already saved references and suppress use cleanup. No clipboard content conversion.
+
+The existing Dropshelf official README/release notes informed collection-first
+and group-transfer UX; its repository is issue-only, so no private implementation
+or code was used. References:
+https://github.com/williamckha/dropshelf-repo
+https://github.com/williamckha/dropshelf-repo/releases
+
+The user's Send_to_Figma source was inspected read-only at
+2c10acf148d44d9493f03c6ab250606a448121a5. ROADMAP records the optional adapter,
+ordered queue, authenticated local transport, stable destinations and ACK/retry
+requirements, with real Figma Desktop execution as a future gate. The current
+ClipDrop release starts no helper/listener and adds no network client. Schema 5
+and previous clipboard/native transfer/hardware boundaries remain unchanged.

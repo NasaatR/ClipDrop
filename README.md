@@ -18,14 +18,21 @@ Both include .NET. No developer tools or extra runtime installation required.
 These are unsigned previews; Windows may show a publisher/reputation prompt.
 Only download from this repository.
 
-The compact dock opens first. Click **Save** to capture the clipboard, or drop
-content onto it. New captures appear in the dock. Click a clip to request paste into your
-previous app, or drag it out. **Library** opens the full searchable collection;
-Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
+The compact dock opens first with only **Save** and clips. Click Save to capture the
+clipboard, or drop content onto the dock. Click a clip to request paste into your
+previous app, or drag it out. Right-click Save/free space → **Library**, or double-
+click free space, to open the searchable collection. Library intake stays in
+Library; new captures are selected for **Drag N**. Checkboxes or Ctrl/Shift choose
+a group; drag its counted control or any selected row. **Paste** / Enter also uses it.
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.9.0
+## Features in 0.10.0
+
+- Save-only resting dock, contextual utility menu and double-click Library access.
+- Library-only intake, automatic selection of new clips, checkboxes and a counted
+  group-drag control; no need to add everything to the dock first.
+- Simpler Library navigation and selection-only action bar.
 
 - Saved named panels: create empty, save the dock or Library selection, rename,
   switch, combine without duplicates, close and restore from Recently closed.
@@ -36,7 +43,7 @@ from Trash, including after restarting.
 
 - One-use clips: dispatched paste / accepted outgoing Copy drop moves unprotected cards
   to persistent Trash; a corner pin keeps a clip after use. Originals stay intact.
-- Select mode, Ctrl/Shift selection, one-action batch removal and group context menus.
+- Dock select mode from its menu, Ctrl/Shift selection, batch removal and group context menus.
 - Drag inside a linked dock to reorder one clip or a selected group, with an insertion
   line and edge scrolling. Drag out to transfer. Reordering never consumes clips.
 - Low-distraction dock: 20% whole-panel idle visibility by default, full on hover,
@@ -44,8 +51,8 @@ from Trash, including after restarting.
 - Compact four-row clip menu: Delete, Keep/Use once, Copy, More. Outside click,
   Escape, hiding or moving the owner dismisses it. More reveals secondary actions.
 - Single left tray click shows/hides enabled docks together; double-click does not
-  double-toggle. Small dock Hide control, direct minimized restore and background
-  Undo removal provide quick recovery. Ctrl+Alt+Space keeps its per-display behavior.
+  double-toggle. Hide/available Undo are in the dock menu, with direct minimized
+  restore. Ctrl+Alt+Space keeps its per-display behavior.
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
 - Drag either surface by any empty background; buttons, cards, editors and resizing keep their gestures.
@@ -82,10 +89,10 @@ from Trash, including after restarting.
 
 ## Saved panels and combining
 
-The **Saved panels** emoji in dock/Library opens one manager. **New empty** starts
+The dock context menu → **Saved panels**, or Library → **Panels**, opens one manager. **New empty** starts
 an empty set; **Save dock** takes the current live pin order into another set.
-To collect a Library selection, use its Saved panels action or **More → Save as
-panel…**, then **Save selection** in the manager. The Library keeps original clips.
+To save a Library selection, use **Panels** or clip **More → Save as panel…**,
+then **Save selection** in the manager. The Library keeps original clips.
 
 Select two or more open sets with Ctrl/Shift, enter a name and choose **Combine
 selected**. It creates and opens a new set, keeping the source sets; first-seen
@@ -100,26 +107,41 @@ removes it from every visible set until restored. Use the corner keep pin for
 repeated use. **Clear** preserves clips belonging to any open or closed saved set.
 Independent simultaneous set windows remain the next stage.
 
+## Collect directly in Library
+
+Drop into Library, use **Add files**, or save its clipboard with Save / Ctrl+V.
+These new clips stay in Library instead of filling the active dock. New captures
+are selected immediately; **Drag N** transfers them together. Check/uncheck rows
+to adjust the group without holding Ctrl. Dragging any selected row also works.
+Infrequent actions are in the header **More** and selection **More** menus.
+
+Dock Save/drop still adds to the active dock. Re-saving a duplicate into Library
+does not unpin an existing dock clip. Dropping your dock clips back into Library
+acknowledges that they are already saved; it does not consume or reimport them.
+Clipboard formats, copy-only original file references, protection and recoverable
+use cleanup are the same from either surface.
+
 ## Visibility and compact actions
 
 Move the pointer away to fade the dock to **20% visibility**; hover to restore it.
 Menus and transfers keep it visible. **Settings → Dock → Idle visibility** controls
 this (5–100%); **Preview idle visibility** shows it in Settings. **Opacity** remains
-background-only. The Hide control fully hides the dock; one tray click restores it.
+background-only. The dock menu → **Hide dock** fully hides it; one tray click restores it.
 A minimized dock also restores directly. **Ctrl+Alt+Space** toggles the target screen.
 
 Right-click a clip for Delete, Keep/Use once, Copy and More. Advanced actions expand
 only when requested. Outside click and Esc close the menu. Right-click a free
-area for Hide, **Undo removal** and Library. Undo returns the last deletion batch.
+area or Save for Library, saved panels, selection, settings and Hide; **Undo removal**
+appears when Trash has entries. Undo returns the last deletion batch.
 
 ## Temporary clips and selection
 
 - Click a clip to paste. A dispatched request moves it into Trash; click its corner
   pin first to keep it after use. The pin appears on hover and stays visible when on.
 - Copy, a failed/cancelled transfer and clipboard-only fallback keep the clip.
-- **Select clips** enters selection mode: plain clicks toggle clips. Ctrl toggles
-  individual members and Shift selects a range. Use the count/Trash action to remove
-  the group; **Exit selection** returns to click-paste. Right-click acts on the group.
+- Dock menu → **Select clips** enters selection mode: plain clicks toggle clips. Ctrl toggles
+  individual members and Shift selects a range. Use the selected-count menu → Delete to remove
+  the group; **Done** returns to click-paste. Right-click acts on the group.
 - Drag a clip/group inside a dock to change its position; the line shows where it
   will land. All linked docks share the order. An external accepted drop sends
   unprotected members to Trash. Use Esc during dragging to cancel.
@@ -205,7 +227,8 @@ Incremental stages and the two-monitor mirror design: [roadmap](docs/ROADMAP.md)
 Monitor mirroring is a preview. Native window checks and simulated topologies pass
 through CI; physical mixed-DPI dual-monitor, sleep/reconnect testing remains open.
 Drag a dock within its assigned display; choose a different display in Settings.
-Independent simultaneous panel windows remain planned. PNG icons: ≤5 MB, ≤2048 × 2048;
+Independent simultaneous panel windows and an optional Send to Figma image adapter
+remain planned; the latter is not enabled in this release. PNG icons: ≤5 MB, ≤2048 × 2048;
 managed copies render at bounded size. Missing assets fall back to emoji.
 Video frames/playback depend on installed Windows providers/codecs. No FFmpeg or codec installer is bundled.
 

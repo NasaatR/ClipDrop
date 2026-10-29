@@ -73,6 +73,8 @@ internal static class CollectProbe
             var clips = files.Select(path => state.Items.Single(i => i.FilePath == path)).ToArray();
             check(clips.All(i => !i.IsPinned) && dock.Pins.Items.Count == 1 && state.Items.Count == 4,
                 "A native multi-file drop saves directly to Library without filling the dock");
+            check(list.SelectedItems.Cast<ItemRow>().Select(r => r.Item.Id).ToHashSet().SetEquals(clips.Select(i => i.Id)) && ((Button)library.FindName("DragSelectedButton")).Content as string == "Drag 2",
+                "Newly collected files are immediately selected for a one-gesture group transfer");
             session.TogglePin(new[] { clips[0] }); session.Capture(data, false);
             check(clips[0].IsPinned && state.Items.Count == 4, "Re-saving into Library preserves existing dock membership and deduplicates files");
             session.TogglePin(new[] { clips[0] }); clips[1].KeepAfterUse = true; session.Change();
@@ -92,6 +94,7 @@ internal static class CollectProbe
             render((FrameworkElement)library.Content, Path.Combine(output, "library-collect-selected.png"));
             library.Width = 320; library.Height = 360; state.Settings.Theme = "Light"; session.Change(); UiProbe.Pump();
             render((FrameworkElement)library.Content, Path.Combine(output, "library-collect-narrow-light.png"));
+            UiProbe.CaptureWindow(library, Path.Combine(output, "library-collect-narrow-light-screen.png"));
             state.Settings.Theme = "Dark"; session.Change();
             var target = source.PointToScreen(new Point(source.ActualWidth / 2, source.ActualHeight / 2));
             UiProbe.DragTo(drag, target, true);
