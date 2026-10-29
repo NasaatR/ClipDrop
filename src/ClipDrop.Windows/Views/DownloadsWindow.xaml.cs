@@ -106,7 +106,7 @@ public partial class DownloadsWindow : Window
         Actions.Visibility = count > 0 ? Visibility.Visible : Visibility.Hidden; DragSelection.Content = "Drag " + count;
         FitDetails();
     }
-    private void FitDetails() => Details.Height = Math.Max(90, Math.Min(116 + Math.Max(1, Math.Min(6, _rows.Count)) * 44, Height - 75));
+    private void FitDetails() => Details.Height = Math.Max(90, Math.Min(116 + Math.Max(1, Math.Min(5, _rows.Count)) * 50, Height - 75));
     private void OnSelection(object sender, SelectionChangedEventArgs e) { if (!_refreshing) UpdateActions(); }
     private void OnCapsule(object sender, RoutedEventArgs e) => Latch(!_latched);
     private void Latch(bool value)

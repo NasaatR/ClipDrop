@@ -49,7 +49,9 @@ internal static class DownloadsProbe
                 foreach (var row in rows)
                 {
                     var box = UiProbe.Find<ToggleButton>(stack.DownloadList, c => ReferenceEquals(c.DataContext, row)); UiProbe.Click(box);
+                    Console.WriteLine($"Downloads selector: checked={box.IsChecked}, selected={stack.DownloadList.SelectedItems.Count}, list-height={stack.DownloadList.ActualHeight}, compact={stack.IsCompact}");
                 }
+                if (stack.DownloadList.SelectedItems.Count != 2) UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-selection-failure.png"));
                 check(stack.DownloadList.SelectedItems.Count == 2, "Downloads checkboxes select a file group without keyboard modifiers");
                 var destination = receiver.PointToScreen(new Point(110, 70));
                 UiProbe.DragTo(stack.DragButton, destination);
