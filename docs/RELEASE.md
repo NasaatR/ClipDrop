@@ -1,11 +1,11 @@
-A quieter dock, compact menus and reliable show/hide.
+Faster large libraries and saved panels you can combine and reopen.
 
-- Whole panel defaults to 20% visibility away from the pointer, full visibility on hover/menu/transfer. Settings → Dock → Idle visibility changes it (5–100%), with an idle preview. Existing background-only Opacity remains separate. Motion preferences are respected.
-- Right-click clips: Delete first, Keep/Use once, Copy, More. Secondary actions expand only on request; unavailable actions are omitted. Outside click and Esc dismiss the menu, including over the same external foreground app. Menus also close when their dock hides or moves.
-- One left tray click shows/hides enabled docks together. Double-click performs one toggle; Hide all also stays hidden after a display reconnects. The small Hide control fully hides one dock; minimized docks restore directly. Ctrl+Alt+Space retains per-display targeting.
-- Right-click free dock space for Hide, Undo removal and Library. Undo restores the last deletion batch without opening Library.
-- Temporary dismissal observers are released when menus close. Hover uses transition timers rather than continuous polling. The staged roadmap keeps saved/recently closed sets and clipboard history separate.
+- Library keeps existing rows, selection and containers during unchanged refreshes. Search coalesces typing; small edits update only affected rows. Selection/insertion feedback does not re-evaluate clip metadata. File availability checks run off the dispatcher with bounded concurrency.
+- Debounced autosave writes immutable snapshots on a serialized background queue; explicit save/quit drains writes. Atomic replacement, recovery and original migration backups remain.
+- Emoji fallback fits its full measured line box, custom PNGs keep an inset, toolbar icons have enough padding, and hover feedback no longer grows beyond zero-spacing cells. Remove the blurred effect from the translucent dock and reuse unchanged surface resources.
+- Saved panels: create empty, save dock/Library selection, name, switch, and combine multiple sets into one ordered panel without repeated clips. Combining preserves the source panels and original payloads. The Panels icon is available in dock and Library; clip More includes Save as panel.
+- Close panel keeps its clips in Library and makes the set available in Recently closed, including after restart. Restore & open returns its membership. Clear preserves clips referenced by any open or closed saved panel.
 
-The installer upgrades the existing installation and preserves data. Quit from the tray first. Runtime included; unsigned Windows x64 preview. Data schema remains 4; previous migration backups, saved clips, clipboard formats and original files are retained.
+The installer upgrades the existing installation and preserves data. Quit from the tray first. Runtime included; unsigned Windows x64 preview. Schema 5 migrates schemas 1–4 into a Main set in the current order, keeping an immutable shelf.json.schema-<old>-before-v5.bak. Older releases refuse this schema.
 
-Monitor mirroring remains a preview pending physical mixed-DPI feedback. One-use clips still move to ClipDrop Trash after a dispatched paste or accepted external Copy drop; cancellation/fallback and protected clips stay. Restore remains available in Library and from dock Undo. No accounts, clipboard history monitoring, network or codec bundle is added.
+Mirrored displays share one active named set; independent simultaneous panel windows are the next separate stage. Physical mixed-DPI feedback remains open. Deleting/using an unprotected clip moves the shared clip to recoverable Trash across sets; restoring returns saved memberships. The corner keep pin allows repeated use. No automatic clipboard history, network or codec bundle is added.

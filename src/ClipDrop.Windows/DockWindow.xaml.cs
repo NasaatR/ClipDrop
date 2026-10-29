@@ -53,7 +53,7 @@ public partial class DockWindow : Window
         Strip.DoneRequested += (_, _) => { _selectMode = false; _selection.Clear(); Refresh(); };
         Strip.DeleteSelectedRequested += (_, _) => Session.Remove(SelectedClips().ToList());
         Strip.SaveRequested += OnSave; Strip.SettingsRequested += OnSettings; Strip.LibraryRequested += OnLibrary;
-        Strip.PanelsRequested += (_, _) => Session.ShowPanels();
+        Strip.PanelsRequested += (_, _) => Session.ShowPanels(SelectedClips());
         Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
         Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove; Strip.PinMenu += OnPinMenu;
         _ = new WindowDrag(this, () => { _feedback.IsOpen = false; _moving = true; UpdatePresence(); }, () => {

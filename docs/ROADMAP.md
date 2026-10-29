@@ -10,11 +10,11 @@ in FOUNDATION.md; those sections also document historical releases.
 | 1 · Daily actions | Per-clip actions, modern compact surfaces | Delivered in 0.5; emoji/PNG revised in 0.6 |
 | 2 · Basic video | Background video thumbnails, explicit Play/Pause, seek, muted start, open-in-app fallback | Delivered in 0.5 |
 | 3a · Icons and linked monitors | Emoji/PNG roles, append-right pins, one linked dock per selected screen | 0.6 preview; automated acceptance below |
-| 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Current 0.7 iteration |
-| 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Current 0.8 iteration |
-| 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | In progress |
+| 3c · Temporary shelf workflow | Use → Trash, keep-after-use pin, selection/batch removal, drag reorder | Delivered in 0.7 |
+| 3d · Low-distraction daily use | Idle visibility, compact/dismissible menus, single-click tray, hide/restore and quick undo | Delivered in 0.8 |
+| 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | Current 0.9 iteration |
 | 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
-| 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | In progress after responsiveness fixes |
+| 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Current 0.9 iteration |
 | 4b · Independent views | Simultaneous windows showing different sets | After feedback on 4a |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
@@ -185,22 +185,22 @@ clipboard history stay separate; this iteration stabilizes the current shelf.
 Use the existing C#/WPF surfaces. Keep one Library and one shared active set
 across mirrored docks; do not introduce independent-window state in this slice.
 
-- [ ] Reproduce unchanged refresh/selection churn on a 5,000-clip Library and
+- [x] Reproduce unchanged refresh/selection churn on a 5,000-clip Library and
   constrained emoji/PNG layouts. Keep row/container identity and scroll/selection;
   notify only changed selection properties. Reuse unchanged dock resources.
-- [ ] Move debounced disk flushes off the dispatcher using an immutable encoded
+- [x] Move debounced disk flushes off the dispatcher using an immutable encoded
   state snapshot; serialize writes and drain pending work on explicit save/quit.
   Keep atomic replacement, recovery and pre-migration backup behavior.
-- [ ] Fit fallback emoji by their measured full text bounds; leave hover/press
+- [x] Fit fallback emoji by their measured full text bounds; leave hover/press
   feedback within zero-spacing card bounds. Inspect actual WPF captures.
-- [ ] Add `PanelSet`/`PanelSets` in Core. Each set owns ordered unique clip IDs;
+- [x] Add `PanelSet`/`PanelSets` in Core. Each set owns ordered unique clip IDs;
   Library/Trash keep the original clip payloads. Schema 5 migrates schema 1–4
   pins into Main with an immutable backup; reject malformed/newer data.
-- [ ] Add a compact Saved panels manager from dock/Library. Create empty or save
+- [x] Add a compact Saved panels manager from dock/Library. Create empty or save
   current/selected clips, rename, open, combine two or more into a new set in
   stable order without duplicates; leave source sets available. Close is reversible
   in Recently closed, separate from clip Trash. Restore after restart.
-- [ ] Run core, native Windows gesture/render, 5,000-row stability and upgrade
+- [x] Run core, native Windows gesture/render, 5,000-row stability and upgrade
   checks. Review captures and publish a new version only after they pass.
 
 Review focus: an autosave finishing after a newer edit must not mark it saved;
@@ -217,12 +217,27 @@ layout. Start with create/name/switch/close/restore in one dock; add independent
 simultaneous sets only after those data/migration journeys pass. Keep mirrored
 views of one set distinct from views of independent sets.
 
+## Validation and next slice
+
+The large-Library regression first failed on 0.8: even unchanged refreshes rebuilt
+rows and lost realized containers. The 0.9 preflight retains row/container/selection
+identity with 5,000 clips and passes native combine/close/restore gestures, tiny
+fallback rendering, background snapshots and installer upgrade. Full workflow
+results and actual UI captures remain in Actions; timings describe that runner,
+not a universal performance guarantee.
+
+Next implement 4b only after feedback: independent simultaneous set windows,
+set/window identity, per-set view placement, reconnect/restore and no accidental
+cross-set edits. Continue the physical two-screen acceptance table in parallel;
+its hardware gate remains open. Keep content versions/backup UI and opt-in
+clipboard history in stages 5/6 instead of bundling them into 4b.
+
 ## Later complexity stays separate
 
 - Advanced media: hover scrubbing, timeline filmstrips, HDR/ProRes-specific
   decoding, an optional licensed codec backend and audio waveforms.
-- Named panel sets: content membership, independent windows, persistent recently
-  closed records and restoration without deleting clips from Library/Trash.
+- Independent simultaneous named-set windows: per-view assignment/placement,
+  recently-closed window restoration and explicit mirrored-vs-independent behavior.
 - Backup/version work: conflict-safe import/merge, previews before restore,
   preservation of opaque clipboard formats and original external references.
 - Clipboard history: explicit enable/pause, sensible limits and exclusion policy;

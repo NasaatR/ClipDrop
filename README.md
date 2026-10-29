@@ -22,10 +22,17 @@ The compact dock opens first. Click **Save** to capture the clipboard, or drop
 content onto it. New captures appear in the dock. Click a clip to request paste into your
 previous app, or drag it out. **Library** opens the full searchable collection;
 Ctrl/Shift selects several items, and **Paste** / Enter uses the selection.
-Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only unpinned cards. **Ctrl+Z** restores removed cards
+Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.8.0
+## Features in 0.9.0
+
+- Saved named panels: create empty, save the dock or Library selection, rename,
+  switch, combine without duplicates, close and restore from Recently closed.
+- Large-Library stability: cached rows, minimal collection updates, debounced
+  search, bounded background availability checks and queued background autosave.
+- Full-bound emoji/PNG fitting, enough toolbar padding, zero-gap-safe feedback
+  and a lighter translucent dock without a blurred subtree effect.
 
 - One-use clips: dispatched paste / accepted outgoing Copy drop moves unprotected cards
   to persistent Trash; a corner pin keeps a clip after use. Originals stay intact.
@@ -72,6 +79,26 @@ from Trash, including after restarting.
   without recording item contents.
 - Local operation; no accounts, subscription, telemetry, clipboard monitoring,
   app-initiated network requests or cloud storage.
+
+## Saved panels and combining
+
+The **Saved panels** emoji in dock/Library opens one manager. **New empty** starts
+an empty set; **Save dock** takes the current live pin order into another set.
+To collect a Library selection, use its Saved panels action or **More → Save as
+panel…**, then **Save selection** in the manager. The Library keeps original clips.
+
+Select two or more open sets with Ctrl/Shift, enter a name and choose **Combine
+selected**. It creates and opens a new set, keeping the source sets; first-seen
+order is preserved and shared clip IDs appear once. Rename/Open work on one set.
+**Close panel** puts it in **Recently closed**; **Restore & open** returns it,
+including after restart. Closing the last open panel creates an empty Main.
+Up to 100 open/recently closed sets are retained; nothing is silently pruned.
+
+Mirrored docks share the active set. Membership/order is separate per set, while
+payloads and Trash remain shared: deleting or consuming an unprotected clip
+removes it from every visible set until restored. Use the corner keep pin for
+repeated use. **Clear** preserves clips belonging to any open or closed saved set.
+Independent simultaneous set windows remain the next stage.
 
 ## Visibility and compact actions
 
@@ -168,17 +195,17 @@ the content. The request archives one-use clips into recoverable Trash. OLE clea
 uses the target’s Copy acknowledgement; it does not delete source files. It leaves the clipboard ready for manual Ctrl+V and never restores it
 on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
 
-Metadata schema 4 migrates schema-1/2/3 libraries and keeps an immutable `shelf.json.schema-<old>-before-v4.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
+Metadata schema 5 migrates schema-1/2/3/4 libraries and keeps an immutable `shelf.json.schema-<old>-before-v5.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
-formats in TransferService, not card UI handlers. Do not delete originals, clear
-cards on drag completion, or time-delete exported payloads.
+formats in TransferService, not card UI handlers. Do not delete originals or time-delete exported payloads. Accepted transfers archive
+unprotected clip references to recoverable Trash; internal/cancelled drags keep them.
 Research and manual acceptance: [foundation notes](docs/FOUNDATION.md).
 Incremental stages and the two-monitor mirror design: [roadmap](docs/ROADMAP.md).
 Monitor mirroring is a preview. Native window checks and simulated topologies pass
 through CI; physical mixed-DPI dual-monitor, sleep/reconnect testing remains open.
 Drag a dock within its assigned display; choose a different display in Settings.
-Named and recently closed panel sets remain planned. PNG icons: ≤5 MB, ≤2048 × 2048;
+Independent simultaneous panel windows remain planned. PNG icons: ≤5 MB, ≤2048 × 2048;
 managed copies render at bounded size. Missing assets fall back to emoji.
 Video frames/playback depend on installed Windows providers/codecs. No FFmpeg or codec installer is bundled.
 

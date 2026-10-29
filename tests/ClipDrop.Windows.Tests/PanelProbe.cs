@@ -89,6 +89,12 @@ internal static class PanelProbe
             var mirrored = ShelfItem.FromText("Shared mirrored clip"); session.Add(new[] { mirrored }); UiProbe.Pump();
             check(Math.Abs(WindowPlacement.PixelBounds(two).Left - anchorLeft) < 2, "Appending a clip keeps a managed dock's left anchor stable");
             check(coordinator.Views.All(v => v.Pins.Items.Cast<ItemRow>().Any(r => r.Item.Id == mirrored.Id)), "A save from the shared session updates both dock views once");
+            var previousPanel = session.State.ActivePanelId;
+            session.PanelAction(() => PanelSets.Create(session.State, "Mirrored set", new[] { mirrored.Id }), "Panel opened");
+            check(coordinator.Views.All(v => v.Pins.Items.Count == 1 && ((ItemRow)v.Pins.Items[0]).Item.Id == mirrored.Id),
+                "Switching a named set updates membership in both real mirrored dock windows");
+            var temporaryPanel = session.State.ActivePanelId;
+            session.PanelAction(() => { PanelSets.Activate(session.State, previousPanel); PanelSets.Close(session.State, new[] { temporaryPanel }); }, "Panel restored");
             session.Remove(new List<ShelfItem> { mirrored });
             check(session.State.Trash.Count(t => t.Item.Id == mirrored.Id) == 1 && coordinator.Views.All(v => v.Pins.Items.Cast<ItemRow>().All(r => r.Item.Id != mirrored.Id)),
                 "Removing a mirrored clip creates one Trash entry and updates both views");

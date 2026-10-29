@@ -20,5 +20,5 @@
  <Geometry x:Key="EditIcon">M4,17 L3,22 L8,21 L21,8 L17,4 Z M14,7 L18,11</Geometry>
  <Geometry x:Key="RevealIcon">M3,8 V21 H20 V14 M3,8 H10 L12,10 H17 M14,3 H22 V11 M22,3 L12,13</Geometry>
  <Style x:Key="LineIcon" TargetType="Path"><Setter Property="Width" Value="18"/><Setter Property="Height" Value="18"/><Setter Property="Stretch" Value="Uniform"/><Setter Property="Stroke" Value="{DynamicResource Ink}"/><Setter Property="StrokeThickness" Value="1.7"/><Setter Property="StrokeStartLineCap" Value="Round"/><Setter Property="StrokeEndLineCap" Value="Round"/><Setter Property="StrokeLineJoin" Value="Round"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="IsHitTestVisible" Value="False"/></Style>
- <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Width" Value="32"/><Setter Property="Height" Value="32"/><Setter Property="Padding" Value="7"/></Style>
+ <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Width" Value="32"/><Setter Property="Height" Value="32"/><Setter Property="Padding" Value="5"/></Style>
 </ResourceDictionary>

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.0 — 2026-10-29
+
+- Reconcile and cache Library rows instead of rebuilding every list on a shared
+  change; retain containers/selection on unchanged refresh, debounce search and
+  notify selection/insertion properties without refreshing metadata. Bounded
+  background availability checks replace synchronous file stats in row bindings.
+- Serialize immutable autosave snapshots to an ordered background disk queue;
+  drain on explicit save/quit, retain recovery/atomic replacement semantics.
+- Fit fallback emoji by their full line box, inset images, correct icon-button
+  padding and prevent hover growth beyond zero-gap cards. Reuse dock resources
+  and remove its blurred subtree effect.
+- Named panel manager: empty/current/selected captures, rename/open, ordered
+  deduplicated combine keeping sources, close and Recently closed restore. One
+  shared active set across mirrored docks; clip payloads remain in Library/Trash.
+- Schema 5 migrates 1–4 with immutable backups and protects panel memberships
+  from old builds. Clear keeps references in open/recently closed sets.
+- Updated staged plan: independent set windows, content versions/backups and
+  opt-in clipboard history remain separate releases.
+
 ## 0.8.0 — 2026-10-29
 
 - Whole dock defaults to 20% idle visibility and reveals on hover/menu/transfer;

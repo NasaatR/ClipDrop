@@ -68,7 +68,6 @@
     <Button x:Name="PinButton" Style="{StaticResource IconButton}" Click="OnPin" ToolTip="Pin selection" AutomationProperties.Name="Pin selection"><views:AppIcon Kind="Pin" x:Name="PinActionIcon" Width="16" Height="16"/></Button>
     <Button x:Name="EditButton" Style="{StaticResource IconButton}" Click="OnEdit" ToolTip="Rename / group · F2" AutomationProperties.Name="Edit item"><views:AppIcon Kind="Edit" Width="16" Height="16"/></Button>
     <Button x:Name="RemoveButton" Style="{StaticResource IconButton}" Click="OnRemove" ToolTip="Remove cards · Delete" AutomationProperties.Name="Remove selection"><views:AppIcon Kind="Trash" Width="16" Height="16"/></Button>
-    <Button x:Name="SavePanelButton" Style="{StaticResource IconButton}" Click="OnSavePanel" ToolTip="Save selection as a panel" AutomationProperties.Name="Save selection as a panel"><views:AppIcon Kind="Panels" Width="16" Height="16"/></Button>
    </WrapPanel>
   </DockPanel>
   <Grid Grid.Row="6" Margin="14,0,14,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

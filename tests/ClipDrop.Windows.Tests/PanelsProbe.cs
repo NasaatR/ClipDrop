@@ -28,7 +28,7 @@ internal static class PanelsProbe
         manager.Close(); library.ShowShelf(); UiProbe.Pump();
         var items = (ListBox)library.FindName("ItemList"); items.SelectedItems.Clear();
         foreach (var row in items.Items.Cast<ItemRow>().Where(r => r.Item.Id == clips[1].Id || r.Item.Id == clips[2].Id)) items.SelectedItems.Add(row);
-        UiProbe.Click((Button)library.FindName("SavePanelButton"));
+        UiProbe.Click(UiProbe.Find<Button>(library, b => AutomationProperties.GetName(b) == "Saved panels"));
         manager = Application.Current.Windows.OfType<PanelsWindow>().Single(); UiProbe.Pump();
         UiProbe.Click(UiProbe.Find<Button>(manager, b => AutomationProperties.GetName(b) == "Save selection as panel"));
         var selection = PanelSets.Active(state);
@@ -58,6 +58,9 @@ internal static class PanelsProbe
         render((FrameworkElement)manager.Content, Path.Combine(output, "panels-recently-closed.png"));
         UiProbe.Click(Button("Restore & open"));
         check(combined.ClosedUtc is null && state.ActivePanelId == combined.Id && dock.Pins.Items.Count == 3, "Real Restore reopens the closed panel and its original dock membership");
+        var loose = ShelfItem.FromText("Outside every saved set"); session.Add(new[] { loose }, false);
+        ((Button)library.FindName("ClearButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        check(state.Items.Count == 3 && state.Trash.Single().Item.Id == loose.Id, "Library Clear preserves clips in every open or recently closed saved set");
         manager.Width = 360; manager.Height = 360; UiProbe.Pump();
         render((FrameworkElement)manager.Content, Path.Combine(output, "panels-narrow.png"));
         manager.Close(); dock.DisposeView(); library.Hide(); session.TrySave();

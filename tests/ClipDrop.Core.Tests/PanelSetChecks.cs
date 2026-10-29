@@ -58,5 +58,27 @@ internal static class PanelSetChecks
         check(new StateStore(asyncRoot).Load().Items[0].Content == "before", "Background save writes an immutable snapshot rather than observing later UI edits");
         asyncStore.SaveAsync(asyncState).GetAwaiter().GetResult();
         check(new StateStore(asyncRoot).Load().Items[0].Content == "after", "A later background save persists the newer content");
+        var writes = new System.Collections.Generic.List<System.Threading.Tasks.Task>();
+        for (var i = 0; i < 12; i++) { asyncState.Items[0].Content = "Queued " + i; writes.Add(asyncStore.SaveAsync(asyncState)); }
+        System.Threading.Tasks.Task.WhenAll(writes).GetAwaiter().GetResult();
+        check(new StateStore(asyncRoot).Load().Items[0].Content == "Queued 11", "Rapid background snapshots commit in request order rather than worker completion order");
+        var failedRoot = Path.Combine(root, "failed-async"); var failedStore = new StateStore(failedRoot); var failedState = failedStore.Load();
+        Directory.CreateDirectory(Path.Combine(failedRoot, "shelf.json"));
+        var failed = false; try { failedStore.SaveAsync(failedState).GetAwaiter().GetResult(); } catch (IOException) { failed = true; }
+        Directory.Delete(Path.Combine(failedRoot, "shelf.json")); failedState.Items.Add(ShelfItem.FromText("Recovered write"));
+        failedStore.SaveAsync(failedState).GetAwaiter().GetResult();
+        check(failed && new StateStore(failedRoot).Load().Items.Single().Content == "Recovered write" && Directory.GetFiles(failedRoot, "*.tmp").Length == 0,
+            "A failed background write cleans its temporary file and does not poison later saves");
+        foreach (var malformed in new[] { "missing-panels", "duplicate-members", "closed-active" })
+        {
+            var data = JsonNode.Parse(JsonSerializer.Serialize(state))!;
+            if (malformed == "missing-panels") data.AsObject().Remove("Panels");
+            else if (malformed == "duplicate-members") { var members = data["Panels"]![0]!["ClipIds"]!.AsArray(); members.Add(members[0]!.GetValue<string>()); }
+            else foreach (var panel in data["Panels"]!.AsArray()) panel!["ClosedUtc"] = DateTimeOffset.UtcNow.ToString("O");
+            var badRoot = Path.Combine(root, malformed); Directory.CreateDirectory(badRoot); var json = data.ToJsonString();
+            File.WriteAllText(Path.Combine(badRoot, "shelf.json"), json); var refused = false;
+            try { new StateStore(badRoot).Load(); } catch (InvalidDataException) { refused = true; }
+            check(refused && File.ReadAllText(Path.Combine(badRoot, "shelf.json")) == json, "Malformed panel data is preserved without reset: " + malformed);
+        }
     }
 }

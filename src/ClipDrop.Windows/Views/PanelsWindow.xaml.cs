@@ -21,6 +21,9 @@ public partial class PanelsWindow : Window
         _session = session; InitializeComponent();
         _ = new WindowDrag(this, () => { }, () => { });
         _session.Changed += Refresh;
+        SizeChanged += (_, _) => Dispatcher.BeginInvoke(() => {
+            if (IsVisible && PanelList.SelectedItem is not null) PanelList.ScrollIntoView(PanelList.SelectedItem);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
         Closed += (_, _) => _session.Changed -= Refresh;
         Refresh();
     }

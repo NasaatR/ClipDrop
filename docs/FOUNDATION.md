@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.8.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.9.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -286,3 +286,33 @@ Data schema stays 4; this iteration adds no new content/history model.
 Primary sources: Microsoft LowLevelMouseProc/SetWindowsHookEx, ContextMenu.StaysOpen,
 MenuItem.StaysOpenOnClick, and dotnet/winforms NotifyIcon implementation. Physical
 mixed-DPI monitor acceptance and real target-app gestures retain earlier limits.
+
+
+## 0.9.0: responsiveness and recoverable named panels
+
+Library reconciles cached ItemRows: unchanged refreshes emit no collection edits,
+small edits preserve existing containers, large filter changes emit one Reset.
+Selection/drag cues notify only their properties. Row bindings perform no disk
+stats; realized rows request bounded background availability checks. Search uses
+a short final-query debounce. Dock resources are reused and the blurred effect
+is removed from the layered/translucent surface. Fallback emoji uses a Viewbox
+around its full measured line box; images keep an inset and hover never enlarges
+the cell. Existing saved size/spacing choices remain respected.
+
+StateStore encodes an immutable snapshot while state has its UI owner, then
+serializes atomic disk writes on TaskScheduler.Default. ShelfSession tracks edit
+and persisted revisions: older completion cannot mark newer edits saved. Explicit
+save/quit drains the queue. No live WPF/COM clipboard objects cross threads.
+
+Schema 5 PanelSets own ordered unique IDs, not payload copies. IsPinned/PinOrder
+project the one active set for existing views and transfers. Change/save captures
+that projection; switching applies the chosen membership. Trash IDs retain their
+slots for restoration. Closing a set retains Library clips; closing the last open
+set creates empty Main. Recently closed sets persist. Combine creates a new stable
+union and retains sources. Maximum is 100 including closed, with no silent purge.
+Clear protects clips in all saved sets. Schema 1–4 migrate into Main with exact
+original bytes backed up before-v5; newer/malformed structures never reset.
+
+Saved panels has create/snapshot/selection/name/open/combine/close/restore in one
+manager. Mirrored displays still share the active set. Independent simultaneous
+set windows and history are later stages; physical mixed-DPI acceptance stays open.

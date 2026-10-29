@@ -123,8 +123,7 @@ public partial class MainWindow : Window
         }
         else { window.OfferSelection(clips); window.Activate(); }
     }
-    private void OnPanels(object sender, RoutedEventArgs e) => OpenPanels();
-    private void OnSavePanel(object sender, RoutedEventArgs e) => OpenPanels(Selected());
+    private void OnPanels(object sender, RoutedEventArgs e) => OpenPanels(Selected());
     private static double Bound(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
     public void ApplyAppearance()
     {
@@ -187,7 +186,6 @@ public partial class MainWindow : Window
     {
         var selected = Selected();
         CopyButton.IsEnabled = PinButton.IsEnabled = RemoveButton.IsEnabled = PasteButton.IsEnabled = selected.Count > 0;
-        SavePanelButton.IsEnabled = selected.Count > 0;
         var unpin = selected.Count > 0 && selected.All(i => i.IsPinned);
         PinButton.ToolTip = unpin ? "Remove selection from dock" : "Add selection to dock";
         PinActionIcon.Opacity = unpin ? 1 : .65;
