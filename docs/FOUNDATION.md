@@ -1,6 +1,6 @@
 # Foundation and current boundary
 
-Version 0.12.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
+Version 0.13.0. Source: NasaatR/ClipDrop, main. Authority: build a Windows shelf
 foundation and push directly to the default branch.
 
 ## Decisions and sources
@@ -409,3 +409,34 @@ clip drag tokens and accepted-transfer/Trash behavior remain unchanged.
 The native runner must exercise writer exclusion, group OLE, clipboard file formats,
 watcher updates, collapse/menu dismissal and global visibility; actual browser
 completion and physical mixed-DPI hardware remain separate acceptance boundaries.
+
+## 0.13.0: browser image sources, bundled WebP and clip stacks
+
+Pinned SkiaSharp 4.154.0 supplies first-frame WebP decoding/alpha and a bounded
+raster fallback. Standard WPF formats retain their normal decoder; a separate
+WebP OS codec is not a prerequisite. Win64 libSkiaSharp imports only Windows OS
+DLLs (ole32, USER32, FONTSUB, KERNEL32). Distributions include package license and
+native dependency notices and omit its debug PDB. Original encoded bytes remain
+unchanged; generated PNG/bitmap clipboard representations serve image consumers.
+
+Foreign OLE is read on the STA. HTML img/srcset/direct raster URI hints leave it
+as immutable data; only explicit drops start background HTTP. Two workers, a short
+queue, 15-second cancellation, 64 MB/64 MP limits and three redirects bound work.
+ConnectCallback resolves/validates all addresses and connects to the validated
+public IP, with cookies/proxy/auth disabled. Metadata keeps a source link before
+retrieval; successful output upgrades that ID and revalidates live membership,
+preventing deleted clips from being resurrected. Browser page-only links remain
+links; browser authorization and actual Pinterest/Reddit compatibility are separate.
+
+ClipStack owns only flat ordered references within a PanelSet. It cannot duplicate
+payloads or nest stacks. The main IsPinned/PinOrder projection stays compatible;
+tile keys and selection are view identities, expanded into original member IDs
+for transfer/actions. Center/edge hit regions distinguish grouping from insertion.
+Trash retains memberships, split removes only the group record, and snapshots
+copy group identities. A shared revision cache and indexed batch movement avoid
+rebuilding repeated lookups across windows.
+
+Schema 7 migrates 1–6, validates references/overlap and preserves exact before-v7
+bytes. Ordinary clipboard snapshots keep their formats; FetchDroppedImages is a
+behavior preference preserved by appearance changes. Optional Chrome native
+messaging and backup/version UI remain separately staged in ROADMAP.md.

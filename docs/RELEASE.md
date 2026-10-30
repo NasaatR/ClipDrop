@@ -1,13 +1,12 @@
-A separate Downloads hover stack for recent local files.
+WebP previews, actual browser-image intake and clip stacks.
 
-- Open Downloads from the dock's right-click menu or tray. Hover the small capsule to reveal recent files; click to hold open, or drag its free edge/header to move it. The main dock keeps its Save-only layout.
-- Checkbox/Ctrl/Shift selection, native single/group Copy drag, file clipboard Copy and explicit Save to Library. Drag to another app or into a ClipDrop dock/Library. Source files remain in place; folder-view transfers do not consume saved clips into Trash.
-- Settings → Downloads selects the current Windows Downloads known folder (including redirection) or one custom folder. The stack is off until opened/enabled; its folder/layout/visibility are saved separately from appearance presets. Tray Show/Hide all includes it.
-- Show up to 40 recent nonempty files. Skip temporary, nested, hidden/reparse and actively written files; defer freshly created files. One bounded background scan and coalesced watcher events keep disk work off the dispatcher. Unchanged rows and shared thumbnail previews are reused.
-- Close stops the watcher. Hover/Refresh recovers unavailable folders. Open folder opens Explorer. No browser extension, network fetch, automatic Library import or original-file mutation.
+- WebP now has a bundled decoder, alpha and scaled previews across dock, Library and Downloads; old WebP file references are recognized on load. Source image files and downloaded encodings stay intact. Previews use a common bounded cache; no separate WebP codec installation.
+- An explicit browser drop can use image bytes/files or the actual img/srcset/direct image URL. Public image retrieval runs in the background, upgrades the same clip and keeps its link on failure. Removing a pending clip prevents late resurrection. Settings → Dock → Fetch image URLs on drop disables retrieval; ordinary clipboard saves retain their original formats.
+- Drop into the center of a card to stack clips, or at an edge/between cards to insert separately. The plus/line cues show the action. One counted card opens its members, drags/copies them together and offers Split stack without deleting them. Protection, use-to-Trash and restore work per member; saved sets/independent views retain their structure.
+- Tile projection, member popups and background requests are bounded. Unchanged rows are retained; a completed image updates its actual thumbnail. The installer includes the native decoder and its exact notices, omitting native debug symbols.
 
-This is a folder view, not browser download history or proof of completion. Browser Save As destinations outside the selected folder need a folder change in Settings. Empty files, multiple watched folders, browser progress/completion APIs and advanced layouts remain later work.
+A Pinterest page link alone is still a link. A public image may also be inaccessible without browser authorization; no cookies or page scraping are used. The optional Chrome image action/native-messaging companion is in the roadmap, not installed here. PNG/JPEG/GIF/BMP/TIFF/ICO keep their normal decoding path; uncommon raster formats depend on available decoders. Image previews show one frame.
 
-Quit ClipDrop from the tray, then install over the current version. Runtime included; unsigned Windows x64 preview. Data schema remains 6, preserving saved sets/windows, Trash, styles, opaque clipboard payloads and migration backups.
+Quit ClipDrop from the tray and install over the current version. Runtime included; unsigned Windows x64 preview. Schema 7 preserves clips, panels/windows, Downloads preferences, styles and raw clipboard payloads while adding clip-stack metadata. Migration keeps shelf.json.schema-<old>-before-v7.bak; older releases refuse newer metadata.
 
-Backup export/import is the next library stage. Physical mixed-DPI hardware and real third-party target-app gestures retain their manual acceptance boundaries.
+Next: backup export/import with restore preview, then content versions. Physical mixed-DPI hardware and actual Pinterest/Reddit/Photoshop/Figma application gestures remain manual compatibility checks; native tests use representative transfer data and controlled HTTP results.

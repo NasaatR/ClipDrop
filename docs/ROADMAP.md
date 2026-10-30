@@ -19,7 +19,7 @@ in FOUNDATION.md; those sections also document historical releases.
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
 | 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | Delivered in 0.11 |
 | 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Delivered in 0.12 |
-| 4d · Images and clip stacks | WebP decoding, browser image source intake, center-stack/edge-insert gestures and recovery | Current 0.13 slice |
+| 4d · Images and clip stacks | WebP decoding, browser image source intake, center-stack/edge-insert gestures and recovery | Delivered in 0.13 |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
 | 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.13 |
@@ -364,7 +364,7 @@ clips inside one panel.
 - [x] Schema 7 migrates 1–6 with immutable original bytes, promotes old local WebP
   references and prevents older builds from erasing stack metadata. Downloads
   preferences, closed windows, clipboard payloads and saved styles remain intact.
-- [ ] Verify native WebP pixels/alpha, previews, center/edge OLE, stack copy/drag,
+- [x] Verify native WebP pixels/alpha, previews, center/edge OLE, stack copy/drag,
   split/restore, pending-image row identity, cancellation/denial and late completion.
   Inspect real dark/light/popover captures and run published startup/installer checks.
 

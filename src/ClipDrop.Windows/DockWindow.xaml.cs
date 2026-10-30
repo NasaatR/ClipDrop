@@ -275,13 +275,17 @@ public partial class DockWindow : Window
         if (Session.OwnDrag(e.Data) is { } own)
         {
             own.InternalHandled = true;
-            if (DropIndex(e) is int index)
+            try
             {
-                var center = Strip.CenterAt(e.GetPosition(Strip.PinnedItems));
-                if (center is not null) Session.Stack(own.Items, center.Item.Id, PanelId);
-                else Session.Reorder(own.Items, Strip.PinIndex(index), PanelId);
-                e.Effects = DragDropEffects.Copy;
+                if (DropIndex(e) is int index)
+                {
+                    var center = Strip.CenterAt(e.GetPosition(Strip.PinnedItems));
+                    if (center is not null) Session.Stack(own.Items, center.Item.Id, PanelId);
+                    else Session.Reorder(own.Items, Strip.PinIndex(index), PanelId);
+                    e.Effects = DragDropEffects.Copy;
+                }
             }
+            catch (InvalidOperationException ex) { Session.Error("Drop", ex); }
             return;
         }
         if (!TransferService.Supports(e.Data)) return;

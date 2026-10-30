@@ -32,7 +32,7 @@ public sealed partial class ShelfSession
                 pending.Title = name.Length is > 0 and <= 120 ? name : "Dropped image";
             }
             pending.Kind = ItemKind.Image; pending.Content = ""; pending.FilePath = path; pending.OwnedAsset = true; pending.Clipboard = null;
-            Change(); Notify("Image saved · original encoding kept");
+            Change(); Notify("Image ready · original encoding kept");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {

@@ -39,16 +39,23 @@ public sealed class TransferService
         // Prefer original encoded PNG bytes; the Bitmap fallback can lose alpha in some source apps.
         if (data.GetDataPresent("PNG", false))
         {
-            var value = data.GetData("PNG", false);
-            var bytes = value switch { byte[] b => b, Stream s => ImageFiles.ReadStream(s), _ => null };
-            if (bytes is not null)
+            try
             {
-                ImageFiles.Load(bytes);
-                return new List<ShelfItem> { CacheImage(bytes) };
+                var value = data.GetData("PNG", false);
+                var bytes = value switch { byte[] b => b, Stream s => ImageFiles.ReadStream(s), _ => null };
+                if (bytes is not null)
+                {
+                    ImageFiles.Load(bytes);
+                    return new List<ShelfItem> { CacheImage(bytes) };
+                }
             }
+            catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FormatException or System.Runtime.InteropServices.COMException) { }
         }
-        if (data.GetDataPresent(DataFormats.Bitmap) && data.GetData(DataFormats.Bitmap) is BitmapSource bitmap)
-            return new List<ShelfItem> { CacheImage(ImageFiles.Encode(bitmap)) };
+        if (data.GetDataPresent(DataFormats.Bitmap))
+        {
+            try { if (data.GetData(DataFormats.Bitmap) is BitmapSource bitmap) return new() { CacheImage(ImageFiles.Encode(bitmap)) }; }
+            catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FormatException or System.Runtime.InteropServices.COMException) { }
+        }
 
         var virtualFiles = VirtualFileReader.Read(data, _assets.Root);
         if (virtualFiles.Count > 0) return virtualFiles;
@@ -96,6 +103,7 @@ public sealed class TransferService
             if (item.Kind == ItemKind.Image && item.OwnedAsset && item.FilePath is not null)
             {
                 var info = new FileInfo(item.FilePath);
+                var rendered = false;
                 // Large files still transfer by path without loading their full contents.
                 if (info.Length <= ImageFiles.MaximumBytes)
                 {
@@ -107,11 +115,18 @@ public sealed class TransferService
                             ? bytes : ImageFiles.Encode(image);
                         data.SetData("PNG", new MemoryStream(png, false), false);
                         data.SetImage(image);
+                        rendered = true;
                     }
                     catch (Exception ex) when (ex is NotSupportedException or ArgumentException or FileFormatException or InvalidDataException)
                     {
                         // An undecodable/oversized image still transfers intact as its original file.
                     }
+                }
+                if (!rendered)
+                {
+                    var originals = new StringCollection { item.FilePath };
+                    data.SetFileDropList(originals);
+                    data.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes(1)), false);
                 }
             }
         }

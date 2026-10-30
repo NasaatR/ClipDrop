@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.13.0 — 2026-10-30
+
+- Classify WebP/common raster files consistently, including existing references and
+  browser virtual files. Bundle SkiaSharp 4.154.0 for WebP/alpha and scaled previews;
+  preserve encoded originals and include the exact decoder/dependency licenses.
+- Explicit browser image drops can resolve HTML img/srcset or a direct public image
+  URL in bounded background work. Keep the link until ready, upgrade the same row,
+  retain failures and never resurrect removed clips. Ordinary clipboard saves keep
+  their source formats; page-only Pinterest URLs remain links.
+- Center-drop clip stacks with a count/plus cue; edge drops insert separately.
+  Open members, copy/drag all or split without deleting payloads. Flat per-panel
+  references retain scoped windows, ordering, protection and Trash restoration.
+- Reuse cached tile projection/containers and thumbnail paths; update a preview
+  when its pending image completes. Batch pin movement uses an index rather than
+  repeated item searches. Bound the member popup and keep grouping metadata separate
+  from the Library's original clips.
+- Schema 7 migrates 1–6 with immutable original bytes and validates stack structure.
+  The optional Chrome companion and backup/version UI remain separate planned work.
+
 ## 0.12.0 — 2026-10-30
 
 - Opt-in Downloads stack: separate hover capsule, recent files, persistent placement

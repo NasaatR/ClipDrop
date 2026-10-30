@@ -36,7 +36,7 @@ internal static class ImageStackProbe
     { if (!UiProbe.Until(() => task.IsCompleted, 8000)) throw new Exception("Image task did not finish"); return task.GetAwaiter().GetResult(); }
     private static Button Pin(DockWindow dock, string id) => UiProbe.Find<Button>(dock.Pins, b => b.Tag as string != "Keep" && b.DataContext is ItemRow row && row.Members.Any(i => i.Id == id));
     private static bool HasPreview(DockWindow dock, string id) => dock.Pins.Items.Cast<ItemRow>().Any(r => r.Members.Any(i => i.Id == id)) &&
-        UiProbe.Find<Image>(dock.Pins, i => i.DataContext is ItemRow r && r.Members.Any(c => c.Id == id)).Source is not null;
+        UiProbe.Find<Image>(dock.Pins, i => i.Name == "Thumbnail" && i.DataContext is ItemRow r && r.Members.Any(c => c.Id == id)).Source is not null;
     public static void Run(MainWindow oldLibrary, DockWindow oldDock, string root, string output, Action<bool, string> check, Action<FrameworkElement, string> render)
     {
         var decoded = ImageFiles.Load(WebP); var pixels = new byte[24]; decoded.CopyPixels(pixels, 12, 0);
@@ -44,6 +44,15 @@ internal static class ImageStackProbe
             "Bundled WebP decoding preserves dimensions and transparent/half-transparent alpha without an OS codec");
         check(ImageFiles.Load(WebP, 2).PixelWidth <= 2 && ImageFiles.Extension(WebP) == ".webp",
             "WebP thumbnails are bounded and original encoding is identified from bytes");
+        var invalidPng = new DataObject(); invalidPng.SetData("PNG", new MemoryStream(new byte[] { 1, 2, 3 }));
+        invalidPng.SetData("HTML Format", "<img src='https://images.example.com/real.webp'>");
+        var fallbackAssets = new AssetStore(Path.Combine(root, "format-fallback"));
+        check(new TransferService(fallbackAssets).Import(invalidPng).Single().SourceUrl == "https://images.example.com/real.webp",
+            "An invalid advertised PNG cannot hide an available browser image-source representation");
+        var unsupported = Path.Combine(root, "unsupported-owned.webp"); File.WriteAllBytes(unsupported, new byte[] { 1, 2, 3 });
+        var fallback = new TransferService(fallbackAssets).BuildDrag(new[] { new ShelfItem { Kind = ItemKind.Image, OwnedAsset = true, FilePath = unsupported } });
+        check(fallback.GetFileDropList().Cast<string>().Single() == unsupported && File.ReadAllBytes(unsupported).SequenceEqual(new byte[] { 1, 2, 3 }),
+            "An undecodable owned image still transfers as its intact original file");
         using (var blocked = new HttpClient(new Handler()))
         {
             var refused = false; try { Await(new BrowserImageLoader(blocked).Load(new Uri("http://127.0.0.1/a.webp"), default)); } catch (HttpRequestException) { refused = true; }

@@ -27,8 +27,12 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.12.0
+## Features in 0.13.0
 
+- Bundled WebP previews/alpha, consistent image classification and background
+  retrieval of an actual image URL supplied by an explicit browser drop.
+- Clip stacks: drop at the center to combine, drop at an edge to insert separately;
+  open members, drag/copy together or split without deleting clips.
 - Optional Downloads hover stack: recent local files, group drag/copy and explicit
   Library save from a separate capsule.
 - Compact idle Save capsule with immediate hover/drop expansion and click-through
@@ -136,6 +140,55 @@ acknowledges that they are already saved; it does not consume or reimport them.
 Clipboard formats, copy-only original file references, protection and recoverable
 use cleanup are the same from either surface.
 
+## Browser images and WebP
+
+Local and virtual image files use one extension classification and preview path.
+WebP decoding and alpha support are bundled through SkiaSharp, including scaled
+thumbnails; no separate WebP codec installation is required. Existing saved WebP
+file references are reclassified on load. PNG/JPEG/GIF/BMP/TIFF/ICO keep their
+existing decoding path; AVIF/HEIF and uncommon formats still depend on available
+decoders. Previews show one frame; this is not animated-image playback. Missing or
+undecodable originals keep a visible fallback and can still transfer as files.
+
+For a browser drop, image bytes/files take priority. If the browser supplies an
+HTML `img`/`srcset` source or a direct raster-image URL, ClipDrop saves a link first,
+then retrieves the actual public image in the background and upgrades the same
+card. It preserves original encoded bytes and exposes normal image formats when
+copying. Removing the pending card prevents a late result from resurrecting it.
+Unavailable/authenticated images keep their link and report the failure.
+
+**Settings → Dock → Fetch image URLs on drop** controls this behavior, default on.
+It applies to explicit drops; saving an ordinary clipboard item keeps its original
+formats. Requests have bounded bytes/pixels, two workers, a short queue, timeout
+and redirects; they do not use browser cookies, proxy credentials or private/local
+addresses. A source image may still require access that a standalone app lacks.
+
+A Pinterest pin-page URL alone does not identify its underlying image. That drop
+remains a link; use the browser's **Copy image** or save/drop the actual file.
+A Chrome image context-menu/optional hover companion is planned as a separate
+native-messaging integration. No extension or browser registration is installed.
+Actual Pinterest/Reddit browser execution remains a manual compatibility check;
+the native checks exercise representative OLE/HTML payloads and HTTP outcomes.
+
+## Clip stacks inside a panel
+
+Drop onto the **center** of a clip to combine it into one counted stack. The plus
+highlight marks that target. Drop at the **left/right edge** or between cards to
+insert separately, with the usual line cue. New saves still append on the right.
+This is separate from **Saved panels → Combine selected**, which combines sets.
+
+Click a stack to open its members; clicking a member uses that clip. Drag the stack
+to transfer all live members, or use **Copy all**. **Split stack** is available in
+the opened list or right-click → More; it restores separate cards without deleting
+payloads. The popup bounds its member list; large stacks also link to Library.
+Library continues to show the original individual clips.
+
+Stacks are flat per-panel references, not nested files or duplicate assets. Saved
+panel snapshots/combines copy their structure without sharing mutable group IDs.
+Normal protection/use-to-Trash behavior applies per member; Trash restoration
+returns the same stack/order. An edge move of an individual member from Library
+can separate it from its stack; moving the whole stack keeps its structure.
+
 ## Downloads stack
 
 Right-click Save/free dock space → **Downloads**, or use the tray's **Downloads**
@@ -228,11 +281,13 @@ Target: Windows x64, primarily Windows 11. The installer accepts Windows 10
 on Microsoft's .NET support policy. No macOS/Linux build.
 
 This is a functional foundation preview. The destination must accept a provided
-format. Browsers that supply only an image URL add a link: no URL downloading or
-reuse of browser cookies. Bitmap-only sources may already have lost alpha.
+format. A dropped HTML image source/direct raster URL can be fetched from a public
+server in the background; a page-only URL or inaccessible image remains a link.
+Browser cookies are not reused. Bitmap-only sources may already have lost alpha.
 Internal Photoshop layers / Figma nodes are not kept as editable objects.
 Elevated apps, secure desktops and exclusive fullscreen have Windows restrictions.
-Automatic edge docking, named/closed panel sets, clipboard history, content-version editing and backup import/export UI are not included. Shake can also trigger
+Automatic edge docking, clipboard history, content-version editing and backup
+import/export UI are not included. Shake can also trigger
 during left-button text selection or window movement.
 
 PNG/bitmap/virtual imports and inline image output: 64 MB. Decoded images:
@@ -273,7 +328,7 @@ the content. The request archives one-use clips into recoverable Trash. OLE clea
 uses the target’s Copy acknowledgement; it does not delete source files. It leaves the clipboard ready for manual Ctrl+V and never restores it
 on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
 
-Metadata schema 6 migrates schema-1/2/3/4/5 libraries and keeps an immutable `shelf.json.schema-<old>-before-v6.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
+Metadata schema 7 migrates schema-1/2/3/4/5/6 libraries and keeps an immutable `shelf.json.schema-<old>-before-v7.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals or time-delete exported payloads. Accepted transfers archive
