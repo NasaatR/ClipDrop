@@ -27,14 +27,14 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.13.0
+## Features in 0.14.0
 
 - Bundled WebP previews/alpha, consistent image classification and background
   retrieval of an actual image URL supplied by an explicit browser drop.
 - Clip stacks: drop at the center to combine, drop at an edge to insert separately;
   open members, drag/copy together or split without deleting clips.
-- Optional Downloads hover stack: recent local files, group drag/copy and explicit
-  Library save from a separate capsule.
+- Downloads from Chrome across every save folder through a local companion;
+  drag any row directly, select groups optionally, or save references to Library.
 - Compact idle Save capsule with immediate hover/drop expansion and click-through
   empty space; existing transparency remains adjustable separately.
 - Independent named-set windows, scoped collection/order and closed-window restore
@@ -166,7 +166,8 @@ addresses. A source image may still require access that a standalone app lacks.
 A Pinterest pin-page URL alone does not identify its underlying image. That drop
 remains a link; use the browser's **Copy image** or save/drop the actual file.
 A Chrome image context-menu/optional hover companion is planned as a separate
-native-messaging integration. No extension or browser registration is installed.
+image delivery feature. The current companion handles Chrome downloads only;
+native messaging registration is included with the Windows installer.
 Actual Pinterest/Reddit browser execution remains a manual compatibility check;
 the native checks exercise representative OLE/HTML payloads and HTTP outcomes.
 
@@ -185,7 +186,11 @@ Library continues to show the original individual clips.
 
 Stacks are flat per-panel references, not nested files or duplicate assets. Saved
 panel snapshots/combines copy their structure without sharing mutable group IDs.
-Normal protection/use-to-Trash behavior applies per member; Trash restoration
+New members inherit the drop target’s **Keep after use** state. A kept target
+creates/extends a kept stack; an unkept target creates an unkept stack. Existing
+mixed target stacks with any kept member are normalized to kept. Protection is
+shared with the underlying clip in other panels. Normal use-to-Trash behavior
+applies per member after explicit protection changes; Trash restoration
 returns the same stack/order. An edge move of an individual member from Library
 can separate it from its stack; moving the whole stack keeps its structure.
 
@@ -198,31 +203,53 @@ keep it open while choosing (click again to resume hover mode).
 Drag its free edge/header to move it. It follows the dock palette, idle visibility
 and animation/collapse preferences. Blank collapsed space passes clicks through.
 
-Select one or several files with the checkboxes, Ctrl/Shift, then drag a selected
-row or **Drag N** to another app. **Copy** keeps the native file clipboard format.
-**Save to Library** explicitly adds file references without pinning them. Dropping
-from the stack into a dock/Library uses the ordinary file import path and keeps
-originals. The stack is a folder view: outgoing transfers keep its entries and do
-not apply clip-use Trash cleanup, even for a file already saved in Library.
+Drag any file row directly to another app: no preliminary click or selection is
+needed. Checkboxes or Ctrl/Shift are optional when selecting a group; drag a
+selected row or **Drag N** to transfer that group. Dragging an unselected row
+transfers only that row even when other files are selected. **Copy** keeps the
+native file clipboard format; **Save to Library** adds references without pinning.
+Originals remain in place. This view never applies clip-use Trash cleanup.
 
-**Settings → Downloads** enables/closes the stack and chooses one watched folder;
-**Use Windows Downloads** returns to the current Windows known folder, including
-redirection. The default is disabled, so no folder watcher runs before you open it.
-Enabled state, selected folder, position and global hide/show survive restart.
-Closing the stack stops its watcher; open it again from the dock/tray command.
+**Chrome · all save locations** is the default source. Connect once:
 
-The list shows up to 40 recent nonempty files from that folder, ordered by creation/
-write metadata. Browser temporary suffixes, nested/hidden/reparse entries and files
-held by active Windows writers are omitted. Fresh files settle before appearing.
-File events trigger coalesced background refreshes; unchanged rows/previews are
-reused. Hover or **Refresh** retries missing folders; **Open folder** opens Explorer.
+1. In **Settings → Downloads**, choose **Connect Chrome**. It registers the local
+   connector and opens the extension folder plus a setup guide.
+2. In Google Chrome open `chrome://extensions`, enable **Developer mode**, choose
+   **Load unpacked**, and select the opened `chrome` folder.
+3. Open the **ClipDrop Downloads** extension popup and choose **Sync now**.
+   Repeat in each Chrome profile you use. No Web Store account/subscription needed.
 
-This is a local folder view, not browser download history or a verified completion
-signal. Downloads saved elsewhere need a folder change here. Empty files are
-omitted; browser progress, automatic multi-folder discovery and recursive scanning
-are separate future work. The scanner reads metadata/readability, not payload bytes;
-image/video previews use the existing bounded thumbnail cache. No browser extension,
-network fetching, file moving/deleting or automatic Library import is introduced.
+The Windows installer includes/registers the native host for the current user;
+portable users use **Connect Chrome**, also after moving the app. The extension
+must be loaded manually. Keep its folder in place and reload it after updating.
+`ClipDrop_<version>_chrome-companion.zip` is also available with each release.
+
+The companion reads Chrome's completed-download list, including downloads made
+before connecting when they remain in Chrome history, across any Save As folder.
+It sends only local paths and completion times, never page contents, URLs or
+cookies. Each connected profile sends up to 200 recent completed entries; the
+floating list shows the newest 40 currently available paths across up to 16
+profiles. Order follows browser completion time, not filesystem timestamps.
+Incognito, interrupted/unfinished and blocked downloads are omitted; completed
+zero-byte files are supported. Removing Chrome history entries updates the list;
+renaming/moving originals outside Chrome makes their old paths unavailable.
+
+Events update a small atomic local catalog even when ClipDrop is closed; a
+five-minute extension alarm reconciles missed events, and **Sync now** retries
+immediately. ClipDrop refreshes off-thread from catalog changes and hover; it does
+not scan all drives or open/copy Chrome's History database. Pause sharing in the
+popup to clear that profile's local catalog after acknowledgement. Removing the
+extension stops updates; the last received catalog stays in `browser-downloads`
+inside the data folder until cleared. No automatic Library import occurs.
+
+**One watched folder** remains available in **Settings → Downloads**. Choosing a
+folder or **Use Windows Downloads** switches to it; existing custom-folder
+preferences survive upgrade. This mode watches only that folder, showing up to 40
+recent nonempty ready files, omitting temporary/nested/hidden/reparse entries and
+active writers. It cannot identify Chrome downloads saved elsewhere. Hover or
+**Refresh** retries unavailable files/folders. Closing the Downloads view stops
+its watchers; the separately enabled Chrome extension continues sharing locally.
+Position, source and global show/hide survive restart, independently of styles.
 
 ## Visibility and compact actions
 
@@ -311,6 +338,7 @@ updater or signing service is configured.
 On Windows with .NET 10 SDK:
 
 ```powershell
+node --test tests/browser/downloads.test.mjs
 dotnet run --project tests/ClipDrop.Core.Tests -c Release
 dotnet run --project tests/ClipDrop.Windows.Tests -c Release -- artifacts/qa
 dotnet run --project src/ClipDrop.Windows
@@ -322,7 +350,9 @@ views, builds self-contained packages, inspects the ZIP and smoke-tests silent
 installation/uninstallation before creating a new preview release. Check the
 [actual workflow result](https://github.com/NasaatR/ClipDrop/actions).
 Native tests verify native format bytes through restart, text without file output, persistent Trash, group editing, the live preview, and drag dock backgrounds without activation, exercise attached/detached Library placement and style save/restore, and deliver a physical dock click into a separate Windows editor process.
-They do not automate Photoshop/Figma/browser applications. The dock reports
+A separate disposable Chrome for Testing verifies an actual custom-folder WebP
+download through the published native messaging host. These checks do not automate
+Pinterest/Reddit page drags or Photoshop/Figma applications. The dock reports
 "Paste requested" because input submission cannot prove that every app consumed
 the content. The request archives one-use clips into recoverable Trash. OLE cleanup
 uses the target’s Copy acknowledgement; it does not delete source files. It leaves the clipboard ready for manual Ctrl+V and never restores it

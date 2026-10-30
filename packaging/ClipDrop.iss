@@ -33,7 +33,7 @@ Name: "{group}\ClipDrop"; Filename: "{app}\ClipDrop.exe"
 Name: "{autodesktop}\ClipDrop"; Filename: "{app}\ClipDrop.exe"; Tasks: desktopicon
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ClipDrop"; ValueData: """{app}\ClipDrop.exe"" --background"; Flags: uninsdeletevalue; Tasks: startup
-Root: HKCU; Subkey: "Software\Google\Chrome\NativeMessagingHosts\com.nasaat.clipdrop.downloads"; ValueType: string; ValueData: "{app}\com.nasaat.clipdrop.downloads.json"; Flags: 32bit
+Root: HKCU32; Subkey: "Software\Google\Chrome\NativeMessagingHosts\com.nasaat.clipdrop.downloads"; ValueType: string; ValueData: "{app}\com.nasaat.clipdrop.downloads.json"
 [Run]
 Filename: "{app}\ClipDrop.exe"; Description: "Open ClipDrop"; Flags: nowait postinstall skipifsilent
 

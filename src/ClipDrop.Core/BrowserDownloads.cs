@@ -117,7 +117,7 @@ public static class BrowserDownloads
                 try
                 {
                     var info = new FileInfo(file.Path);
-                    if (!info.Exists || (info.Attributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.System)) != 0) continue;
+                    if (!info.Exists || (info.Attributes & (FileAttributes.Directory | FileAttributes.System)) != 0) continue;
                     // Chrome says completed; verify availability now, including a
                     // zero-byte completed file, without reading its contents.
                     using var stream = new FileStream(file.Path, FileMode.Open, FileAccess.Read, FileShare.Read);

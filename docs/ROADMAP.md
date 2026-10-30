@@ -20,9 +20,10 @@ in FOUNDATION.md; those sections also document historical releases.
 | 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | Delivered in 0.11 |
 | 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Delivered in 0.12 |
 | 4d · Images and clip stacks | WebP decoding, browser image source intake, center-stack/edge-insert gestures and recovery | Delivered in 0.13 |
+| 4e · Chrome downloads and consistent Keep | All save folders through an optional companion, direct row drag and target-owned protection | Delivered in 0.14 |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
-| 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.13 |
+| 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.14 |
 
 ## Stage 1: complete daily actions
 
@@ -338,7 +339,7 @@ Implementation sources (reviewed 2026-10-30): Microsoft
 [FileSystemWatcher events/error/buffer guidance](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher?view=net-10.0).
 Code is original MIT implementation using existing ClipDrop components.
 
-## Current 0.13 slice: browser images and clip stacks
+## Delivered 0.13 slice: browser images and clip stacks
 
 User feedback on 2026-10-30 prioritizes image intake and clip-level grouping before
 backup UI. Combining saved panels remains available; it is distinct from stacking
@@ -379,7 +380,8 @@ handoff to the running app; no unauthenticated public/local HTTP receiver. Prese
 existing ordinary drag/copy and avoid automatic Pinterest page scraping, browser
 cookie harvesting or assumptions that a pin-page URL identifies its image. Actual
 Pinterest/Reddit browser-to-Windows execution remains a manual compatibility gate.
-No extension or native messaging registration is shipped in this release.
+0.13 did not ship an extension or native messaging registration. 0.14 adds a
+downloads-only companion; image-send actions remain a separate future slice.
 
 Primary implementation evidence reviewed 2026-10-30:
 [SkiaSharp package/version/license](https://www.nuget.org/packages/SkiaSharp/4.154.0),
@@ -387,6 +389,83 @@ Primary implementation evidence reviewed 2026-10-30:
 [Chrome native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging).
 The pinned NuGet API surface was compiled separately before the Windows build;
 application and grouping code are original MIT implementation.
+
+## Delivered 0.14 slice: all Chrome save locations and direct file drag
+
+The user's downloads journey takes priority over 5a backup work for this slice:
+Chrome download completed anywhere → hover Downloads → grab a row → native copy
+to another app. No preliminary row click, checkbox or group action is required.
+Checkbox/range selection remains an optional group path. Dragging an unselected
+row transfers only that row even with a different group selected. Capture the
+pressed row and immutable file refs before OLE, hold the floating window open,
+release capture before starting, preserve originals on accepted/cancelled copies.
+
+Compare the actual available sources:
+
+| Source | Useful property | Decision |
+| --- | --- | --- |
+| Watch one folder | No browser setup, file events, existing implementation | Keep as explicit alternate mode; cannot know all Save As locations |
+| Read/copy Chrome History SQLite | Existing history rows include target_path and completion/state | Reject for live product intake: Chromium takes an exclusive lock; copying the whole browsing database adds inconsistent-snapshot, privacy and schema cost |
+| Chrome downloads API + native messaging | Browser completion state, actual absolute filename, event updates, old entries still in browser history | Selected; one-time manual extension setup per Chrome profile |
+
+The original MIT MV3 companion requests only downloads/nativeMessaging/storage/
+alarms. No content scripts, website permissions, History/cookie API, source URLs,
+accounts, custom HTTP receiver or browser installation automation. incognito is
+not allowed. It sends bounded metadata (up to 200 completed entries/profile,
+512 KiB frame limit) to a small per-user Windows stdio host restricted to its
+stable public-key-derived extension ID. The dock combines up to 16 profiles and
+shows the latest 40 locally readable paths ordered by browser completion time.
+Completed zero-byte files are valid; missing/blocked/interrupted items are omitted.
+
+The host is packaged alongside the app, writes a separate atomic disposable
+catalog under the data directory, serializes writers and rejects stale revisions.
+It never touches shelf.json or opens/moves files from a message. No app wake or
+tray window is started for an extension event. Catalog events/hover refresh one
+bounded background reader, and unchanged rows/previews remain stable. The MV3
+worker handles events and reconciles every five minutes through chrome.alarms;
+it does not keep a permanent connection/process or poll from the app.
+
+The installer registers HKCU32 native messaging and removes only its own current
+registration on uninstall. Portable Connect Chrome registers its verified bundled
+manifest and opens the folder/setup guide. Load unpacked is a manual, one-time
+step; Chrome Web Store submission is separate. Use popup Pause to clear that
+profile after acknowledgement. Removing the extension stops future updates but
+the last local catalog stays until explicitly cleared. Existing custom-folder
+preferences use the folder mode on upgrade; explicit source choice persists
+outside appearance settings. Schema 7 is unchanged: these are additive settings.
+
+Stack inheritance: determine Keep from the target before combining. Every member
+of the resulting stack inherits it, including incoming stack members and archived
+references retained for recovery. A legacy mixed target with any kept member is
+normalized to kept. An unkept target makes its incoming clips unkept. Protection
+belongs to shared underlying clips, so it also applies in other saved panels.
+Do not change raw payload bytes, grouping identity, internal drop ordering or
+accepted-use Trash semantics.
+
+Acceptance includes pure frame/revision/profile and folder-independent ordering
+checks, extension selection/privacy/reconnect behavior, real Windows row/cancel/
+group drags, WebP in the Downloads view, protected stacking/use and published
+WinExe stdin/stdout framing. A disposable pinned Chrome for Testing exercises a
+real download outside Downloads → actual extension event → native host ACK →
+local catalog, plus popup pause. This does not establish page-specific Pinterest/
+Reddit drag behavior, physical mixed-DPI hardware or Photoshop/Figma compatibility.
+
+Research reviewed 2026-10-30 (references, no upstream application code copied):
+[official Chrome downloads API](https://developer.chrome.com/docs/extensions/reference/api/downloads),
+[native messaging protocol/Windows registration](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging),
+[Google's native messaging example](https://github.com/GoogleChrome/chrome-extensions-samples/tree/main/api-samples/nativeMessaging),
+[Chromium History exclusive-lock source](https://chromium.googlesource.com/chromium/src/+/5aed270e6d3303ca91a02910b558f614bddba299/components/history/core/browser/history_database.cc),
+[browser-history snapshot reader](https://github.com/browser-history/browser-history),
+[BrowserDBParser downloads query](https://github.com/ThreeBlueZs/BrowserDBParser),
+[MV3 example migration discussion](https://github.com/GoogleChrome/chrome-extensions-samples/issues/644).
+The full-database forensic readers are reference alternatives, not dependencies.
+
+Next remains **5a backup export/import** with restore preview, conflict-safe merge
+and retained opaque clipboard blobs, then **5b content versions**. Follow-up
+Chrome image-send actions can reuse the installed host identity only after a
+separately versioned bounded image contract/permissions/IPC journey is implemented.
+Store distribution, progress UI, longer-history browsing, moved-file tracking and
+other browsers remain separate increments. Do not add them all to this release.
 
 ## Future: optional Send to Figma integration
 

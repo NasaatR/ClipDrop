@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.14.0 — 2026-10-30
+
+- Chrome downloads from all Save As folders through a local MV3 companion and
+  per-user native messaging host. Manual one-time extension setup; old completed
+  entries still in Chrome history and new events are both included. Separate
+  bounded per-profile catalogs, stale-revision rejection and pause/reconnect.
+- Drag any Downloads row directly without a preliminary selection/click. Optional
+  group selection remains; original files, Library and Trash are unchanged by
+  outgoing downloads transfers. Existing folder mode stays available.
+- A stacked clip inherits Keep after use from the target. Kept images/stacks
+  protect all incoming members; unkept targets create unkept stacks. Legacy mixed
+  targets normalize consistently when extended.
+- Add local protocol/extension behavior checks, real Windows direct/group/cancel
+  transfers, published host pipe tests and disposable Chrome for Testing coverage.
+  Source preference persists separately from styles; schema 7 remains compatible.
+
 ## 0.13.0 — 2026-10-30
 
 - Classify WebP/common raster files consistently, including existing references and

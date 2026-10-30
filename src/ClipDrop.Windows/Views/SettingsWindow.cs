@@ -160,7 +160,7 @@ public sealed class SettingsWindow : Window
         Section("Downloads");
         Check("Downloads stack", () => settings.DownloadsEnabled, value => settings.DownloadsEnabled = value, false);
         Hint("Hover the Downloads capsule, then drag any file row directly to another app. Checkboxes are optional for a group. Original files stay in place.");
-        Choice("Source", () => settings.EffectiveDownloadsSource, new[] { "Chrome", "Folder" }, new[] { "Chrome · all save locations", "One watched folder" }, value => settings.DownloadsSource = value);
+        Choice("Source", () => settings.EffectiveDownloadsSource, new[] { "Chrome", "Folder" }, new[] { "Chrome · all save locations", "One watched folder" }, value => settings.DownloadsSource = value, false);
         var connectChrome = new Button { Content = "Connect Chrome", HorizontalAlignment = HorizontalAlignment.Left };
         _section.Children.Add(connectChrome);
         connectChrome.Click += (_, _) => {
@@ -270,11 +270,11 @@ public sealed class SettingsWindow : Window
         check.Click += (_, _) => { write(check.IsChecked == true); Change(appearance); }; _section.Children.Add(check);
         _syncControls.Add(() => check.IsChecked = read());
     }
-    private void Choice(string label, Func<string> read, string[] values, string[] labels, Action<string> write)
+    private void Choice(string label, Func<string> read, string[] values, string[] labels, Action<string> write, bool appearance = true)
     {
         var combo = new ComboBox { ItemsSource = labels, SelectedIndex = Math.Max(0, Array.IndexOf(values, read())) };
         System.Windows.Automation.AutomationProperties.SetName(combo, label);
-        combo.SelectionChanged += (_, _) => { if (!_sync && combo.SelectedIndex >= 0) { write(values[combo.SelectedIndex]); Change(); } };
+        combo.SelectionChanged += (_, _) => { if (!_sync && combo.SelectedIndex >= 0) { write(values[combo.SelectedIndex]); Change(appearance); } };
         Row(label, combo); _syncControls.Add(() => combo.SelectedIndex = Math.Max(0, Array.IndexOf(values, read())));
     }
     private void Range(string name, Func<double> read, double min, double max, Action<double> write)

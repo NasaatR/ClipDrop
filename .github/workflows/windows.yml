@@ -27,18 +27,15 @@ jobs:
         run: dotnet run --project tests/ClipDrop.Core.Tests -c Release
       - name: Windows transfer, clipboard and WPF rendering checks
         run: dotnet run --project tests/ClipDrop.Windows.Tests -c Release -- artifacts/qa
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: windows-ui-captures
-          path: artifacts/qa
-          if-no-files-found: ignore
       - name: Build runnable package
         shell: pwsh
         run: ./scripts/package.ps1
       - name: Published Chrome native messaging protocol
         shell: pwsh
         run: ./scripts/test-browser-host.ps1
+      - name: Real Chrome download to a custom save folder
+        shell: pwsh
+        run: ./scripts/test-chrome.ps1
       - name: Published app startup and graceful shutdown
         shell: pwsh
         run: |
@@ -53,6 +50,12 @@ jobs:
       - name: Previous-version upgrade and uninstaller check
         shell: pwsh
         run: ./scripts/test-install.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-ui-captures
+          path: artifacts/qa
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: ClipDrop-windows-x64

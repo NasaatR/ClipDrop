@@ -16,6 +16,11 @@ if ($process.ExitCode -ne 0) { throw "Upgrade failed: $($process.ExitCode)" }
 [xml]$props = Get-Content Directory.Build.props
 $expected = $props.Project.PropertyGroup.VersionPrefix
 if (!(Test-Path "$target/ClipDrop.exe") -or !(Get-Item "$target/ClipDrop.exe").VersionInfo.FileVersion.StartsWith($expected)) { throw 'Previous directory was not updated to the expected version' }
+$browserRegistry = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser, [Microsoft.Win32.RegistryView]::Registry32)
+$browserSubkey = 'Software\Google\Chrome\NativeMessagingHosts\com.nasaat.clipdrop.downloads'
+$browserKey = $browserRegistry.OpenSubKey($browserSubkey)
+if ($null -eq $browserKey -or $browserKey.GetValue('') -ne "$target\com.nasaat.clipdrop.downloads.json" -or !(Test-Path "$target/ClipDrop.BrowserHost.exe")) { throw 'Chrome native host was not registered in the installed location' }
+$browserKey.Dispose()
 $registrations = @(Get-ChildItem 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall' | Get-ItemProperty | Where-Object { $_.PSChildName -eq '{657DCFD1-3CCB-46E7-9BB1-534F69B57C36}_is1' })
 if ($registrations.Count -ne 1) { throw "Expected one installed app, found $($registrations.Count)" }
 if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json')) -ne $fixture) { throw 'Installer changed saved user data' }
@@ -33,4 +38,7 @@ if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json.schema-1-before-v7.bak')
 $process = Start-Process "$target/unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
 if ($process.ExitCode -ne 0 -or (Test-Path "$target/ClipDrop.exe")) { throw 'Uninstallation failed' }
 if (!(Test-Path (Join-Path $data 'shelf.json'))) { throw 'Uninstaller removed user data' }
+$browserKey = $browserRegistry.OpenSubKey($browserSubkey)
+if ($null -ne $browserKey) { $browserKey.Dispose(); throw 'Uninstall retained its obsolete native host registration' }
+$browserRegistry.Dispose()
 Write-Output 'PASS Previous-version upgrade keeps one installation, original directory and saved user data; uninstall retains the library.'
