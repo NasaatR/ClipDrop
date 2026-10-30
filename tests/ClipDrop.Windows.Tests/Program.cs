@@ -21,7 +21,7 @@ internal static class Program
     public static int Main(string[] args)
     {
         if (args.Length == 2 && args[0] == "--paste-target") return PasteProbe.RunTarget(args[1]);
-        using var watchdog = new System.Threading.Timer(_ => { Console.Error.WriteLine("Windows UI/clipboard checks stalled for 120 seconds."); Environment.Exit(2); }, null, TimeSpan.FromSeconds(120), System.Threading.Timeout.InfiniteTimeSpan);
+        using var watchdog = new System.Threading.Timer(_ => { Console.Error.WriteLine("Windows UI/clipboard checks stalled for 180 seconds."); Environment.Exit(2); }, null, TimeSpan.FromSeconds(180), System.Threading.Timeout.InfiniteTimeSpan);
         PasteProbe.PolicyChecks(Check);
         var root = Path.Combine(Path.GetTempPath(), "clipdrop-windows-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);

@@ -49,6 +49,10 @@ try {
     const result = await cdp.call("Runtime.evaluate", {expression, awaitPromise: true, returnByValue: true}, sessionId);
     if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails)); return result.result.value;
   }
+  // A worker target is discoverable before its extension execution context has
+  // finished initializing. Do not race the first native-download API call.
+  await cdp.call("Runtime.enable", {}, sessionId);
+  await until(() => evaluate("typeof globalThis.chrome === 'object' && typeof chrome.downloads?.download === 'function' && typeof chrome.storage?.local?.get === 'function'"), "MV3 extension APIs ready");
   const destination = join(dirname(profile), "Project Save As — outside Downloads"); await mkdir(destination, {recursive: true});
   await cdp.call("Browser.setDownloadBehavior", {behavior: "allow", downloadPath: destination});
   const url = `http://127.0.0.1:${server.address().port}/reference.webp`;

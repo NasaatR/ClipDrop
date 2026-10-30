@@ -684,3 +684,14 @@ No new dependencies or permanent input observers were added. Mirrored Downloads
 shares one catalog watcher and frozen thumbnail cache. Physical mixed-DPI display
 and sleep/resume acceptance remains unchecked in the stage 3b table above; CI
 logical work areas do not establish it. Stage 5a2 backup restore/merge stays next.
+
+
+Release gate note: 0.16 native acceptance completed 279 Windows checks and 167
+Windows Core checks (168 on Linux, including an actual symlink case), plus 7 Node
+checks. The first full gate then exposed an unrelated CDP startup race:
+Target.getTargets can expose the extension worker before its APIs are ready. The
+real-Chrome test now enables Runtime and waits up to 20 seconds for extension APIs
+before initiating the same real download; no assertions or permissions are removed.
+The expanded native suite took almost 120 seconds, so its existing bounded test-only
+watchdog is 180 seconds. The final release still requires the full Chrome, startup
+and installer gate to pass.
