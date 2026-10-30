@@ -46,6 +46,19 @@ internal static class StackChecks
         var allBefore = state.Items.Select(i => i.Id).ToArray(); PanelStacks.Split(state, other.Id, other.Stacks[0].Id);
         check(other.Stacks.Count == 0 && other.ClipIds.Count == 2 && state.Items.Select(i => i.Id).SequenceEqual(allBefore) && state.Trash.Count == 0,
             "Splitting a stack changes only its grouping, without deleting or archiving clips");
+        var protection = new ShelfState(); var protectedPanel = PanelSets.Active(protection);
+        var protectedItems = new[] { "kept", "incoming", "plain", "kept incoming" }.Select(ShelfItem.FromText).ToArray();
+        protection.Items.AddRange(protectedItems);
+        for (var i = 0; i < protectedItems.Length; i++) { protectedItems[i].IsPinned = true; protectedItems[i].PinOrder = i + 1; }
+        protectedItems[0].KeepAfterUse = protectedItems[3].KeepAfterUse = true; PanelSets.CaptureActive(protection);
+        PanelStacks.Combine(protection, protectedPanel.Id, protectedItems[0].Id, new[] { protectedItems[1].Id });
+        check(protectedItems[1].KeepAfterUse, "Dropping onto a kept clip creates a stack whose incoming members are kept");
+        PanelStacks.Combine(protection, protectedPanel.Id, protectedItems[0].Id, new[] { protectedItems[2].Id });
+        check(protectedItems[2].KeepAfterUse, "Adding to a kept stack inherits Keep after use");
+        PanelStacks.Split(protection, protectedPanel.Id, protectedPanel.Stacks.Single().Id);
+        protectedItems[2].KeepAfterUse = false;
+        PanelStacks.Combine(protection, protectedPanel.Id, protectedItems[2].Id, new[] { protectedItems[3].Id });
+        check(!protectedItems[3].KeepAfterUse, "An unkept target creates an unkept stack even from a kept incoming clip");
         var store = new StateStore(Path.Combine(root, "stacks")); store.Load(); store.Save(state);
         var saved = new StateStore(store.Root).Load();
         check(saved.Panels.Single(p => p.Id == panel.Id).Stacks.Single().Id == stackId,

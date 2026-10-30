@@ -57,6 +57,10 @@ public static class PanelStacks
         PanelSets.CaptureActive(state);
         var target = panel.Stacks.FirstOrDefault(s => s.ClipIds.Contains(targetId));
         var targetIds = target?.ClipIds.ToList() ?? new() { targetId };
+        // The drop target owns the resulting stack's use behavior. Any kept
+        // target member also repairs mixed stacks created before this rule.
+        var records = state.Items.Concat(state.Trash.Select(t => t.Item)).ToDictionary(i => i.Id);
+        var keep = targetIds.Any(id => records.TryGetValue(id, out var item) && item.KeepAfterUse);
         var moving = requested.Where(id => !targetIds.Contains(id)).ToList();
         if (moving.Count == 0) return false;
         // A whole visible source stack also carries its deleted references, so
@@ -73,6 +77,7 @@ public static class PanelStacks
         panel.Stacks.RemoveAll(s => s != target && s.ClipIds.Count < 2);
         if (target is null) { target = new ClipStack(); panel.Stacks.Add(target); }
         target.ClipIds = combined; panel.ClipIds = order;
+        foreach (var id in combined) if (records.TryGetValue(id, out var item)) item.KeepAfterUse = keep;
         if (panelId == state.ActivePanelId) PanelSets.ApplyActive(state);
         return true;
     }

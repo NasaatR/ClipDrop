@@ -11,6 +11,13 @@ try {
     New-Item -ItemType Directory -Force $release | Out-Null
     dotnet publish src/ClipDrop.Windows -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o $publish
     if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
+    dotnet publish src/ClipDrop.BrowserHost -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o $publish
+    if ($LASTEXITCODE -ne 0) { throw 'Browser host publish failed' }
+    New-Item -ItemType Directory -Force "$publish/browser" | Out-Null
+    Copy-Item "browser/*" "$publish/browser" -Recurse -Force
+    $hostManifest = @{ name = 'com.nasaat.clipdrop.downloads'; description = 'ClipDrop recent downloads'; path = 'ClipDrop.BrowserHost.exe'; type = 'stdio'; allowed_origins = @('chrome-extension://iedbmkchlbjjabmopniipnffmdjdpmmn/') } | ConvertTo-Json
+    [IO.File]::WriteAllText("$publish/com.nasaat.clipdrop.downloads.json", $hostManifest)
+    Compress-Archive -Path browser/chrome, browser/CONNECT-CHROME.html -DestinationPath "$release/ClipDrop_${version}_chrome-companion.zip" -Force
     Copy-Item LICENSE, README.md, README.ru.md, THIRD-PARTY-NOTICES.md $publish
     [xml]$project = Get-Content src/ClipDrop.Windows/ClipDrop.Windows.csproj
     $skiaVersion = $project.SelectSingleNode("/Project/ItemGroup/PackageReference[@Include='SkiaSharp']").Version
@@ -39,6 +46,7 @@ try {
         $entries = $archive.Entries.FullName -replace '\\', '/'
         if ($entries -notcontains "ClipDrop_$version/ClipDrop.exe") { throw 'Portable executable missing from archive' }
         if ($entries -notcontains "ClipDrop_$version/LICENSE") { throw 'License missing from archive' }
+        if ($entries -notcontains "ClipDrop_$version/ClipDrop.BrowserHost.exe" -or $entries -notcontains "ClipDrop_$version/browser/chrome/worker.mjs") { throw 'Chrome companion missing from archive' }
         if ($entries | Where-Object { $_ -match '(^|/)(\.git|obj|\.env)(/|$)' }) { throw 'Unexpected private/build files in archive' }
     } finally { $archive.Dispose() }
 } finally { Pop-Location }

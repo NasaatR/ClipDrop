@@ -46,6 +46,15 @@ internal static class DownloadsProbe
             target.Show();
             try
             {
+                received = null;
+                var direct = UiProbe.Find<ListBoxItem>(stack.DownloadList, c => ReferenceEquals(c.DataContext, rows[0]));
+                UiProbe.DragTo(direct, receiver.PointToScreen(new Point(110, 70)));
+                check(received is { Length: 1 } && received[0] == rows[0].File.Path && stack.DownloadList.SelectedItems.Count == 0,
+                    "An unselected downloads row drags its original file directly without a preliminary click or selection");
+                received = null;
+                UiProbe.DragTo(direct, receiver.PointToScreen(new Point(110, 70)), cancel: true);
+                check(received is null && state.Items.Count == 0 && state.Trash.Count == 0,
+                    "Cancelling a direct downloads drag keeps originals and does not create or archive Library clips");
                 foreach (var row in rows)
                 {
                     var box = UiProbe.Find<ToggleButton>(stack.DownloadList, c => ReferenceEquals(c.DataContext, row)); UiProbe.Click(box);
@@ -105,5 +114,46 @@ internal static class DownloadsProbe
             finally { target.Close(); }
         }
         finally { library.Hide(); IconAssets.Initialize(root); oldDock.ShowDock(); oldLibrary.ShowShelf(); }
+    }
+
+    public static void Chrome(MainWindow oldLibrary, DockWindow oldDock, string root, string output, Action<bool, string> check)
+    {
+        oldLibrary.Hide(); oldDock.HideDock();
+        var catalog = Path.Combine(root, "chrome-ui-catalog");
+        var a = Path.Combine(root, "save-as-project", "Chrome reference — пример.webp"); Directory.CreateDirectory(Path.GetDirectoryName(a)!);
+        File.WriteAllBytes(a, Convert.FromBase64String("UklGRjYAAABXRUJQVlA4TCkAAAAvAkAAEBcwMgKBJLb9EYYRCCTRDTa5gKDouuUC3jsoBBAARRRNRP9jAAA="));
+        var b = Path.Combine(root, "another-save-location", "Layout.fig"); Directory.CreateDirectory(Path.GetDirectoryName(b)!); File.WriteAllText(b, "figma bytes");
+        var store = new StateStore(Path.Combine(root, "chrome-download-ui")); var state = store.Load();
+        state.Settings.AnimationsEnabled = false; state.Settings.CollapseWhenIdle = false;
+        using var session = new ShelfSession(store, state); using var feed = new DownloadsFeed(catalog, oldLibrary.Dispatcher, chrome: true);
+        var stack = new DownloadsWindow(session, feed, () => { }, () => { }) { Left = 410, Top = 50 };
+        var receiver = new Border { Background = Brushes.SteelBlue, AllowDrop = true };
+        string[]? received = null;
+        receiver.DragOver += (_, e) => { e.Effects = DragDropEffects.Copy; e.Handled = true; };
+        receiver.Drop += (_, e) => { received = e.Data.GetData(DataFormats.FileDrop) as string[]; e.Effects = DragDropEffects.Copy; e.Handled = true; };
+        var target = new Window { Content = receiver, Width = 250, Height = 160, Left = 30, Top = 80, ShowInTaskbar = false };
+        try
+        {
+            stack.ShowStack(); target.Show();
+            check(UiProbe.Until(() => stack.SummaryText.Contains("Connect Chrome"), 5000), "Chrome mode shows connection setup instead of misleading folder-only results");
+            var now = DateTimeOffset.UtcNow; var message = new BrowserDownloadMessage { Version = 1, Type = "downloads", ProfileId = Guid.NewGuid().ToString("D"), Revision = 1, CapturedUtc = now,
+                Files = new[] { new BrowserDownload(a, now.AddSeconds(-1)), new BrowserDownload(b, now) } };
+            BrowserDownloads.Save(catalog, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(message, BrowserDownloads.Json));
+            check(UiProbe.Until(() => stack.DownloadList.Items.Count == 2, 5000), "A Chrome snapshot updates the floating view across different Save As folders without scanning them");
+            var rows = stack.DownloadList.Items.Cast<DownloadsWindow.Row>().ToArray();
+            check(rows[0].File.Path == b && state.Items.Count == 0 && state.Trash.Count == 0,
+                "Chrome view follows actual completion order while leaving Library and Trash untouched");
+            UiProbe.DragTo(UiProbe.Find<ListBoxItem>(stack.DownloadList, c => c.DataContext is DownloadsWindow.Row r && r.File.Path == a), receiver.PointToScreen(new Point(110, 70)));
+            check(received is { Length: 1 } && received[0] == a && File.Exists(a) && stack.DownloadList.SelectedItems.Count == 0,
+                "A Chrome download outside Downloads drags directly as a native original FileDrop without selection");
+            var thumbnail = UiProbe.Find<Image>(stack.DownloadList, i => i.Name == "Thumbnail" && i.DataContext is DownloadsWindow.Row r && r.File.Path == a);
+            check(UiProbe.Until(() => thumbnail.Source is not null), "Chrome WebP download rows show the decoded image preview");
+            UiProbe.Hover(stack.StackButton); UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-chrome-screen.png"));
+            message.Revision++; message.Files = Array.Empty<BrowserDownload>();
+            BrowserDownloads.Save(catalog, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(message, BrowserDownloads.Json));
+            check(UiProbe.Until(() => stack.DownloadList.Items.Count == 0, 5000) && File.ReadAllText(b) == "figma bytes",
+                "Pausing Chrome sharing clears its visible catalog without removing downloaded originals");
+        }
+        finally { stack.DisposeView(); target.Close(); IconAssets.Initialize(root); oldDock.ShowDock(); oldLibrary.ShowShelf(); }
     }
 }

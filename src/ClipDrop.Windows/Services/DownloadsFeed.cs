@@ -32,17 +32,19 @@ public sealed class DownloadsFeed : IDisposable
     private int _settleRetries;
     private int _queued, _reconnect;
     public string Folder { get; }
+    public bool IsChrome { get; }
     public DownloadSnapshot Snapshot { get; private set; } = new(Array.Empty<DownloadFile>(), "Loading recent files…");
     public event Action? Changed;
-    public DownloadsFeed(string folder, Dispatcher dispatcher)
+    public DownloadsFeed(string folder, Dispatcher dispatcher, bool chrome = false)
     {
-        Folder = folder; _dispatcher = dispatcher;
+        Folder = folder; IsChrome = chrome; _dispatcher = dispatcher;
         _debounce = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromMilliseconds(1000) };
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = Refresh(); };
         RequestRefresh();
     }
     private FileSystemWatcher? CreateWatcher()
     {
+        if (IsChrome) Directory.CreateDirectory(Folder);
         if (!Directory.Exists(Folder)) return null;
         try
         {
@@ -57,6 +59,7 @@ public sealed class DownloadsFeed : IDisposable
     }
     private void OnFile(object sender, FileSystemEventArgs e)
     {
+        if (IsChrome) { if ((e.Name ?? "").EndsWith(".json", StringComparison.OrdinalIgnoreCase)) Queue(); return; }
         if (RecentDownloads.IsTemporary(e.Name ?? "") &&
             (e is not RenamedEventArgs renamed || RecentDownloads.IsTemporary(renamed.OldName ?? ""))) return;
         Queue();
@@ -92,7 +95,7 @@ public sealed class DownloadsFeed : IDisposable
                 try
                 {
                     var watcher = watch ? CreateWatcher() : null;
-                    try { return (Snapshot: RecentDownloads.Scan(Folder, token), Watcher: watcher); }
+                    try { return (Snapshot: IsChrome ? BrowserDownloads.Scan(Folder, token) : RecentDownloads.Scan(Folder, token), Watcher: watcher); }
                     catch { watcher?.Dispose(); throw; }
                 }
                 finally { Workers.Release(); }
@@ -105,6 +108,8 @@ public sealed class DownloadsFeed : IDisposable
             if (snapshot.Settling && _settleRetries++ < 3) _again = true;
         }
         catch (OperationCanceledException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        { Snapshot = new(Array.Empty<DownloadFile>(), "Downloads unavailable · reconnect in Settings"); Changed?.Invoke(); }
         finally
         {
             _running = false;

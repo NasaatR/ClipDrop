@@ -33,5 +33,16 @@ Name: "{group}\ClipDrop"; Filename: "{app}\ClipDrop.exe"
 Name: "{autodesktop}\ClipDrop"; Filename: "{app}\ClipDrop.exe"; Tasks: desktopicon
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ClipDrop"; ValueData: """{app}\ClipDrop.exe"" --background"; Flags: uninsdeletevalue; Tasks: startup
+Root: HKCU; Subkey: "Software\Google\Chrome\NativeMessagingHosts\com.nasaat.clipdrop.downloads"; ValueType: string; ValueData: "{app}\com.nasaat.clipdrop.downloads.json"; Flags: 32bit
 [Run]
 Filename: "{app}\ClipDrop.exe"; Description: "Open ClipDrop"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var CurrentManifest: String;
+begin
+  if CurUninstallStep = usUninstall then
+    if RegQueryStringValue(HKCU32, 'Software\Google\Chrome\NativeMessagingHosts\com.nasaat.clipdrop.downloads', '', CurrentManifest) then
+      if CompareText(CurrentManifest, ExpandConstant('{app}\com.nasaat.clipdrop.downloads.json')) = 0 then
+        RegDeleteKeyIncludingSubkeys(HKCU32, 'Software\Google\Chrome\NativeMessagingHosts\com.nasaat.clipdrop.downloads');
+end;

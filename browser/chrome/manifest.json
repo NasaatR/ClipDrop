@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "ClipDrop Downloads",
+  "version": "0.14.0",
+  "minimum_chrome_version": "120",
+  "description": "Recent Chrome downloads in the ClipDrop floating shelf, wherever you save them.",
+  "permissions": [
+    "downloads",
+    "nativeMessaging",
+    "storage",
+    "alarms"
+  ],
+  "incognito": "not_allowed",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwNxiXyESlIVxs6hvLgGApGFlGOmHvcfroaqnkzTYz8l8YMn4r7ra2xvwb+F5euXYQgPdTfSpcxkiPkyz80/aw4ttOhheTHLd3wo4vFs0JpSZKtJrKCCZPTpkS19GfbcydNPekePX695XFddizGBLbN8UkoP+sxrEDrHFIOa1IPG6swofVDhs6QKCe5vaIub4DcHgZBX9xMzI99IQyXrDt78ivkXj4uDPl67ZF8tip213IP7YASzx3MNN1N+KE2otjsV8yuhH/M6KQEC3PakNtXK+4b2287rkOvFITDkwqfIVye7fKEWgewoCfRiJy81VuYnRk25sg56X/lWv2n2XdQIDAQAB",
+  "background": {
+    "service_worker": "worker.mjs",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ClipDrop Downloads"
+  }
+}

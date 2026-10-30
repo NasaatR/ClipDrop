@@ -39,6 +39,7 @@ public partial class DownloadsWindow : Window
     private bool _disposing, _busy, _moving, _latched, _refreshing;
     private Point? _origin;
     private FrameworkElement? _source;
+    private ShelfItem[]? _dragItems;
     public ListBox DownloadList => Files;
     public Button StackButton => Capsule;
     public Button DragButton => DragSelection;
@@ -70,7 +71,7 @@ public partial class DownloadsWindow : Window
         Appearance.Apply(_session.State.Settings, this, true);
         Topmost = _session.State.Settings.AlwaysOnTop; _presence.Refresh();
     }
-    private void Presence() => _presence.Busy(_busy || _moving || _latched);
+    private void Presence() => _presence.Busy(_busy || _moving || _latched || _origin.HasValue);
     public void ShowStack() { Show(); WindowState = WindowState.Normal; _presence.Reveal(); _feed.RequestRefresh(); }
     public void HideStack() { PopupDismiss.CloseFor(this); Latch(false); Hide(); }
     private void Refresh()
@@ -95,8 +96,11 @@ public partial class DownloadsWindow : Window
             foreach (var row in _rows) { if (selected.Contains(row.File.Path)) Files.SelectedItems.Add(row); }
         }
         finally { _refreshing = false; }
-        Summary.Text = snapshot.Notice ?? (_rows.Count == 0 ? "No ready files yet · new downloads appear here" : $"{_rows.Count} recent files · select and drag to any app");
-        Summary.ToolTip = _feed.Folder; UpdateActions();
+        Summary.Text = snapshot.Notice ?? (_rows.Count == 0 ? (_feed.IsChrome ? "No ready Chrome downloads · open the companion to sync" : "No ready files yet · new downloads appear here") : $"{_rows.Count} recent files · drag any row to another app");
+        Summary.ToolTip = _feed.IsChrome ? "Chrome downloads · every save folder · latest received snapshot" : _feed.Folder;
+        SourceButton.Content = _feed.IsChrome ? "Connect Chrome" : "Open folder";
+        SourceButton.ToolTip = _feed.IsChrome ? "Set up or reconnect the Chrome downloads companion" : "Open the watched folder in Explorer";
+        UpdateActions();
     }
     private ShelfItem[] Selected() => _rows.Where(r => Files.SelectedItems.Contains(r)).Select(r => r.RowItem.Item).ToArray();
     private void UpdateActions()
@@ -116,10 +120,11 @@ public partial class DownloadsWindow : Window
         Presence();
     }
     private void OnFolder(object sender, RoutedEventArgs e) => Run(() => {
+        if (_feed.IsChrome) { ChromeConnection.Connect(); return; }
         if (!Path.IsPathFullyQualified(_feed.Folder) || !Directory.Exists(_feed.Folder)) throw new DirectoryNotFoundException();
         Process.Start(new ProcessStartInfo(_feed.Folder) { UseShellExecute = true });
     });
-    private void OnDragHint(object sender, RoutedEventArgs e) => Summary.Text = "Drag this button or a selected row to another app";
+    private void OnDragHint(object sender, RoutedEventArgs e) => Summary.Text = "Drag any file row directly · check files only for a group";
     private void Run(Action action) { try { action(); } catch (Exception ex) { _session.Error("Downloads", ex); Summary.Text = "File unavailable · refresh or open folder"; _feed.RequestRefresh(); } }
     private void OnCopy(object sender, RoutedEventArgs e) => Copy(Selected());
     private void Copy(ShelfItem[] items) { if (items.Length > 0 && _session.Copy(items)) Summary.Text = $"Copied {items.Length} · original files kept"; }
@@ -134,9 +139,13 @@ public partial class DownloadsWindow : Window
     {
         if (e.OriginalSource is not DependencyObject original || FindCheck(original)) return;
         if (ItemsControl.ContainerFromElement(Files, original) is not ListBoxItem { DataContext: Row row }) return;
-        _origin = e.GetPosition(this); _source = Files;
-        // Prevent WPF from collapsing an existing group before the drag starts.
-        if (Files.SelectedItems.Contains(row) && Files.SelectedItems.Count > 1 && Keyboard.Modifiers == ModifierKeys.None) e.Handled = true;
+        _origin = e.GetPosition(this);
+        _source = (ListBoxItem)ItemsControl.ContainerFromElement(Files, original);
+        // Capture the pressed row rather than relying on WPF selection/focus in
+        // this nonactivating window. A fresh row always drags only itself.
+        _dragItems = Files.SelectedItems.Contains(row) ? Selected() : new[] { row.RowItem.Item };
+        if (Keyboard.Modifiers == ModifierKeys.None) { _source.CaptureMouse(); e.Handled = true; }
+        Presence();
     }
     private static bool FindCheck(DependencyObject source)
     {
@@ -144,15 +153,17 @@ public partial class DownloadsWindow : Window
         { if (source is ToggleButton) return true; source = VisualTreeHelper.GetParent(source); }
         return false;
     }
-    private void OnActionDown(object sender, MouseButtonEventArgs e) { _origin = e.GetPosition(this); _source = DragSelection; }
-    private void OnRowUp(object sender, MouseButtonEventArgs e) { _origin = null; _source = null; }
+    private void OnActionDown(object sender, MouseButtonEventArgs e)
+    { _origin = e.GetPosition(this); _source = DragSelection; _dragItems = Selected(); Presence(); }
+    private void OnRowUp(object sender, MouseButtonEventArgs e)
+    { _origin = null; _source?.ReleaseMouseCapture(); _source = null; _dragItems = null; Presence(); }
     private void OnRowMove(object sender, MouseEventArgs e)
     {
         if (_origin is not Point start || e.LeftButton != MouseButtonState.Pressed) return;
         var current = e.GetPosition(this);
         if (Math.Abs(current.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(current.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         _origin = null; _source?.ReleaseMouseCapture(); _source = null;
-        var clips = Selected(); if (clips.Length == 0) return;
+        var clips = _dragItems ?? Array.Empty<ShelfItem>(); _dragItems = null; if (clips.Length == 0) { Presence(); return; }
         _busy = true; Presence();
         try
         {
@@ -168,7 +179,7 @@ public partial class DownloadsWindow : Window
         var menu = ContextMenu; menu.Items.Clear(); Appearance.Apply(_session.State.Settings, menu, true);
         void Add(string name, Action action)
         { var item = new MenuItem { Header = name, FontSize = 11.5, Padding = new Thickness(6, 3, 6, 3) }; item.Click += (_, _) => { menu.IsOpen = false; Dispatcher.BeginInvoke(action); }; menu.Items.Add(item); }
-        Add("Open downloads folder", () => OnFolder(this, new())); Add("Refresh", _feed.RequestRefresh);
+        Add(_feed.IsChrome ? "Connect Chrome" : "Open downloads folder", () => OnFolder(this, new())); Add("Refresh", _feed.RequestRefresh);
         Add("Settings", _settings); Add("Close downloads stack", _close);
     }
     private void OnRowMenu(object sender, MouseButtonEventArgs e)

@@ -159,7 +159,15 @@ public sealed class SettingsWindow : Window
         }
         Section("Downloads");
         Check("Downloads stack", () => settings.DownloadsEnabled, value => settings.DownloadsEnabled = value, false);
-        Hint("A separate hover stack for recent files. Open it from the dock or tray → Downloads. Select files and drag them to another app, or save them to Library.");
+        Hint("Hover the Downloads capsule, then drag any file row directly to another app. Checkboxes are optional for a group. Original files stay in place.");
+        Choice("Source", () => settings.EffectiveDownloadsSource, new[] { "Chrome", "Folder" }, new[] { "Chrome · all save locations", "One watched folder" }, value => settings.DownloadsSource = value);
+        var connectChrome = new Button { Content = "Connect Chrome", HorizontalAlignment = HorizontalAlignment.Left };
+        _section.Children.Add(connectChrome);
+        connectChrome.Click += (_, _) => {
+            try { ChromeConnection.Connect(); settings.DownloadsSource = "Chrome"; Change(false); _notice.Text = "Chrome connection registered · follow the opened instructions, then Sync now in the companion"; }
+            catch (Exception ex) { _notice.Text = "Could not connect Chrome: " + ex.Message; }
+        };
+        Hint("Chrome companion: one-time Load unpacked in each Chrome profile. Finished downloads appear from any folder, even while ClipDrop is closed. No browsing-history, page or cookie access. The popup can pause sharing and clear that profile's list.");
         var downloadPath = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 6) };
         downloadPath.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); _section.Children.Add(downloadPath);
         void SyncDownloadsFolder() => downloadPath.Text = settings.DownloadsFolder.Length > 0 ? settings.DownloadsFolder : "Windows Downloads folder";
@@ -169,16 +177,16 @@ public sealed class SettingsWindow : Window
         chooseDownloads.Click += (_, _) => {
             var picker = new Microsoft.Win32.OpenFolderDialog { Title = "Folder for recent downloads", Multiselect = false };
             if (picker.ShowDialog(this) != true) return;
-            settings.DownloadsFolder = picker.FolderName; Change(false); SyncDownloadsFolder();
+            settings.DownloadsFolder = picker.FolderName; settings.DownloadsSource = "Folder"; Change(false); foreach (var sync in _syncControls) sync();
         };
         var defaultDownloads = new Button { Content = "Use Windows Downloads" }; downloadActions.Children.Add(defaultDownloads);
-        defaultDownloads.Click += (_, _) => { settings.DownloadsFolder = ""; Change(false); SyncDownloadsFolder(); };
+        defaultDownloads.Click += (_, _) => { settings.DownloadsFolder = ""; settings.DownloadsSource = "Folder"; Change(false); foreach (var sync in _syncControls) sync(); };
         if (docks is not null)
         {
             var showDownloads = new Button { Content = "Show stack" }; downloadActions.Children.Add(showDownloads);
             showDownloads.Click += (_, _) => { docks.OpenDownloads(); foreach (var sync in _syncControls) sync(); };
         }
-        Hint("Only the selected folder is watched. Temporary, empty and actively written files are omitted. Other browser save locations need a folder change here. Original files always stay in place.");
+        Hint("Folder mode watches only the selected folder and omits temporary, empty and actively written files. Chrome mode shows the newest 40 available files from up to 200 completed downloads per connected profile, ordered by completion time. Renamed/moved files need a fresh download or Chrome history update.");
         Section("Library");
         Check("Follow dock", () => settings.LibraryFollowsDock, value => settings.LibraryFollowsDock = value, false);
         Hint("Move Library to detach it. More → Follow dock attaches it again.");

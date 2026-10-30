@@ -134,7 +134,7 @@ public sealed class StateStore
             throw new InvalidDataException("Invalid independent panel windows.");
         PanelSets.ApplyActive(state);
         var downloads = state.Settings.DownloadsLayout;
-        if (state.Settings.DownloadsFolder is null || state.Settings.DownloadsFolder.Length > 32767 ||
+        if (state.Settings.DownloadsSource is not ("Auto" or "Chrome" or "Folder") || state.Settings.DownloadsFolder is null || state.Settings.DownloadsFolder.Length > 32767 ||
             downloads is null || downloads.DisplayId is null || downloads.DisplayId.Length > 1024 ||
             downloads.OffsetX is double dx && (!double.IsFinite(dx) || Math.Abs(dx) > 100000) ||
             downloads.OffsetY is double dy && (!double.IsFinite(dy) || Math.Abs(dy) > 100000))

@@ -81,7 +81,7 @@ internal static class ImageStackProbe
         var response = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
         var handler = new Handler { Reply = (_, token) => response.Task.WaitAsync(token) };
         using var http = new HttpClient(handler); using var session = new ShelfSession(store, state, new BrowserImageLoader(http));
-        var first = ShelfItem.FromPath(png); var second = ShelfItem.FromPath(webp); second.KeepAfterUse = true;
+        var first = ShelfItem.FromPath(png); first.KeepAfterUse = true; var second = ShelfItem.FromPath(webp);
         session.Add(new[] { first, second }); var dock = new DockWindow(session, () => { }, () => { }); dock.ShowDock();
         var source = new Button { Content = "Browser image source" }; IDataObject browserData = new DataObject(); Point? origin = null;
         source.PreviewMouseLeftButtonDown += (_, e) => origin = e.GetPosition(source);
@@ -104,6 +104,7 @@ internal static class ImageStackProbe
             UiProbe.DragTo(Pin(dock, second.Id), center);
             check(dock.Pins.Items.Count == 1 && ((ItemRow)dock.Pins.Items[0]).Members.Length == 2 && state.Items.Count == 2 && state.Trash.Count == 0,
                 "A real center drop combines clips into one counted stack without duplicating payloads");
+            check(first.KeepAfterUse && second.KeepAfterUse, "A native center drop onto a kept clip protects the complete new stack");
             Clipboard.SetText("Opening a stack must not paste"); var card = Pin(dock, first.Id); UiProbe.Click(card);
             check(card.ContextMenu?.IsOpen == true && card.ContextMenu.Items.OfType<MenuItem>().Count(m => (m.Tag as string)?.StartsWith("StackMember:") == true) == 2 && Clipboard.GetText() == "Opening a stack must not paste",
                 "Clicking a stack opens its captured member list without changing the clipboard or consuming clips");
@@ -119,6 +120,10 @@ internal static class ImageStackProbe
             UiProbe.DragTo(Pin(dock, second.Id), center); var stackId = PanelSets.Active(state).Stacks.Single().Id;
             UiProbe.Hover(Pin(dock, first.Id)); UiProbe.CaptureWindow(dock, Path.Combine(output, "dock-stack-screen.png"));
             receiverWindow.Show();
+            UiProbe.DragTo(Pin(dock, first.Id), receiver.PointToScreen(new Point(110, 70)));
+            check(received is { Length: 2 } && state.Items.Count == 2 && state.Trash.Count == 0,
+                "Using a stack created from a kept target retains every inherited protected member");
+            first.KeepAfterUse = false; session.Change();
             UiProbe.DragTo(Pin(dock, first.Id), receiver.PointToScreen(new Point(110, 70)));
             check(received is { Length: 2 } && received.Contains(webp) && received.Contains(png) && state.Items.Single().Id == second.Id && state.Trash.Single().Item.Id == first.Id,
                 "Dragging a stack transfers both original files and archives only its unprotected member");

@@ -70,6 +70,9 @@ public sealed class ShelfSettings : AppearanceStyle
     public bool FetchDroppedImages { get; set; } = true;
     public bool DownloadsEnabled { get; set; }
     public string DownloadsFolder { get; set; } = "";
+    public string DownloadsSource { get; set; } = "Auto";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string EffectiveDownloadsSource => DownloadsSource == "Auto" ? (DownloadsFolder.Length > 0 ? "Folder" : "Chrome") : DownloadsSource;
     public DockLayout DownloadsLayout { get; set; } = new();
     public bool MirrorDocks { get; set; }
     public string HomeDisplayId { get; set; } = "";

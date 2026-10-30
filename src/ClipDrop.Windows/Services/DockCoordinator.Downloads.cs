@@ -13,7 +13,7 @@ public sealed partial class DockCoordinator
     private string DownloadsSignature()
     {
         var s = _session.State.Settings; var l = s.DownloadsLayout;
-        return $"|downloads:{s.DownloadsEnabled}:{s.DownloadsFolder}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}";
+        return $"|downloads:{s.DownloadsEnabled}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}";
     }
     public void OpenDownloads()
     {
@@ -31,11 +31,12 @@ public sealed partial class DockCoordinator
             DownloadsView?.DisposeView(); DownloadsView = null;
             _downloadsFeed?.Dispose(); _downloadsFeed = null; return;
         }
-        var folder = settings.DownloadsFolder.Length > 0 ? settings.DownloadsFolder : DownloadsFeed.DefaultFolder();
-        if (_downloadsFeed?.Folder != folder)
+        var chrome = settings.EffectiveDownloadsSource == "Chrome";
+        var folder = chrome ? ChromeConnection.CatalogFolder : settings.DownloadsFolder.Length > 0 ? settings.DownloadsFolder : DownloadsFeed.DefaultFolder();
+        if (_downloadsFeed is null || _downloadsFeed.Folder != folder || _downloadsFeed.IsChrome != chrome)
         {
             DownloadsView?.DisposeView(); DownloadsView = null; _downloadsFeed?.Dispose();
-            _downloadsFeed = new DownloadsFeed(folder, _library.Dispatcher);
+            _downloadsFeed = new DownloadsFeed(folder, _library.Dispatcher, chrome);
         }
         var layout = settings.DownloadsLayout;
         if (layout.DisplayId.Length == 0) { layout.DisplayId = Target()?.Assignment?.Display.Id ?? Displays[0].Id; _session.Change(false); }
