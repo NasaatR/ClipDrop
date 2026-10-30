@@ -172,7 +172,7 @@ public sealed partial class ShelfSession : IDisposable
 
     public bool Capture(IDataObject data, bool pin = true, string? panelId = null, int? insertion = null, string? mergeTarget = null)
     {
-        var items = Transfer.Import(data);
+        var items = Transfer.Import(data, browserDrop: true);
         if (items.Count == 0) { Notify("No supported files, image or text"); return false; }
         var count = Add(items, pin, panelId);
         var accepted = items.Select(source => State.Items.FirstOrDefault(i => i.SameContent(source))).OfType<ShelfItem>().Distinct().ToArray();

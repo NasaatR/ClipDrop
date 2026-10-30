@@ -25,7 +25,7 @@ public sealed class TransferService
         if (internalSource) data.SetData("NasaatR.ClipDrop.Internal", "1"); return data;
     }
 
-    public List<ShelfItem> Import(IDataObject data)
+    public List<ShelfItem> Import(IDataObject data, bool browserDrop = false)
     {
         var result = new List<ShelfItem>();
         if (data.GetDataPresent("NasaatR.ClipDrop.TextCard", false) &&
@@ -34,6 +34,8 @@ public sealed class TransferService
         if (data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths)
         {
             foreach (var path in paths) result.Add(ShelfItem.FromPath(path));
+            if (browserDrop && result.Count > 0 && result.All(IsShortcut) && BrowserImageData.Read(data) is { } imageSource)
+                return new() { imageSource };
             return result;
         }
         // Prefer original encoded PNG bytes; the Bitmap fallback can lose alpha in some source apps.
@@ -57,15 +59,24 @@ public sealed class TransferService
             catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FormatException or System.Runtime.InteropServices.COMException) { }
         }
 
-        var virtualFiles = VirtualFileReader.Read(data, _assets.Root);
-        if (virtualFiles.Count > 0) return virtualFiles;
-
-        if (BrowserImageData.Read(data) is { } sourceImage) return new() { sourceImage };
+        var sourceImage = BrowserImageData.Read(data);
+        try
+        {
+            var virtualFiles = VirtualFileReader.Read(data, _assets.Root);
+            if (virtualFiles.Count > 0)
+                return browserDrop && virtualFiles.All(IsShortcut) && sourceImage is not null ? new() { sourceImage } : virtualFiles;
+        }
+        catch (Exception ex) when (browserDrop && sourceImage is not null && ex is IOException or System.Runtime.InteropServices.COMException or NotSupportedException)
+        { return new() { sourceImage }; }
+        if (sourceImage is not null) return new() { sourceImage };
 
         var text = BrowserImageData.Text(data);
         if (!string.IsNullOrEmpty(text)) result.Add(ShelfItem.FromText(text));
         return result;
     }
+
+    private static bool IsShortcut(ShelfItem item) => item.Kind == ItemKind.File &&
+        Path.GetExtension(item.FilePath)?.ToLowerInvariant() is ".url" or ".webloc";
 
     private ShelfItem CacheImage(byte[] bytes) => new() {
         Kind = ItemKind.Image, Title = "Image " + DateTime.Now.ToString("HH-mm-ss"),

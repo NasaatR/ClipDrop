@@ -49,6 +49,12 @@ internal static class ImageStackProbe
         var fallbackAssets = new AssetStore(Path.Combine(root, "format-fallback"));
         check(new TransferService(fallbackAssets).Import(invalidPng).Single().SourceUrl == "https://images.example.com/real.webp",
             "An invalid advertised PNG cannot hide an available browser image-source representation");
+        var shortcut = Path.Combine(root, "browser-image.url"); File.WriteAllText(shortcut, "[InternetShortcut]\r\nURL=https://www.pinterest.com/pin/123/\r\n");
+        var linkFile = new DataObject(); linkFile.SetFileDropList(new System.Collections.Specialized.StringCollection { shortcut });
+        linkFile.SetData("HTML Format", "<img src='https://images.example.com/real.webp'>");
+        var formats = new TransferService(fallbackAssets);
+        check(formats.Import(linkFile, browserDrop: true).Single().SourceUrl == "https://images.example.com/real.webp" && formats.Import(linkFile).Single().FilePath == shortcut,
+            "An explicit browser image drop prefers its image source over a shortcut while clipboard file import stays intact");
         var unsupported = Path.Combine(root, "unsupported-owned.webp"); File.WriteAllBytes(unsupported, new byte[] { 1, 2, 3 });
         var fallback = new TransferService(fallbackAssets).BuildDrag(new[] { new ShelfItem { Kind = ItemKind.Image, OwnedAsset = true, FilePath = unsupported } });
         check(fallback.GetFileDropList().Cast<string>().Single() == unsupported && File.ReadAllBytes(unsupported).SequenceEqual(new byte[] { 1, 2, 3 }),
