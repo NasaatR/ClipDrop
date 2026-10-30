@@ -70,7 +70,11 @@ internal static class DownloadsProbe
             try
             {
                 var destination = receiver.PointToScreen(new Point(110, 70));
-                UiProbe.DragTo(Row(stack, a), destination);
+                var direct = Row(stack, a);
+                Console.WriteLine($"DOWNLOADS before: compact={stack.IsCompact}, rowVisible={direct.IsVisible}, rowHeight={direct.ActualHeight}, selected={stack.DownloadList.SelectedItems.Count}, observer={stack.HasDismissObserver}");
+                UiProbe.DragTo(direct, destination);
+                Console.WriteLine($"DOWNLOADS after: received={received?.Length ?? -1}, expected={received?.Contains(a)}, selected={stack.DownloadList.SelectedItems.Count}, compact={stack.IsCompact}, observer={stack.HasDismissObserver}, status={session.Status}");
+                if (received is not { Length: 1 } || !received.Contains(a) || !stack.IsCompact) UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-drag-failure.png"));
                 check(received is { Length: 1 } && received[0] == a && stack.DownloadList.SelectedItems.Count == 0 && stack.IsCompact,
                     "An unselected downloads row drags its original file immediately and dismisses the list afterward");
                 received = null; UiProbe.DragTo(Row(stack, a), destination, cancel: true);

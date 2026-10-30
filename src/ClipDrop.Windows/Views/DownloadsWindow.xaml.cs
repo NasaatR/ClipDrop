@@ -38,6 +38,7 @@ public partial class DownloadsWindow : Window
     private Point? _origin;
     private FrameworkElement? _source;
     private Row? _pressedRow;
+    private int _pressClicks;
     private ModifierKeys _pressModifiers;
     private ShelfItem[]? _dragItems;
     public ListBox DownloadList => Files;
@@ -174,8 +175,7 @@ public partial class DownloadsWindow : Window
     {
         if (e.OriginalSource is not DependencyObject original || ItemsControl.ContainerFromElement(Files, original) is not ListBoxItem { DataContext: Row row } container) return;
         e.Handled = true;
-        if (e.ClickCount == 2 && Keyboard.Modifiers == ModifierKeys.None) { ClearGesture(); Open(row.RowItem.Item); return; }
-        _pressModifiers = Keyboard.Modifiers; _pressedRow = row;
+        _pressModifiers = Keyboard.Modifiers; _pressedRow = row; _pressClicks = e.ClickCount;
         if (_pressModifiers.HasFlag(ModifierKeys.Control) || _pressModifiers.HasFlag(ModifierKeys.Shift))
         {
             _selection.Click(_rows.Select(r => r.File.Path).ToArray(), row.File.Path, _pressModifiers.HasFlag(ModifierKeys.Control), _pressModifiers.HasFlag(ModifierKeys.Shift), false);
@@ -188,13 +188,15 @@ public partial class DownloadsWindow : Window
     }
     private void ClearGesture()
     {
-        var source = _source; _origin = null; _source = null; _pressedRow = null; _dragItems = null;
+        var source = _source; _origin = null; _source = null; _pressedRow = null; _dragItems = null; _pressClicks = 0;
         source?.ReleaseMouseCapture(); Presence();
     }
     private void OnRowUp(object sender, MouseButtonEventArgs e)
     {
+        var open = _origin.HasValue && _pressClicks == 2 && _pressModifiers == ModifierKeys.None ? _pressedRow?.RowItem.Item : null;
         if (_origin.HasValue && _pressedRow is Row row && _pressModifiers == ModifierKeys.None) { _selection.Single(row.File.Path); SyncSelection(); }
-        ClearGesture(); Refresh();
+        ClearGesture();
+        if (open is not null) Open(open); else Refresh();
     }
     private void OnRowMove(object sender, MouseEventArgs e)
     {

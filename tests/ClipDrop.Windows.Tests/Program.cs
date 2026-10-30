@@ -32,6 +32,15 @@ internal static class Program
             var app = new ComponentApp { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/ClipDrop;component/Theme.xaml", UriKind.Relative) });
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/ClipDrop;component/Icons.xaml", UriKind.Relative) });
+            if (args.Contains("--downloads-only"))
+            {
+                var focusedStore = new StateStore(root); using var focusedSession = new ShelfSession(focusedStore, focusedStore.Load());
+                var focusedLibrary = new MainWindow(focusedSession); focusedLibrary.Show();
+                var focusedDock = new DockWindow(focusedSession, focusedLibrary.ShowShelf, focusedLibrary.OpenSettings); focusedDock.ShowDock();
+                try { DownloadsProbe.Run(focusedLibrary, focusedDock, root, output, Check); DownloadsProbe.Chrome(focusedLibrary, focusedDock, root, output, Check); BackupProbe.Run(focusedLibrary, focusedDock, root, output, Check); }
+                finally { focusedDock.DisposeView(); focusedLibrary.Hide(); app.Shutdown(); }
+                Console.WriteLine($"{_passed} focused Downloads/backup checks passed. UI captures: {output}"); return 0;
+            }
             StabilityProbe.Run(root, output, Check, (element, path) => RenderElement(element, path));
             var assets = new AssetStore(Path.Combine(root, "assets"));
             var transfers = new TransferService(assets);
