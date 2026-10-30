@@ -16,37 +16,46 @@ public sealed class DockPresence : IDisposable
     private bool _isCompact;
     private readonly DispatcherTimer _settle = new() { Interval = TimeSpan.FromMilliseconds(180) };
     private readonly DispatcherTimer _reveal = new() { Interval = TimeSpan.FromMilliseconds(900) };
-    private bool _busy, _pulse, _disposed;
+    private bool _busy, _pulse, _disposed, _dismissed;
+    private readonly bool _transient;
     private double _target = -1;
-    public DockPresence(Window window, Func<ShelfSettings> settings, Action<bool> compact)
+    public DockPresence(Window window, Func<ShelfSettings> settings, Action<bool> compact, bool transient = false)
     {
-        _window = window; _settings = settings; _compact = compact;
+        _window = window; _settings = settings; _compact = compact; _transient = transient;
+        if (transient) { _collapse.Interval = TimeSpan.FromMilliseconds(300); _settle.Interval = TimeSpan.FromMilliseconds(90); _reveal.Interval = TimeSpan.FromMilliseconds(350); }
         window.MouseEnter += Enter; window.MouseLeave += Leave; window.IsVisibleChanged += Visibility;
         PopupDismiss.Changed += PopupChanged;
         _settle.Tick += (_, _) => { _settle.Stop(); Refresh(); };
         _reveal.Tick += (_, _) => { _reveal.Stop(); _pulse = false; Refresh(); };
         _collapse.Tick += (_, _) => {
             _collapse.Stop();
-            if (_window.IsVisible && _settings().CollapseWhenIdle && !Active) SetCompact(true);
+            if (_window.IsVisible && CollapseWhenIdle && !Active) SetCompact(true);
         };
         Refresh();
     }
-    private bool Active => _window.IsMouseOver || _busy || _pulse || PopupDismiss.IsOpenFor(_window);
+    private bool CollapseWhenIdle => _transient || _settings().CollapseWhenIdle;
+    private bool Active => !_dismissed && (_window.IsMouseOver || _busy || _pulse || PopupDismiss.IsOpenFor(_window));
     private void SetCompact(bool compact)
     { if (_isCompact == compact) return; _isCompact = compact; _compact(compact); }
-    private void Enter(object sender, MouseEventArgs e) { _settle.Stop(); Refresh(); }
+    private void Enter(object sender, MouseEventArgs e) { _dismissed = false; _settle.Stop(); Refresh(); }
     private void Leave(object sender, MouseEventArgs e) { _settle.Stop(); _settle.Start(); }
     private void Visibility(object sender, DependencyPropertyChangedEventArgs e)
     { if (!_window.IsVisible) { _settle.Stop(); _reveal.Stop(); _collapse.Stop(); _pulse = false; _busy = false; } Refresh(); }
     private void PopupChanged(Window owner) { if (ReferenceEquals(owner, _window)) Refresh(); }
-    public void Busy(bool active) { _busy = active; Refresh(); }
+    public void Busy(bool active) { _busy = active; if (active) _dismissed = false; Refresh(); }
     public void Reveal()
-    { if (_disposed) return; _pulse = true; _reveal.Stop(); _reveal.Start(); Refresh(); }
+    { if (_disposed) return; _dismissed = false; _pulse = true; _reveal.Stop(); _reveal.Start(); Refresh(); }
+    public void Dismiss()
+    {
+        if (_disposed) return;
+        _dismissed = true; _pulse = false; _collapse.Stop(); _reveal.Stop(); _settle.Stop(); SetCompact(true); Refresh();
+    }
     public void Refresh()
     {
         if (_disposed) return;
         var active = Active;
-        if (!_window.IsVisible || active || !_settings().CollapseWhenIdle) { _collapse.Stop(); SetCompact(false); }
+        if (_dismissed && _window.IsVisible) { _collapse.Stop(); SetCompact(true); }
+        else if (!_window.IsVisible || active || !CollapseWhenIdle) { _collapse.Stop(); SetCompact(false); }
         else if (!_isCompact && !_collapse.IsEnabled) _collapse.Start();
         var next = active ? 1 : Appearance.Bound(_settings().IdleDockOpacity, 5, 100, 20) / 100;
         if (_target == next && (_settings().AnimationsEnabled || !_window.HasAnimatedProperties)) return;

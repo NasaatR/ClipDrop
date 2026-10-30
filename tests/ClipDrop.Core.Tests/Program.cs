@@ -19,6 +19,7 @@ try
     DownloadsChecks.Run(root, Check);
     StackChecks.Run(root, Check);
     BrowserDownloadChecks.Run(root, Check);
+    BackupChecks.Run(root, Check);
     var idleStyle = new ShelfSettings();
     Check(idleStyle.IdleDockOpacity == 20, "Idle dock visibility defaults to twenty percent");
     idleStyle.IdleDockOpacity = 5; var idleSnapshot = idleStyle.Snapshot();

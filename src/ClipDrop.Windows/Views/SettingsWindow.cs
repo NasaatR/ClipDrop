@@ -30,7 +30,7 @@ public sealed class SettingsWindow : Window
     private readonly List<FrameworkElement> _fieldBoxes = new();
     public DockStrip Preview { get; } = new();
 
-    public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot, DockCoordinator? docks = null)
+    public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot, DockCoordinator? docks = null, Func<byte[]>? captureBackup = null)
     {
         _settings = settings; _changed = () => { changed(); Preview.Apply(settings); UpdatePreviewOpacity(); }; _section = _panel;
         Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
@@ -50,7 +50,7 @@ public sealed class SettingsWindow : Window
         DockPanel.SetDock(heading, Dock.Top); layout.Children.Add(heading);
         heading.Children.Add(new TextBlock { Text = "ClipDrop " + Diagnostics.Version, FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 10) });
         _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); heading.Children.Add(_notice);
-        var nav = new System.Windows.Controls.Primitives.UniformGrid { Rows = 1 }; heading.Children.Add(nav);
+        var nav = new WrapPanel(); heading.Children.Add(nav);
         var scroll = new ScrollViewer { Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         var footer = new TextBlock { Text = "Made by Nasaat", FontSize = 11, Margin = new Thickness(18, 8, 18, 12) };
         footer.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer);
@@ -159,7 +159,7 @@ public sealed class SettingsWindow : Window
         }
         Section("Downloads");
         Check("Downloads stack", () => settings.DownloadsEnabled, value => settings.DownloadsEnabled = value, false);
-        Hint("Hover the Downloads capsule, then drag any file row directly to another app. Checkboxes are optional for a group. Original files stay in place.");
+        Hint("Hover the Downloads capsule, then drag any file row directly to another app. Use Ctrl/Shift to select a group; right-click for Copy, Save to Library or Show in Explorer. Original files stay in place.");
         Choice("Source", () => settings.EffectiveDownloadsSource, new[] { "Chrome", "Folder" }, new[] { "Chrome · all save locations", "One watched folder" }, value => settings.DownloadsSource = value, false);
         var connectChrome = new Button { Content = "Connect Chrome", HorizontalAlignment = HorizontalAlignment.Left };
         _section.Children.Add(connectChrome);
@@ -203,6 +203,11 @@ public sealed class SettingsWindow : Window
         Range("Row corners", () => settings.CornerRadius, 0, 16, value => settings.CornerRadius = value);
         var reset = new Button { Content = "Reset appearance", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 10, 0, 0) };
         reset.Click += (_, _) => { ApplyStyle(new AppearanceStyle()); RebuildPresets(); _notice.Text = "Appearance reset · saved styles kept"; }; _section.Children.Add(reset);
+        if (captureBackup is not null)
+        {
+            Section("Backups"); var backups = new BackupSection(dataRoot, captureBackup); _section.Children.Add(backups);
+            Closed += (_, _) => backups.Dispose();
+        }
         Section("App");
         Check("Always on top", () => settings.AlwaysOnTop, value => settings.AlwaysOnTop = value, false);
         Check("Start hidden in tray", () => settings.StartHidden, value => settings.StartHidden = value, false);

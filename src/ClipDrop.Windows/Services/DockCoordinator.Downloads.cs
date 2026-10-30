@@ -54,7 +54,7 @@ public sealed partial class DockCoordinator
         { assigned.OffsetX = old.Layout.OffsetX; assigned.OffsetY = old.Layout.OffsetY; }
         var window = DownloadsView;
         window.Assignment = new(display, assigned, temporary);
-        window.Height = Math.Max(180, Math.Min(456, display.Height / WindowPlacement.Scale(window)));
+        window.Height = Math.Max(180, Math.Min(508, display.Height / WindowPlacement.Scale(window)));
         window.Width = Math.Max(240, Math.Min(344, display.Width / WindowPlacement.Scale(window)));
         if (assigned.OffsetX is null || assigned.OffsetY is null)
         {

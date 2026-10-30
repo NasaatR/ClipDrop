@@ -73,7 +73,11 @@ public sealed class StateStore
 
     private static ShelfState Read(string path, out int originalVersion)
     {
-        var contents = File.ReadAllText(path);
+        return ReadContents(File.ReadAllText(path), out originalVersion);
+    }
+    public static ShelfState ReadSnapshot(byte[] bytes) => ReadContents(System.Text.Encoding.UTF8.GetString(bytes), out _);
+    private static ShelfState ReadContents(string contents, out int originalVersion)
+    {
         using var document = JsonDocument.Parse(contents);
         if (document.RootElement.ValueKind != JsonValueKind.Object ||
             !document.RootElement.TryGetProperty("SchemaVersion", out _) ||
@@ -165,16 +169,20 @@ public sealed class StateStore
 
     public Task SaveAsync(ShelfState state)
     {
-        if (!_loaded) throw new InvalidOperationException("Load the shelf before saving it.");
-        PanelSets.CaptureActive(state);
         // Encode while the caller owns mutable state. The disk worker only receives
         // immutable bytes, and the queue preserves call order even after a failure.
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(state, Json);
+        var bytes = CaptureSnapshot(state);
         lock (_queue)
         {
             return _writeTail = _writeTail.ContinueWith(_ => SaveBytes(bytes),
                 System.Threading.CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
         }
+    }
+    public byte[] CaptureSnapshot(ShelfState state)
+    {
+        if (!_loaded) throw new InvalidOperationException("Load the shelf before capturing it.");
+        PanelSets.CaptureActive(state);
+        return JsonSerializer.SerializeToUtf8Bytes(state, Json);
     }
     private void SaveBytes(byte[] bytes)
     {

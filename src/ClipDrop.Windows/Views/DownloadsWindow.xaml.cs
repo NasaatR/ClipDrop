@@ -1,14 +1,12 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media;
 using ClipDrop.Core;
 using ClipDrop.Windows.Services;
 
@@ -20,13 +18,11 @@ public partial class DownloadsWindow : Window
     {
         public DownloadFile File { get; }
         public ItemRow RowItem { get; }
-        public string SelectName => "Select file: " + File.Name;
-        public string Description => (File.Length >= 1024 * 1024 ? (File.Length / 1048576d).ToString("0.#") + " MB" : File.Length >= 1024 ? (File.Length / 1024d).ToString("0.#") + " KB" : File.Length + " B") + " · " + File.AddedUtc.ToLocalTime().ToString("g");
+        public string Time => File.AddedUtc.ToLocalTime().ToString(File.AddedUtc.ToLocalTime().Date == DateTime.Today ? "HH:mm" : "d MMM", CultureInfo.InvariantCulture);
+        public string Details => File.Path + "\n" + (File.Length >= 1048576 ? (File.Length / 1048576d).ToString("0.#") + " MB" : File.Length >= 1024 ? (File.Length / 1024d).ToString("0.#") + " KB" : File.Length + " B") + " · " + File.AddedUtc.ToLocalTime().ToString("g");
         public Row(DownloadFile file)
         {
             File = file;
-            // The catalog already validated the path off the dispatcher. This
-            // lightweight reference is revalidated at the explicit transfer.
             RowItem = new(new ShelfItem { Title = file.Name, FilePath = file.Path,
                 Kind = MediaFiles.IsImage(file.Path) ? ItemKind.Image : ItemKind.File });
         }
@@ -35,16 +31,20 @@ public partial class DownloadsWindow : Window
     private readonly DownloadsFeed _feed;
     private readonly Action _settings, _close;
     private readonly ObservableCollection<Row> _rows = new();
+    private readonly ClipSelection _selection = new();
     private readonly DockPresence _presence;
-    private bool _disposing, _busy, _moving, _latched, _refreshing;
+    private FlyoutDismiss? _outside;
+    private bool _disposing, _busy, _moving, _refreshing;
     private Point? _origin;
     private FrameworkElement? _source;
+    private Row? _pressedRow;
+    private ModifierKeys _pressModifiers;
     private ShelfItem[]? _dragItems;
     public ListBox DownloadList => Files;
     public Button StackButton => Capsule;
-    public Button DragButton => DragSelection;
     public string SummaryText => Summary.Text;
     public bool IsCompact { get; private set; }
+    public bool HasDismissObserver => _outside?.IsObserving == true;
     public DockAssignment? Assignment { get; set; }
     public event Action? GeometryCommitted;
     public DownloadsWindow(ShelfSession session, DownloadsFeed feed, Action settings, Action close)
@@ -54,16 +54,32 @@ public partial class DownloadsWindow : Window
         _presence = new DockPresence(this, () => session.State.Settings, compact => {
             IsCompact = compact; Details.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
             HoverBridge.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
-            if (!compact) Motion.Reveal(Details);
-        });
+            if (compact) { _selection.Clear(); SyncSelection(); }
+            else Motion.Reveal(Details);
+            WatchDismiss();
+        }, transient: true);
         PopupDismiss.Attach(ContextMenu, this); ContextMenuOpening += (_, _) => Menu();
         SourceInitialized += (_, _) => NativePastePlatform.MakeNonActivating(this);
         _ = new WindowDrag(this, () => { _moving = true; Presence(); }, () => { _moving = false; Presence(); GeometryCommitted?.Invoke(); });
         MouseEnter += (_, _) => _feed.RequestRefresh();
+        IsVisibleChanged += (_, _) => WatchDismiss();
+        LostMouseCapture += (_, _) => { if (!_busy && _origin.HasValue && _source?.IsMouseCaptured != true) ClearGesture(); };
         SizeChanged += (_, _) => FitDetails();
         Closing += (_, e) => { if (!_disposing) { e.Cancel = true; Dispatcher.BeginInvoke(_close); } };
         _session.Changed += AppearanceChanged; _feed.Changed += Refresh;
         AppearanceChanged(); Refresh(); Menu();
+    }
+    private void WatchDismiss()
+    {
+        if (!_disposing && IsVisible && !IsCompact)
+            _outside ??= new FlyoutDismiss(this, ContainsPointer, () => _busy || _moving || _origin.HasValue || PopupDismiss.IsOpenFor(this), Dismiss);
+        else { _outside?.Dispose(); _outside = null; }
+    }
+    private bool ContainsPointer(Point screen)
+    {
+        bool Hit(FrameworkElement element) => element.IsVisible && element.ActualWidth > 0 && element.ActualHeight > 0 &&
+            new Rect(element.PointToScreen(new Point()), element.PointToScreen(new Point(element.ActualWidth, element.ActualHeight))).Contains(screen);
+        return Hit(Details) || Hit(CapsuleShell) || Hit(HoverBridge);
     }
     private void AppearanceChanged()
     {
@@ -71,14 +87,18 @@ public partial class DownloadsWindow : Window
         Appearance.Apply(_session.State.Settings, this, true);
         Topmost = _session.State.Settings.AlwaysOnTop; _presence.Refresh();
     }
-    private void Presence() => _presence.Busy(_busy || _moving || _latched || _origin.HasValue);
+    private void Presence() => _presence.Busy(_busy || _moving || _origin.HasValue);
     public void ShowStack() { Show(); WindowState = WindowState.Normal; _presence.Reveal(); _feed.RequestRefresh(); }
-    public void HideStack() { PopupDismiss.CloseFor(this); Latch(false); Hide(); }
+    public void HideStack() { PopupDismiss.CloseFor(this); ClearGesture(); Hide(); }
+    private void Dismiss()
+    {
+        if (_busy || _moving) return;
+        PopupDismiss.CloseFor(this); ClearGesture(); _presence.Dismiss();
+    }
+    private void OnDismiss(object sender, RoutedEventArgs e) => Dismiss();
     private void Refresh()
     {
-        if (_disposing) return;
-        if (_busy) return; // Keep an OLE source and its captured selection stable.
-        var selected = Files.SelectedItems.Cast<Row>().Select(r => r.File.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (_disposing || _busy || _origin.HasValue) return; // Never mutate an OLE source or a pressed row.
         var snapshot = _feed.Snapshot; var desired = snapshot.Files;
         _refreshing = true;
         try
@@ -92,86 +112,103 @@ public partial class DownloadsWindow : Window
                 if (row is null) _rows.Insert(i, new Row(desired[i]));
                 else if (_rows.IndexOf(row) != i) _rows.Move(_rows.IndexOf(row), i);
             }
-            Files.SelectedItems.Clear();
-            foreach (var row in _rows) { if (selected.Contains(row.File.Path)) Files.SelectedItems.Add(row); }
+            _selection.Trim(_rows.Select(r => r.File.Path)); SyncSelection();
         }
         finally { _refreshing = false; }
-        Summary.Text = snapshot.Notice ?? (_rows.Count == 0 ? (_feed.IsChrome ? "No ready Chrome downloads · open the companion to sync" : "No ready files yet · new downloads appear here") : $"{_rows.Count} recent files · drag any row to another app");
-        Summary.ToolTip = _feed.IsChrome ? "Chrome downloads · every save folder · latest received snapshot" : _feed.Folder;
+        Summary.Text = snapshot.Notice ?? (_rows.Count == 0 ? (_feed.IsChrome ? "No ready Chrome downloads · open the companion to sync" : "No ready files yet") : "Drag any row · Ctrl/Shift for a group · right-click for actions");
+        Notice.Visibility = snapshot.Notice is not null || _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         SourceButton.Content = _feed.IsChrome ? "Connect Chrome" : "Open folder";
-        SourceButton.ToolTip = _feed.IsChrome ? "Set up or reconnect the Chrome downloads companion" : "Open the watched folder in Explorer";
-        UpdateActions();
+        SourceButton.Visibility = Notice.Visibility == Visibility.Visible && (snapshot.Notice is not null || _feed.IsChrome) ? Visibility.Visible : Visibility.Collapsed;
+        UpdateCount(); FitDetails();
     }
-    private ShelfItem[] Selected() => _rows.Where(r => Files.SelectedItems.Contains(r)).Select(r => r.RowItem.Item).ToArray();
-    private void UpdateActions()
+    private ShelfItem[] Selected() => _rows.Where(r => _selection.Ids.Contains(r.File.Path)).Select(r => r.RowItem.Item).ToArray();
+    private void UpdateCount() => Count.Text = _selection.Ids.Count > 1 ? $"{_selection.Ids.Count} selected" : $"{_rows.Count} files";
+    private void SyncSelection()
     {
-        var count = Files.SelectedItems.Count;
-        Actions.Visibility = count > 0 ? Visibility.Visible : Visibility.Hidden; DragSelection.Content = "Drag " + count;
-        FitDetails();
+        var refreshing = _refreshing; _refreshing = true;
+        try
+        {
+            foreach (var row in Files.SelectedItems.Cast<Row>().ToArray()) if (!_selection.Ids.Contains(row.File.Path)) Files.SelectedItems.Remove(row);
+            foreach (var row in _rows) if (_selection.Ids.Contains(row.File.Path) && !Files.SelectedItems.Contains(row)) Files.SelectedItems.Add(row);
+        }
+        finally { _refreshing = refreshing; }
+        UpdateCount();
     }
-    private void FitDetails() => Details.Height = Math.Max(90, Math.Min(116 + Math.Max(1, Math.Min(5, _rows.Count)) * 50, Height - 75));
-    private void OnSelection(object sender, SelectionChangedEventArgs e) { if (!_refreshing) UpdateActions(); }
-    private void OnCapsule(object sender, RoutedEventArgs e) => Latch(!_latched);
-    private void Latch(bool value)
+    private void FitDetails()
     {
-        _latched = value;
-        Capsule.SetResourceReference(BackgroundProperty, _latched ? "Selected" : "Control");
-        Capsule.ToolTip = _latched ? "Downloads · kept open · click to resume hover mode" : "Downloads · hover to reveal · click to keep open · drag the edge to move · right-click for options";
-        Presence();
+        var notice = Notice.Visibility == Visibility.Visible ? (SourceButton.Visibility == Visibility.Visible ? 86 : 44) : 0;
+        Details.Height = Math.Max(80, Math.Min(46 + Math.Max(1, Math.Min(12, _rows.Count)) * 34 + notice, Math.Max(80, Height - 75)));
     }
-    private void OnFolder(object sender, RoutedEventArgs e) => Run(() => {
+    private void OnSelection(object sender, SelectionChangedEventArgs e)
+    {
+        if (_refreshing) return;
+        // Keyboard navigation remains a normal ListBox interaction.
+        _selection.Clear();
+        foreach (var row in Files.SelectedItems.Cast<Row>()) _selection.Click(_rows.Select(r => r.File.Path).ToArray(), row.File.Path, true, false, true);
+        UpdateCount();
+    }
+    private void OnCapsule(object sender, RoutedEventArgs e) => _presence.Reveal();
+    private void OnSource(object sender, RoutedEventArgs e) => Run(() => {
+        Dismiss();
         if (_feed.IsChrome) { ChromeConnection.Connect(); return; }
         if (!Path.IsPathFullyQualified(_feed.Folder) || !Directory.Exists(_feed.Folder)) throw new DirectoryNotFoundException();
         Process.Start(new ProcessStartInfo(_feed.Folder) { UseShellExecute = true });
     });
-    private void OnDragHint(object sender, RoutedEventArgs e) => Summary.Text = "Drag any file row directly · check files only for a group";
-    private void Run(Action action) { try { action(); } catch (Exception ex) { _session.Error("Downloads", ex); Summary.Text = "File unavailable · refresh or open folder"; _feed.RequestRefresh(); } }
-    private void OnCopy(object sender, RoutedEventArgs e) => Copy(Selected());
-    private void Copy(ShelfItem[] items) { if (items.Length > 0 && _session.Copy(items)) Summary.Text = $"Copied {items.Length} · original files kept"; }
-    private void OnSave(object sender, RoutedEventArgs e) => Save(Selected());
+    private void Run(Action action)
+    {
+        try { action(); }
+        catch (Exception ex) { _session.Error("Downloads", ex); _feed.RequestRefresh(); }
+    }
+    private void Copy(ShelfItem[] items) { if (items.Length > 0 && _session.Copy(items)) Dismiss(); }
     private void Save(ShelfItem[] items)
     {
         if (items.Length == 0) return;
-        Run(() => { foreach (var item in items) if (!File.Exists(item.FilePath)) throw new FileNotFoundException();
-            var added = _session.Add(items, pin: false); Summary.Text = added > 0 ? $"Saved {added} to Library" : "Already in Library"; });
+        Run(() => {
+            foreach (var item in items) if (!File.Exists(item.FilePath)) throw new FileNotFoundException();
+            var added = _session.Add(items, pin: false);
+            if (_session.TrySave()) { _session.Notify(added > 0 ? $"Saved {added} to Library" : "Already in Library"); Dismiss(); }
+        });
     }
+    private void Open(ShelfItem item) => Run(() => { if (!File.Exists(item.FilePath)) throw new FileNotFoundException(); Dismiss(); Process.Start(new ProcessStartInfo(item.FilePath!) { UseShellExecute = true }); });
     private void OnRowDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.OriginalSource is not DependencyObject original || FindCheck(original)) return;
-        if (ItemsControl.ContainerFromElement(Files, original) is not ListBoxItem { DataContext: Row row }) return;
-        _origin = e.GetPosition(this);
-        _source = (ListBoxItem)ItemsControl.ContainerFromElement(Files, original);
-        // Capture the pressed row rather than relying on WPF selection/focus in
-        // this nonactivating window. A fresh row always drags only itself.
-        _dragItems = Files.SelectedItems.Contains(row) ? Selected() : new[] { row.RowItem.Item };
-        if (Keyboard.Modifiers == ModifierKeys.None) { _source.CaptureMouse(); e.Handled = true; }
+        if (e.OriginalSource is not DependencyObject original || ItemsControl.ContainerFromElement(Files, original) is not ListBoxItem { DataContext: Row row } container) return;
+        e.Handled = true;
+        if (e.ClickCount == 2 && Keyboard.Modifiers == ModifierKeys.None) { ClearGesture(); Open(row.RowItem.Item); return; }
+        _pressModifiers = Keyboard.Modifiers; _pressedRow = row;
+        if (_pressModifiers.HasFlag(ModifierKeys.Control) || _pressModifiers.HasFlag(ModifierKeys.Shift))
+        {
+            _selection.Click(_rows.Select(r => r.File.Path).ToArray(), row.File.Path, _pressModifiers.HasFlag(ModifierKeys.Control), _pressModifiers.HasFlag(ModifierKeys.Shift), false);
+            SyncSelection();
+        }
+        _origin = e.GetPosition(this); _source = container;
+        _dragItems = _selection.Ids.Contains(row.File.Path) ? Selected() : new[] { row.RowItem.Item };
+        if (!_source.CaptureMouse()) { ClearGesture(); return; }
         Presence();
     }
-    private static bool FindCheck(DependencyObject source)
+    private void ClearGesture()
     {
-        while (source is not null && source is not ListBoxItem)
-        { if (source is ToggleButton) return true; source = VisualTreeHelper.GetParent(source); }
-        return false;
+        var source = _source; _origin = null; _source = null; _pressedRow = null; _dragItems = null;
+        source?.ReleaseMouseCapture(); Presence();
     }
-    private void OnActionDown(object sender, MouseButtonEventArgs e)
-    { _origin = e.GetPosition(this); _source = DragSelection; _dragItems = Selected(); Presence(); }
     private void OnRowUp(object sender, MouseButtonEventArgs e)
-    { _origin = null; _source?.ReleaseMouseCapture(); _source = null; _dragItems = null; Presence(); }
+    {
+        if (_origin.HasValue && _pressedRow is Row row && _pressModifiers == ModifierKeys.None) { _selection.Single(row.File.Path); SyncSelection(); }
+        ClearGesture(); Refresh();
+    }
     private void OnRowMove(object sender, MouseEventArgs e)
     {
         if (_origin is not Point start || e.LeftButton != MouseButtonState.Pressed) return;
         var current = e.GetPosition(this);
         if (Math.Abs(current.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(current.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
-        _origin = null; _source?.ReleaseMouseCapture(); _source = null;
-        var clips = _dragItems ?? Array.Empty<ShelfItem>(); _dragItems = null; if (clips.Length == 0) { Presence(); return; }
-        _busy = true; Presence();
+        var clips = _dragItems ?? Array.Empty<ShelfItem>();
+        _busy = true; ClearGesture(); Presence();
         try
         {
-            var data = _session.Transfer.BuildDrag(clips, internalSource: false);
-            DragDrop.DoDragDrop(Files, data, DragDropEffects.Copy);
+            if (clips.Length > 0) DragDrop.DoDragDrop(Files, _session.Transfer.BuildDrag(clips, internalSource: false), DragDropEffects.Copy);
         }
         catch (Exception ex) { _session.Error("Downloads drag", ex); _feed.RequestRefresh(); }
-        finally { _busy = false; Presence(); Refresh(); }
+        finally { _busy = false; Presence(); Refresh(); Dismiss(); }
         e.Handled = true;
     }
     private void Menu()
@@ -179,19 +216,22 @@ public partial class DownloadsWindow : Window
         var menu = ContextMenu; menu.Items.Clear(); Appearance.Apply(_session.State.Settings, menu, true);
         void Add(string name, Action action)
         { var item = new MenuItem { Header = name, FontSize = 11.5, Padding = new Thickness(6, 3, 6, 3) }; item.Click += (_, _) => { menu.IsOpen = false; Dispatcher.BeginInvoke(action); }; menu.Items.Add(item); }
-        Add(_feed.IsChrome ? "Connect Chrome" : "Open downloads folder", () => OnFolder(this, new())); Add("Refresh", _feed.RequestRefresh);
-        Add("Settings", _settings); Add("Close downloads stack", _close);
+        Add(_feed.IsChrome ? "Connect Chrome" : "Open folder", () => OnSource(this, new()));
+        Add("Refresh", _feed.RequestRefresh);
+        Add("Select all", () => { foreach (var row in _rows) if (!_selection.Ids.Contains(row.File.Path)) _selection.Click(_rows.Select(r => r.File.Path).ToArray(), row.File.Path, true, false, true); SyncSelection(); });
+        Add("Settings", () => { Dismiss(); _settings(); }); Add("Close downloads stack", _close);
     }
     private void OnRowMenu(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source || ItemsControl.ContainerFromElement(Files, source) is not ListBoxItem { DataContext: Row row }) return;
-        e.Handled = true; _origin = null;
-        if (!Files.SelectedItems.Contains(row)) { Files.SelectedItems.Clear(); Files.SelectedItems.Add(row); }
+        e.Handled = true; ClearGesture();
+        if (!_selection.Ids.Contains(row.File.Path)) { _selection.Single(row.File.Path); SyncSelection(); }
         var clips = Selected(); var menu = new ContextMenu(); Appearance.Apply(_session.State.Settings, menu, true);
         void Add(string label, Action action) { var item = new MenuItem { Header = label, FontSize = 11.5, Padding = new Thickness(6, 3, 6, 3) }; item.Click += (_, _) => { menu.IsOpen = false; action(); }; menu.Items.Add(item); }
-        Add("Copy", () => Copy(clips)); Add("Save to Library", () => Save(clips));
-        if (clips.Length == 1) Add("Show in Explorer", () => Run(() => Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { "/select,", clips[0].FilePath! } })));
-        PopupDismiss.Attach(menu, this); menu.PlacementTarget = Files; menu.IsOpen = true;
+        if (clips.Length == 1) Add("Open", () => Open(clips[0]));
+        Add(clips.Length > 1 ? $"Copy {clips.Length}" : "Copy", () => Copy(clips)); Add("Save to Library", () => Save(clips));
+        if (clips.Length == 1) Add("Show in Explorer", () => Run(() => { Dismiss(); Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { "/select,", clips[0].FilePath! } }); }));
+        Files.ContextMenu = menu; PopupDismiss.Attach(menu, this); menu.PlacementTarget = Files; menu.IsOpen = true;
     }
     private async void OnThumbnail(object sender, RoutedEventArgs e)
     {
@@ -203,12 +243,13 @@ public partial class DownloadsWindow : Window
     private void OnThumbnailContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) OnThumbnail(sender, new()); }
     private void OnKey(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape) { Latch(false); Files.SelectedItems.Clear(); e.Handled = true; }
+        if (e.Key == Key.Escape) { Dismiss(); e.Handled = true; }
         else if (e.Key == Key.C && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { Copy(Selected()); e.Handled = true; }
+        else if (e.Key == Key.Enter && Selected() is { Length: 1 } items) { Open(items[0]); e.Handled = true; }
     }
     public void DisposeView()
     {
-        if (_disposing) return; _disposing = true; PopupDismiss.CloseFor(this);
+        if (_disposing) return; _disposing = true; PopupDismiss.CloseFor(this); ClearGesture(); _outside?.Dispose(); _outside = null;
         _session.Changed -= AppearanceChanged; _feed.Changed -= Refresh; _presence.Dispose(); Close();
     }
 }

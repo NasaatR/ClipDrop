@@ -467,6 +467,78 @@ separately versioned bounded image contract/permissions/IPC journey is implement
 Store distribution, progress UI, longer-history browsing, moved-file tracking and
 other browsers remain separate increments. Do not add them all to this release.
 
+## 0.15 implementation plan: compact Downloads, then backup export
+
+Goal: direct file pickup with more visible rows and predictable dismissal, followed
+by a complete first backup increment. Native WPF/.NET 10, no new dependencies.
+The user's requested sequence is implemented here in the current working tree;
+backup import/merge remains a separate 5a2 step.
+
+### Task 1: compact transient Downloads
+
+- [ ] `DownloadsWindow.xaml/.cs`: 34 DIP one-line rows, 24 DIP thumbnails, full
+  path/size/time on tooltip, no checkbox column or persistent action bar. Keep
+  direct single/group copy-only drags; Ctrl/Shift and contextual Select all choose
+  groups. Show source setup in empty/error state and keep actions contextual.
+- [ ] `DockPresence` transient mode + `FlyoutDismiss`: no click-to-latch state;
+  300 ms idle collapse after a 90 ms pointer settle, immediate outside-click/action
+  dismiss. Observe outside input only while expanded, pass it through, dispose on
+  compact/hide/close and hold during actual movement/press/OLE/menu interactions.
+  Main dock presence keeps its existing preferences and timings.
+- [ ] Native `DownloadsProbe`: prove no selector, at least ten visible short rows
+  in the normal window, direct/cancel/group transfers, drag while foreground app
+  remains unchanged, outside click, repeated open/close, menu and focus changes.
+  Inspect light/dark/empty/long-name captures and keep existing Chrome tests.
+
+### Task 2: stage 5a1 verified export
+
+- [ ] `StateStore.CaptureSnapshot` / `ReadSnapshot`: capture the current UI-owned
+  metadata once; persistence reuses the same immutable snapshot path.
+- [ ] `BackupArchive.Create(root, snapshot, destination, progress, token)`: stream
+  referenced owned assets, opaque clipboard blobs and current/saved-style PNGs
+  into a versioned ZIP; include current metadata, Trash, panel/window state and
+  original external file references. Do not copy external originals, orphaned
+  caches, exports no longer referenced or the disposable Chrome catalog.
+- [ ] `BackupArchive.Verify`: validate version/paths/required membership, lengths
+  and SHA256 of every entry by bounded streaming. Reopen/verify the finished temp
+  archive, then atomically publish to a fresh filename; failure/cancel keeps any existing destination
+  and source metadata untouched. Never extract/restore in this increment.
+- [ ] `BackupSection` in Settings: choose destination, background create/verify,
+  honest completion/error, cancel and disposed-window cleanup. Each copy uses a new filename; explain external
+  originals remain references. No controls added to the floating dock.
+- [ ] Core backup checks: raw bytes/Trash/panels/zero settings/style icons,
+  deduplication, changed/missing owned asset, corrupt archive/hash, traversal,
+  cancellation and preserved destination. Native check: current unsaved metadata
+  snapshot, responsive export UI and cancel. Finish with installer/Chrome CI.
+
+Review focus: invisible layered pixels; deactivation during a menu/OLE operation;
+missed mouse-up; broken/moved external references; current unsaved metadata and
+shared hash assets; failure before atomic publication. All belong to the checks
+above. 5a2 adds archive preview, conflict-safe import/merge and recovery boundaries;
+5b adds content versions. Fan/grid layouts and more elaborate Shell drag images
+stay after feedback on this simpler list.
+
+Implementation finding: destination path strings cannot reliably detect aliases
+of live metadata/external files. Export therefore **never overwrites an existing
+file**, including an existing archive: default names include seconds and the final
+move is atomically no-overwrite. A regression failed under the old replace path,
+then passed with this rule; a local Linux directory-symlink reproduction also
+preserves shelf.json. Windows CI checks the no-overwrite/cancel path; no physical
+Windows junction claim is inferred from the Linux case.
+
+Research for this slice (2026-10-30, source inspected; reference only):
+
+| Reference | Evidence adopted | Boundary |
+| --- | --- | --- |
+| [Apple Dock folders](https://support.apple.com/guide/mac-help/mchl231f08fb/mac) | compact list/grid/fan choices, click-outside dismissal | retain ClipDrop hover; a fan uses more space, so defer it |
+| [Downloads Stack for Windows Tray](https://github.com/Vivoxti/Downloads-Stack-For-Windows-Tray/tree/bfb316ae348347821b943d4108e2396ff989bd74) | MainWindow.xaml/.cs state transitions, compact icon/name rows, outside clicks with same foreground, drag interaction hold; ShellService.cs original-file Shell transfer | MIT; no source/assets copied; keep ClipDrop copy-only contract rather than offer Move |
+| [DropStack](https://github.com/Blindside-Studios/DropStack/tree/9199a923ea6fddf58df31e971e742a9a777d63c4) | SimpleMode.xaml.cs light-dismiss and drag-completion close; Ctrl/Shift optional grouping, contextual actions | no repository license detected; inspected as behavior reference only |
+| [Stacky](https://github.com/pawelt/stacky/tree/d6b0df180512ecd7884b65fc0bbb66aba803c511) | small Windows icon-list approach and minimal chrome | Apache-2.0; README explicitly says unmaintained; no code imported |
+
+Original implementation uses existing themed surfaces/thumbnails and bounded
+refresh. It avoids per-row blur/shadow pipelines, new frameworks, recursive disk
+scans, permanent global observers or additional controls on the main dock.
+
 ## Future: optional Send to Figma integration
 
 Inspected [NasaatR/Send_to_Figma](https://github.com/NasaatR/Send_to_Figma/tree/2c10acf148d44d9493f03c6ab250606a448121a5)

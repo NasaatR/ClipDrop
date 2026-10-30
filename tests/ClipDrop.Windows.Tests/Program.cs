@@ -123,6 +123,7 @@ internal static class Program
             IndependentProbe.Run(window, dock, root, output, Check);
             DownloadsProbe.Run(window, dock, root, output, Check);
             DownloadsProbe.Chrome(window, dock, root, output, Check);
+            BackupProbe.Run(window, dock, root, output, Check);
             ImageStackProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MediaProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             Render(dock, Path.Combine(output, "dock-video.png"));

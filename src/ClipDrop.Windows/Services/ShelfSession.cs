@@ -301,6 +301,7 @@ public sealed partial class ShelfSession : IDisposable
     }
 
     public string Report() => Diagnostics.Report(State.Items.Count, StorageStatus);
+    public byte[] BackupSnapshot() => _store.CaptureSnapshot(State);
     public void ShowPanels(IReadOnlyList<ShelfItem>? clips = null) => PanelsRequested?.Invoke(clips);
     public void PanelAction(Action action, string message)
     {
