@@ -76,6 +76,21 @@ internal static class MultiMonitorProbe
             state.Settings.MirrorDocks = true; state.Settings.Docks.Single(l => l.DisplayId == b.Id).Enabled = true; session.Change(); UiProbe.Pump();
             check(coordinator.Views.Count == 2 && coordinator.Views.All(v => v.Pins.Items.Count == 1),
                 "Clip duplication shows the shared active set on both screens");
+            var movingCopy = coordinator.Views.Single(v => v.Assignment!.Display.Id == a.Id);
+            var retiredCopy = coordinator.Views.Single(v => v.Assignment!.Display.Id == b.Id);
+            var toggled = false;
+            var switchMode = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(15) };
+            switchMode.Tick += (_, _) => {
+                if (!movingCopy.IsMoving || toggled) return;
+                toggled = true; state.Settings.MirrorDocks = false; session.Change(); switchMode.Stop();
+            };
+            switchMode.Start();
+            try { UiProbe.DragFrom(UiProbe.Find<Border>(movingCopy, border => border.Name == "Body").PointToScreen(new Point(5, 5)), new Point(b.Left + 100, b.Top + 160)); }
+            finally { switchMode.Stop(); }
+            check(toggled && coordinator.Views.Count == 1 && ReferenceEquals(movingCopy, coordinator.Views.Single()) &&
+                !Application.Current.Windows.Cast<Window>().Contains(retiredCopy),
+                "Disabling clip mirroring during a crossing move retires the destination copy without orphaning a native window");
+            state.Settings.MirrorDocks = true; session.Change(); UiProbe.Pump();
             var folder = Path.Combine(root, "mirror-downloads"); Directory.CreateDirectory(folder);
             var file = Path.Combine(folder, "Shared download.png");
             File.WriteAllBytes(file, ImageFiles.Encode(System.Windows.Media.Imaging.BitmapSource.Create(1, 1, 96, 96, PixelFormats.Bgra32, null, new byte[] { 80, 120, 220, 255 }, 4)));
@@ -107,7 +122,9 @@ internal static class MultiMonitorProbe
             {
                 UiProbe.Hover(two.StackButton); two.DownloadList.UpdateLayout();
                 var transfer = UiProbe.Find<ListBoxItem>(two.DownloadList, r => r.DataContext is DownloadsWindow.Row item && item.File.Path == added);
+                Console.WriteLine($"MIRROR transfer before: compact={two.IsCompact}; visible={transfer.IsVisible}; row={transfer.PointToScreen(new Point(10, 10))}; destination={receiver.PointToScreen(new Point(100, 65))}; count={two.DownloadList.Items.Count}");
                 UiProbe.DragTo(transfer, receiver.PointToScreen(new Point(100, 65)));
+                Console.WriteLine($"MIRROR transfer after: received={received?.Length ?? -1}; matches={received?.Contains(added)}; trash={state.Trash.Count}; status={session.Status}; compact={two.IsCompact}");
                 check(received is { Length: 1 } && received[0] == added && state.Trash.Count == 0 && File.ReadAllText(added) == "original bytes",
                     "A direct native drag from the second Downloads copy exposes the original file and keeps the library and file intact");
             }
@@ -121,6 +138,23 @@ internal static class MultiMonitorProbe
                 "Reconnect never duplicates or unexpectedly reveals hidden Downloads copies");
             coordinator.ShowAll(); UiProbe.Pump();
             check(coordinator.DownloadsViews.All(v => v.IsVisible), "Show all restores every enabled linked Downloads copy");
+            var movingDownloads = coordinator.DownloadsViews.Single(v => v.Assignment!.Display.Id == a.Id);
+            var retiredDownloads = coordinator.DownloadsViews.Single(v => v.Assignment!.Display.Id == b.Id);
+            var switchedDownloads = false;
+            var switchDownloadsMode = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(15) };
+            switchDownloadsMode.Tick += (_, _) => {
+                if (!movingDownloads.IsMoving || switchedDownloads) return;
+                switchedDownloads = true; state.Settings.MirrorDownloads = false; session.Change(); switchDownloadsMode.Stop();
+            };
+            UiProbe.Hover(movingDownloads.StackButton);
+            var movingCapsule = (Border)movingDownloads.FindName("CapsuleShell");
+            switchDownloadsMode.Start();
+            try { UiProbe.DragFrom(movingCapsule.PointToScreen(new Point(3, movingCapsule.ActualHeight / 2)), new Point(b.Left + b.Width - 100, b.Top + b.Height - 40)); }
+            finally { switchDownloadsMode.Stop(); }
+            check(switchedDownloads && coordinator.DownloadsViews.Count == 1 && ReferenceEquals(movingDownloads, coordinator.DownloadsView) &&
+                !Application.Current.Windows.Cast<Window>().Contains(retiredDownloads),
+                "Disabling Downloads mirroring during a crossing move closes the displaced copy instead of leaving an orphan HWND");
+            state.Settings.MirrorDownloads = true; session.Change(); UiProbe.Pump();
             state.Settings.MirrorDownloads = false; session.Change(); UiProbe.Pump();
             check(coordinator.DownloadsViews.Count == 1 && coordinator.Views.Count == 2,
                 "Turning off Downloads duplication leaves clip duplication independent");
