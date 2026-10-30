@@ -164,7 +164,13 @@ public sealed class SettingsWindow : Window
         var connectChrome = new Button { Content = "Connect Chrome", HorizontalAlignment = HorizontalAlignment.Left };
         _section.Children.Add(connectChrome);
         connectChrome.Click += (_, _) => {
-            try { ChromeConnection.Connect(); settings.DownloadsSource = "Chrome"; Change(false); _notice.Text = "Chrome connection registered · follow the opened instructions, then Sync now in the companion"; }
+            try
+            {
+                ChromeConnection.Connect(); settings.DownloadsSource = "Chrome"; Change(false);
+                _sync = true;
+                try { foreach (var sync in _syncControls) sync(); } finally { _sync = false; }
+                _notice.Text = "Chrome connection registered · follow the opened instructions, then Sync now in the companion";
+            }
             catch (Exception ex) { _notice.Text = "Could not connect Chrome: " + ex.Message; }
         };
         Hint("Chrome companion: one-time Load unpacked in each Chrome profile. Finished downloads appear from any folder, even while ClipDrop is closed. No browsing-history, page or cookie access. The popup can pause sharing and clear that profile's list.");
