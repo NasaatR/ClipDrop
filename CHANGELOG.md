@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.15.0 — 2026-10-30
+
+- Compact Downloads: 34-DIP one-line rows, 24-DIP previews, short times and full
+  tooltip details; remove the checkbox column and persistent action footer.
+  Keep optional Ctrl/Shift groups, direct file drags and contextual actions.
+- Replace hidden click-to-latch with transient hover/click opening, prompt idle
+  collapse, immediate outside-click/after-transfer dismissal and a visible Close
+  action. Temporary observers dispose when compact/hidden; OLE/menu/move holds
+  preserve the operation. Main dock timing/preferences stay independent.
+- Stage 5a1 backup export: capture current metadata on the dispatcher, stream
+  referenced owned assets/raw clipboard blobs/style icons off-thread, verify the
+  full archive, then publish a new filename. Never overwrite any existing file;
+  this also prevents directory aliases from bypassing source protection.
+- Settings Backups exposes creation/progress/cancel. Missing/corrupt managed
+  assets fail honestly; external originals remain references. Restore preview
+  and conflict-safe import remain stage 5a2. Data schema remains7.
+
 ## 0.14.0 — 2026-10-30
 
 - Chrome downloads from all Save As folders through a local MV3 companion and

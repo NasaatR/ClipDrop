@@ -21,6 +21,9 @@ in FOUNDATION.md; those sections also document historical releases.
 | 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Delivered in 0.12 |
 | 4d · Images and clip stacks | WebP decoding, browser image source intake, center-stack/edge-insert gestures and recovery | Delivered in 0.13 |
 | 4e · Chrome downloads and consistent Keep | All save folders through an optional companion, direct row drag and target-owned protection | Delivered in 0.14 |
+| 4f · Compact Downloads | Dense one-line rows, contextual actions and reliable transient dismissal | Delivered in 0.15 |
+| 5a1 · Backup export | Current metadata and referenced payloads, streamed and verified to a fresh archive | Delivered in 0.15 |
+| 5a2 · Backup restore | Preview, conflict-safe import/merge and recovery boundaries | Next separate increment |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
 | 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.14 |
@@ -460,8 +463,8 @@ Research reviewed 2026-10-30 (references, no upstream application code copied):
 [MV3 example migration discussion](https://github.com/GoogleChrome/chrome-extensions-samples/issues/644).
 The full-database forensic readers are reference alternatives, not dependencies.
 
-Next remains **5a backup export/import** with restore preview, conflict-safe merge
-and retained opaque clipboard blobs, then **5b content versions**. Follow-up
+Stage 5a1 exports retained opaque clipboard blobs in 0.15. Next is **5a2 restore
+preview and conflict-safe import/merge**, then **5b content versions**. Follow-up
 Chrome image-send actions can reuse the installed host identity only after a
 separately versioned bounded image contract/permissions/IPC journey is implemented.
 Store distribution, progress UI, longer-history browsing, moved-file tracking and
@@ -538,6 +541,21 @@ Research for this slice (2026-10-30, source inspected; reference only):
 Original implementation uses existing themed surfaces/thumbnails and bounded
 refresh. It avoids per-row blur/shadow pipelines, new frameworks, recursive disk
 scans, permanent global observers or additional controls on the main dock.
+
+Native preflight confirmed compact rows without checkboxes, at least ten visible
+rows, original-file single/group/cancel transfers, contextual copy/save, immediate
+outside-click pass-through, repeated capsule open/close, menu holds and disposal.
+It also reproduced an asynchronous foreground notification closing a newly hovered
+flyout; the observer now checks current foreground and pointer both before queueing
+and before dismissal. Mouse outside-click intent still wins over a queued focus
+notification. The focused case passed after that fix.
+
+The backup native probe reproduced a direct STA call without an ambient UI
+SynchronizationContext. Export entry now schedules its async core through the
+view's Dispatcher so snapshot, progress and continuations all belong to the UI;
+file compression/hashing remain in Task.Run. Final full Windows/package/Chrome
+verification is the release gate. Local Core run passes151 checks (one actual
+symlink case is Linux-only; Windows runs150). Node companion tests pass7/7.
 
 ## Future: optional Send to Figma integration
 

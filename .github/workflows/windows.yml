@@ -26,7 +26,7 @@ jobs:
       - name: Core data and recovery checks
         run: dotnet run --project tests/ClipDrop.Core.Tests -c Release
       - name: Windows transfer, clipboard and WPF rendering checks
-        run: dotnet run --project tests/ClipDrop.Windows.Tests -c Release -- artifacts/qa --downloads-only
+        run: dotnet run --project tests/ClipDrop.Windows.Tests -c Release -- artifacts/qa
       - name: Build runnable package
         shell: pwsh
         run: ./scripts/package.ps1

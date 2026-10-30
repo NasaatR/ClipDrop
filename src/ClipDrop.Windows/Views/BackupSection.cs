@@ -32,13 +32,22 @@ public sealed class BackupSection : StackPanel, IDisposable
             if (picker.ShowDialog(Window.GetWindow(this)) == true) await ExportTo(picker.FileName);
         };
     }
-    public async Task<BackupSummary?> ExportTo(string destination)
+    public Task<BackupSummary?> ExportTo(string destination)
     {
-        if (_disposed || IsExporting) return null;
-        using var stop = new CancellationTokenSource(); _stop = stop;
+        Dispatcher.VerifyAccess();
+        if (_disposed || IsExporting) return Task.FromResult<BackupSummary?>(null);
+        var stop = new CancellationTokenSource(); _stop = stop;
         _create.IsEnabled = false; _cancel.Visibility = Visibility.Visible; _status.Text = "Preparing backup…";
+        // Enter through the dispatcher even for a direct API call from an STA
+        // thread without an ambient SynchronizationContext (including probes).
+        // Progress and await continuations then belong to this view's dispatcher.
+        return Dispatcher.InvokeAsync(() => ExportOnDispatcher(destination, stop)).Task.Unwrap();
+    }
+    private async Task<BackupSummary?> ExportOnDispatcher(string destination, CancellationTokenSource stop)
+    {
         try
         {
+            stop.Token.ThrowIfCancellationRequested();
             // Snapshot on the STA, stream and verify only immutable metadata/files
             // off-thread. Do not silently save a different on-disk revision first.
             var bytes = _snapshot();
@@ -59,6 +68,7 @@ public sealed class BackupSection : StackPanel, IDisposable
         {
             if (ReferenceEquals(_stop, stop)) _stop = null;
             if (!_disposed) { _create.IsEnabled = true; _cancel.Visibility = Visibility.Collapsed; }
+            stop.Dispose();
         }
     }
     public void Cancel() => _stop?.Cancel();

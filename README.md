@@ -27,14 +27,16 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.14.0
+## Features in 0.15.0
 
 - Bundled WebP previews/alpha, consistent image classification and background
   retrieval of an actual image URL supplied by an explicit browser drop.
 - Clip stacks: drop at the center to combine, drop at an edge to insert separately;
   open members, drag/copy together or split without deleting clips.
-- Downloads from Chrome across every save folder through a local companion;
-  drag any row directly, select groups optionally, or save references to Library.
+- Compact Downloads: single-line rows, more visible files, direct dragging,
+  optional Ctrl/Shift groups and predictable outside-click/after-transfer close.
+- Verified backup export of current clips, Trash, panels, raw clipboard payloads
+  and styles, streamed off-thread to a fresh archive.
 - Compact idle Save capsule with immediate hover/drop expansion and click-through
   empty space; existing transparency remains adjustable separately.
 - Independent named-set windows, scoped collection/order and closed-window restore
@@ -198,17 +200,25 @@ can separate it from its stack; moving the whole stack keeps its structure.
 
 Right-click Save/free dock space → **Downloads**, or use the tray's **Downloads**
 command. A separate capsule appears near the bottom-right of the selected screen.
-Hover to reveal recent files in a list sized to its content; click the capsule to
-keep it open while choosing (click again to resume hover mode).
-Drag its free edge/header to move it. It follows the dock palette, idle visibility
-and animation/collapse preferences. Blank collapsed space passes clicks through.
+Hover or click the capsule to reveal the recent files; it never latches the list
+open. The list closes promptly when the pointer leaves, immediately on an outside
+click, **Close**, or after a transfer/action. Menus, an actual drag and window
+movement hold it open. Downloads has its own transient behavior even if main-dock
+collapse is disabled. Its capsule remains available; blank space passes clicks
+through. Drag the free edge/header to move it.
 
-Drag any file row directly to another app: no preliminary click or selection is
-needed. Checkboxes or Ctrl/Shift are optional when selecting a group; drag a
-selected row or **Drag N** to transfer that group. Dragging an unselected row
-transfers only that row even when other files are selected. **Copy** keeps the
-native file clipboard format; **Save to Library** adds references without pinning.
-Originals remain in place. This view never applies clip-use Trash cleanup.
+Rows are **34 DIP**, with a 24-DIP preview, filename and short completion time.
+The normal-sized window fits at least ten rows; scroll to older files. Full path,
+size and timestamp are in the tooltip. There is no checkbox column or permanent
+bottom action bar. The list reuses unchanged rows and the shared thumbnail cache.
+
+Drag any file row directly to another app: no preliminary click or selection.
+For a group, click then Ctrl/Shift-click other rows and drag a selected row.
+Right-click the capsule → **Select all** also works without selection widgets.
+Dragging an unselected row transfers only that row. Double-click opens a file;
+right-click offers **Copy**, **Save to Library**, **Open** and **Show in Explorer**.
+Copy keeps native file clipboard formats, and Save adds Library references without
+pinning. Originals remain in place. Downloads never applies clip-use Trash cleanup.
 
 **Chrome · all save locations** is the default source. Connect once:
 
@@ -250,6 +260,24 @@ active writers. It cannot identify Chrome downloads saved elsewhere. Hover or
 **Refresh** retries unavailable files/folders. Closing the Downloads view stops
 its watchers; the separately enabled Chrome extension continues sharing locally.
 Position, source and global show/hide survive restart, independently of styles.
+
+## Backup export
+
+**Settings → Backups → Create backup** creates a `.clipdrop.zip` archive of the
+current UI snapshot, including unsaved metadata, clips, Trash, saved panels/windows,
+raw clipboard payloads, owned images/virtual files and current/saved-style PNGs.
+External originals remain path references: they are not copied into the archive.
+Disposable Chrome catalogs and unreferenced caches are excluded.
+
+Choose a new filename outside the data folder. Export never overwrites an existing
+file; default names include seconds. Streaming and checksum verification run in
+the background. **Cancel** or closing Settings abandons the temporary archive.
+Completion is reported only after the finished archive passes path, membership,
+length and SHA256 checks and is published. A failure keeps source data untouched.
+
+This stage provides export and verification. Restore preview and conflict-safe
+import/merge are the next separate increment. Format 1 supports up to 512 MiB per
+managed asset, 8 GiB total payload and 50,000 metadata/payload entries.
 
 ## Visibility and compact actions
 
@@ -314,7 +342,7 @@ Browser cookies are not reused. Bitmap-only sources may already have lost alpha.
 Internal Photoshop layers / Figma nodes are not kept as editable objects.
 Elevated apps, secure desktops and exclusive fullscreen have Windows restrictions.
 Automatic edge docking, clipboard history, content-version editing and backup
-import/export UI are not included. Shake can also trigger
+import UI are not included. Shake can also trigger
 during left-button text selection or window movement.
 
 PNG/bitmap/virtual imports and inline image output: 64 MB. Decoded images:
