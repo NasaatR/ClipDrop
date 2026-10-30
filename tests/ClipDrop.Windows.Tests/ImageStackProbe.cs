@@ -59,6 +59,8 @@ internal static class ImageStackProbe
         var fallback = new TransferService(fallbackAssets).BuildDrag(new[] { new ShelfItem { Kind = ItemKind.Image, OwnedAsset = true, FilePath = unsupported } });
         check(fallback.GetFileDropList().Cast<string>().Single() == unsupported && File.ReadAllBytes(unsupported).SequenceEqual(new byte[] { 1, 2, 3 }),
             "An undecodable owned image still transfers as its intact original file");
+        check(Await(ThumbnailCache.Shared.Get(unsupported)) is null,
+            "Invalid image preview data returns a bounded fallback instead of faulting the UI callback");
         using (var blocked = new HttpClient(new Handler()))
         {
             var refused = false; try { Await(new BrowserImageLoader(blocked).Load(new Uri("http://127.0.0.1/a.webp"), default)); } catch (HttpRequestException) { refused = true; }

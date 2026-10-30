@@ -46,7 +46,7 @@ public sealed class ThumbnailCache
                     using var input = File.OpenRead(path);
                     return ImageFiles.Load(ImageFiles.ReadStream(input), 160);
                 }
-                catch (Exception ex) when (ex is IOException or NotSupportedException or System.Runtime.InteropServices.COMException or ArgumentException or UnauthorizedAccessException)
+                catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or System.Runtime.InteropServices.COMException or ArgumentException or UnauthorizedAccessException)
                 { return null; }
             });
         }

@@ -51,12 +51,12 @@ public sealed class TransferService
                     return new List<ShelfItem> { CacheImage(bytes) };
                 }
             }
-            catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FormatException or System.Runtime.InteropServices.COMException) { }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or ArgumentException or FormatException or System.Runtime.InteropServices.COMException) { }
         }
         if (data.GetDataPresent(DataFormats.Bitmap))
         {
             try { if (data.GetData(DataFormats.Bitmap) is BitmapSource bitmap) return new() { CacheImage(ImageFiles.Encode(bitmap)) }; }
-            catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FormatException or System.Runtime.InteropServices.COMException) { }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or ArgumentException or FormatException or System.Runtime.InteropServices.COMException) { }
         }
 
         var sourceImage = BrowserImageData.Read(data);
