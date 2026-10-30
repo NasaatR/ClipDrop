@@ -33,6 +33,13 @@ public sealed partial class DockCoordinator
         foreach (var window in DownloadsViews) window.DisposeView();
         _downloadsViews.Clear();
     }
+    private static void FitDownloads(DownloadsWindow window, DisplayArea display)
+    {
+        var scale = WindowPlacement.Scale(window);
+        window.Height = Math.Max(1, Math.Min(508, display.Height / scale));
+        window.Width = Math.Max(1, Math.Min(344, display.Width / scale));
+        window.UpdateLayout();
+    }
     private void ReconcileDownloads()
     {
         var settings = _session.State.Settings;
@@ -75,8 +82,7 @@ public sealed partial class DockCoordinator
             // Prime the target HWND DPI before deriving DIP dimensions/default offsets.
             WindowPlacement.PlaceOnDisplay(window, display, layout);
             var scale = WindowPlacement.Scale(window);
-            window.Height = Math.Max(180, Math.Min(508, display.Height / scale));
-            window.Width = Math.Max(240, Math.Min(344, display.Width / scale));
+            FitDownloads(window, display);
             if (layout.OffsetX is null || layout.OffsetY is null)
             {
                 layout.OffsetX ??= Math.Max(0, display.Width / scale - window.Width - 16);
@@ -107,10 +113,13 @@ public sealed partial class DockCoordinator
         {
             layout = settings.DownloadsLayout; layout.DisplayId = display.Id;
             var key = _downloadsViews.First(p => ReferenceEquals(p.Value, window)).Key;
+            if (_downloadsViews.TryGetValue(display.Id, out var displaced) && !ReferenceEquals(displaced, window))
+            { _downloadsViews.Remove(display.Id); displaced.DisposeView(); }
             _downloadsViews.Remove(key); _downloadsViews[display.Id] = window;
         }
         var temporary = old.Temporary && ReferenceEquals(layout, old.Layout) && DockPlanning.Same(display.Id, old.Display.Id);
         window.Assignment = new(display, layout, temporary);
+        FitDownloads(window, display);
         WindowPlacement.ClampTo(window, display);
         var bounds = WindowPlacement.PixelBounds(window); var scale = WindowPlacement.Scale(window);
         layout.OffsetX = (bounds.Left - display.Left) / scale; layout.OffsetY = (bounds.Top - display.Top) / scale;
@@ -126,6 +135,6 @@ public sealed partial class DockCoordinator
             var record = settings.DownloadsLayouts.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, display.Id));
             if (record is not null) { record.OffsetX = layout.OffsetX; record.OffsetY = layout.OffsetY; record.Visible = layout.Visible; }
         }
-        _layoutSignature = LayoutSignature(); _session.Change(false); DisplaysChanged?.Invoke();
+        _layoutSignature = LayoutSignature(); _session.Change(false); RecordMove(window, "Downloads"); DisplaysChanged?.Invoke();
     }
 }

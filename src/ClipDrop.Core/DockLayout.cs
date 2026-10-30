@@ -35,11 +35,16 @@ public static class DockPlanning
         if (settings.HomeDisplayId.Length == 0) settings.HomeDisplayId = primary.Id;
         foreach (var display in displays)
             if (settings.Docks.All(d => !Same(d.DisplayId, display.Id)) && settings.Docks.Count < 64)
-                settings.Docks.Add(new DockLayout { DisplayId = display.Id, Enabled = settings.MirrorDocks || Same(display.Id, settings.HomeDisplayId) });
-        var result = displays.Select(d => new DockAssignment(d, settings.Docks.FirstOrDefault(l => Same(l.DisplayId, d.Id)) ?? new DockLayout { DisplayId = d.Id }))
+                settings.Docks.Add(new DockLayout { DisplayId = display.Id, Enabled = true,
+                    Visible = settings.Docks.Count == 0 || settings.Docks.Any(l => l.Visible) });
+        var visible = settings.Docks.FirstOrDefault(l => Same(l.DisplayId, settings.HomeDisplayId))?.Visible ?? settings.Docks.Any(l => l.Visible);
+        var result = displays.Select(d => {
+                var layout = settings.Docks.FirstOrDefault(l => Same(l.DisplayId, d.Id));
+                return new DockAssignment(d, layout ?? new DockLayout { DisplayId = d.Id, Enabled = true, Visible = visible }, layout is null);
+            })
             .Where(a => settings.MirrorDocks ? a.Layout.Enabled || Same(a.Display.Id, settings.HomeDisplayId) : Same(a.Display.Id, settings.HomeDisplayId)).ToArray();
         // A temporary fallback never overwrites the missing monitor's offsets/visibility.
-        return result.Length > 0 ? result : new[] { new DockAssignment(primary, new DockLayout { DisplayId = primary.Id }, true) };
+        return result.Length > 0 ? result : new[] { new DockAssignment(primary, new DockLayout { DisplayId = primary.Id, Visible = visible }, true) };
     }
     public static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     public static IReadOnlyList<DockAssignment> Downloads(ShelfSettings settings, IReadOnlyList<DisplayArea> displays)
@@ -59,9 +64,10 @@ public static class DockPlanning
                 settings.DownloadsLayouts.Add(new DockLayout { DisplayId = display.Id, Enabled = true, Visible = home.Visible,
                     OffsetX = Same(display.Id, home.DisplayId) ? home.OffsetX : null,
                     OffsetY = Same(display.Id, home.DisplayId) ? home.OffsetY : null });
-        return displays.Select(d => new DockAssignment(d,
-            settings.DownloadsLayouts.FirstOrDefault(l => Same(l.DisplayId, d.Id)) ??
-                new DockLayout { DisplayId = d.Id, Visible = home.Visible })).ToArray();
+        return displays.Select(d => {
+            var layout = settings.DownloadsLayouts.FirstOrDefault(l => Same(l.DisplayId, d.Id));
+            return new DockAssignment(d, layout ?? new DockLayout { DisplayId = d.Id, Visible = home.Visible }, layout is null);
+        }).ToArray();
     }
     // Match the native largest-intersection rule; ties retain the current screen.
     // For a gap/off-screen rectangle, choose the nearest work area rather than

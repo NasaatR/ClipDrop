@@ -38,9 +38,6 @@ public sealed class MonitorSettings : StackPanel, IDisposable
             System.Windows.Automation.AutomationProperties.SetName(mode, "Clip panel mode"); Children.Add(mode);
             mode.SelectionChanged += (_, _) => {
                 _settings.MirrorDocks = mode.SelectedIndex == 1;
-                if (_settings.MirrorDocks)
-                    foreach (var layout in _settings.Docks.Where(l => displays.Any(d => DockPlanning.Same(d.Id, l.DisplayId))))
-                    { layout.Enabled = true; layout.Visible = true; }
                 Commit();
             };
             Children.Add(new TextBlock { Text = "Main panel on", Margin = new Thickness(0, 8, 0, 4) });

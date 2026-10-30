@@ -105,5 +105,16 @@ internal static class LayoutChecks
         var enabledNew = new ShelfSettings { MirrorDocks = true, HomeDisplayId = a.Id };
         check(DockPlanning.Plan(enabledNew, new[] { a, right }).Count == 2,
             "A newly attached monitor joins enabled clip mirroring without another hidden opt-in");
+        var hidden = new ShelfSettings { HomeDisplayId = b.Id, Docks = new() { new() { DisplayId = b.Id, Visible = false } } };
+        check(!DockPlanning.Plan(hidden, new[] { a }).Single().Layout.Visible,
+            "A hidden single panel stays hidden when restarted without its saved home screen");
+        var full = new ShelfSettings { HomeDisplayId = a.Id };
+        full.Docks.AddRange(Enumerable.Range(0, 64).Select(i => new DockLayout { DisplayId = "offline-" + i, Visible = false }));
+        var overflow = DockPlanning.Plan(full, new[] { a, b });
+        check(overflow.Single().Temporary && !overflow.Single().Layout.Visible && full.Docks.Count == 64,
+            "An unrecorded screen at the layout limit uses a hidden temporary assignment without losing saved records");
+        full.DownloadsLayouts.AddRange(full.Docks.Select(l => new DockLayout { DisplayId = l.DisplayId }));
+        check(DockPlanning.Downloads(full, new[] { a, b }).All(l => l.Temporary) && full.DownloadsLayouts.Count == 64,
+            "Overflow Downloads views are explicitly temporary so refresh can retain their live positions");
     }
 }

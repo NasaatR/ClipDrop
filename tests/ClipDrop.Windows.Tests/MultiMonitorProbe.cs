@@ -161,11 +161,16 @@ internal static class MultiMonitorProbe
             var singleStack = coordinator.DownloadsView!;
             var from = singleStack.Assignment!.Display;
             var to = from.Id == a.Id ? b : a;
+            var shortTarget = to with { Top = to.Top + 100, Height = 260 * WindowPlacement.Scale(singleStack) };
+            source.Current = new[] { from, shortTarget }; coordinator.RefreshDisplays();
             UiProbe.Hover(singleStack.StackButton);
             var capsule = (Border)singleStack.FindName("CapsuleShell");
-            UiProbe.DragFrom(capsule.PointToScreen(new Point(3, capsule.ActualHeight / 2)), new Point(to.Left + to.Width - 110, to.Top + to.Height - 30));
+            UiProbe.DragFrom(capsule.PointToScreen(new Point(3, capsule.ActualHeight / 2)), new Point(shortTarget.Left + shortTarget.Width - 110, shortTarget.Top + shortTarget.Height - 30));
             check(state.Settings.DownloadsLayout.DisplayId == to.Id && ReferenceEquals(singleStack, coordinator.DownloadsView),
                 "Single Downloads still moves across screens using the same HWND");
+            check(WindowPlacement.PixelBounds(singleStack).Bottom <= shortTarget.Top + shortTarget.Height + 1 && singleStack.Height <= 260,
+                "Moving single Downloads to a shorter work area resizes the window so its bottom capsule remains reachable");
+            source.Current = new[] { a, b }; coordinator.RefreshDisplays(); UiProbe.Pump();
             state.Settings.MirrorDocks = false; session.Change();
             check(coordinator.Views.Count == 1 && coordinator.DownloadsViews.Count == 1,
                 "Both surfaces can independently use one movable window");
@@ -189,6 +194,32 @@ internal static class MultiMonitorProbe
             coordinator.CloseDownloads(); check(coordinator.DownloadsViews.Count == 0, "Closing Downloads disposes every linked window");
             state.Settings.MirrorDownloads = true; coordinator.OpenDownloads(); coordinator.CloseDownloads();
             check(coordinator.DownloadsViews.Count == 0, "Repeated enabling/closing does not retain hidden Downloads windows");
+            state.Settings.MirrorDocks = false; state.Settings.HomeDisplayId = a.Id;
+            state.Settings.Docks.Clear(); state.Settings.Docks.Add(new DockLayout { DisplayId = a.Id, Enabled = true });
+            state.Settings.Docks.AddRange(Enumerable.Range(0, 63).Select(i => new DockLayout { DisplayId = "kept-offline-" + i }));
+            session.Change(); UiProbe.Pump();
+            var overflowDock = coordinator.Views.Single();
+            UiProbe.DragFrom(UiProbe.Find<Border>(overflowDock, border => border.Name == "Body").PointToScreen(new Point(5, 5)), new Point(b.Left + 70, b.Top + 120));
+            var liveOffset = overflowDock.Assignment!.Layout.OffsetX;
+            coordinator.RefreshDisplays(); UiProbe.Pump();
+            check(overflowDock.Assignment.Temporary && state.Settings.HomeDisplayId == b.Id &&
+                ReferenceEquals(overflowDock, coordinator.Views.Single()) && overflowDock.Assignment.Layout.OffsetX == liveOffset && state.Settings.Docks.Count == 64,
+                "At 64 retained layouts an unrecorded destination stays movable with a stable temporary anchor and no erased records");
+            state.Settings.DownloadsLayouts.Clear();
+            state.Settings.DownloadsLayouts.AddRange(Enumerable.Range(0, 64).Select(i => new DockLayout { DisplayId = "kept-downloads-" + i }));
+            state.Settings.MirrorDownloads = true; coordinator.OpenDownloads(); UiProbe.Pump();
+            var overflowDownloads = coordinator.DownloadsViews.Single(v => v.Assignment!.Display.Id == b.Id);
+            UiProbe.Hover(overflowDownloads.StackButton);
+            var edge = (Border)overflowDownloads.FindName("CapsuleShell");
+            UiProbe.DragFrom(edge.PointToScreen(new Point(3, edge.ActualHeight / 2)), new Point(b.Left + b.Width - 80, b.Top + b.Height - 90));
+            var liveDownloadsOffset = overflowDownloads.Assignment!.Layout.OffsetY;
+            coordinator.RefreshDisplays(); UiProbe.Pump();
+            check(overflowDownloads.Assignment.Temporary && overflowDownloads.Assignment.Layout.OffsetY == liveDownloadsOffset && state.Settings.DownloadsLayouts.Count == 64,
+                "Temporary Downloads positions survive refresh at the metadata limit without erasing older display records");
+            check(session.Report().Contains("Display move") && session.Report().Contains("scale=") &&
+                !session.Report().Contains("Shared multi-monitor clip") && !session.Report().Contains(file),
+                "Copyable diagnostics include bounded move geometry and DPI without clip contents or download paths");
+            coordinator.CloseDownloads();
         }
         finally { library.Hide(); oldDock.ShowDock(); oldLibrary.ShowShelf(); }
     }

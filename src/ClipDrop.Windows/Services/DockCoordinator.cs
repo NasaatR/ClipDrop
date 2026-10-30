@@ -149,7 +149,14 @@ public sealed partial class DockCoordinator : IDisposable
         view.RefreshDock(); view.UpdateLayout();
         if (view.Assignment is { } assignment) WindowPlacement.ClampTo(view, assignment.Display);
         CaptureGeometry(view); _layoutSignature = LayoutSignature(); _session.Change(false);
+        RecordMove(view, view.PanelId is null ? "Clip panel" : "Saved panel");
         DisplaysChanged?.Invoke();
+    }
+    private void RecordMove(System.Windows.Window window, string kind)
+    {
+        var r = WindowPlacement.PixelBounds(window); var scale = WindowPlacement.Scale(window);
+        _session.Diagnostics.Note("Display move", FormattableString.Invariant(
+            $"{kind}; screens={Displays.Count}; bounds={r.Left:0},{r.Top:0},{r.Width:0},{r.Height:0}; scale={scale:0.##}; clipCopies={_session.State.Settings.MirrorDocks}; downloadsCopies={_session.State.Settings.MirrorDownloads}"));
     }
     private DisplayArea? MovedDisplay(System.Windows.Window view, string previous)
     {
@@ -162,13 +169,17 @@ public sealed partial class DockCoordinator : IDisposable
         var display = MovedDisplay(view, old.Display.Id);
         if (display is null || DockPlanning.Same(display.Id, old.Display.Id)) return;
         var settings = _session.State.Settings;
-        var layout = settings.Docks.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, display.Id));
-        if (layout is null) return; // Bounded persistent records; never overwrite a disconnected one.
+        var record = settings.Docks.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, display.Id));
+        var layout = record ?? new DockLayout { DisplayId = display.Id };
         var key = _views.FirstOrDefault(p => ReferenceEquals(p.Value, view)).Key;
         if (key is null) return;
+        if (_views.TryGetValue(display.Id, out var displaced) && !ReferenceEquals(displaced, view))
+        {
+            _views.Remove(display.Id); _library.DetachDock(displaced); displaced.DisposeView();
+        }
         _views.Remove(key); _views[display.Id] = view;
         settings.HomeDisplayId = display.Id; layout.Enabled = true; layout.Visible = view.IsVisible;
-        view.Assignment = new DockAssignment(display, layout);
+        view.Assignment = new DockAssignment(display, layout, record is null);
     }
     private void SaveVisibility(DockWindow view)
     {
