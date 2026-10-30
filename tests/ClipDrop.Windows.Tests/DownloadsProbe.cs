@@ -71,6 +71,7 @@ internal static class DownloadsProbe
             {
                 var destination = receiver.PointToScreen(new Point(110, 70));
                 var direct = Row(stack, a);
+                check(!stack.IsCompact && direct.IsVisible, "A foreground change cannot dismiss Downloads after the pointer enters its capsule");
                 Console.WriteLine($"DOWNLOADS before: compact={stack.IsCompact}, rowVisible={direct.IsVisible}, rowHeight={direct.ActualHeight}, selected={stack.DownloadList.SelectedItems.Count}, observer={stack.HasDismissObserver}");
                 UiProbe.DragTo(direct, destination);
                 Console.WriteLine($"DOWNLOADS after: received={received?.Length ?? -1}, expected={received?.Contains(a)}, selected={stack.DownloadList.SelectedItems.Count}, compact={stack.IsCompact}, observer={stack.HasDismissObserver}, status={session.Status}");
