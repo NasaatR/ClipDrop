@@ -605,3 +605,59 @@ or Figma document write is included in the current UX release.
 - Clipboard history: explicit enable/pause, sensible limits and exclusion policy;
   no silent monitoring introduced by a design or multi-monitor update.
 - macOS, ARM64, signing/updater and cloud sync are separate platform/product work.
+
+
+## 0.16 stabilization plan: movable docks and linked Downloads
+
+User priority: freely move the single clip dock between screens; independently
+choose clip mirroring and Downloads mirroring. Downloads defaults to all attached
+displays, clips retain the existing single-dock default. Existing explicit choices
+and disconnected display positions must survive restart. One session/catalog,
+copy-only OLE and original files remain unchanged.
+
+Root cause found in source: main-dock SaveGeometry clamps to its old assignment
+without retargeting; queued SizeChanged placement can also project the old layout
+while the pointer is moving. Downloads already retargets on release. Positioning
+must be suspended during capture/movement, then committed against the destination.
+
+Approach: retain the native WPF views/coordinator; add a per-screen Downloads view
+map over one shared feed, plus bounded per-screen layout records. Do not make a
+second app/store/watcher or poll the desktop. One movable mode retargets the same
+HWND. Mirrored mode keeps one copy per selected screen and moves each copy within
+its own work area; switch to one movable mode for cross-screen relocation. Named
+independent panel windows remain separately movable and are not multiplied.
+
+- [ ] Reproduce the old single-dock snap-back with real mouse input and two
+  non-overlapping logical work areas on the Windows runner. Prove the regression
+  fails before the fix; separately test Core defaults and migration.
+- [ ] Use native screen cursor coordinates for background dragging; suppress and
+  coalesce size-driven placement during gestures, commit the destination/offset
+  once on release. Preserve physical coordinates/negative origins, clamp only
+  after the gesture, and retain the same HWND in single mode. Defer topology
+  reconciliation during a live move and flush it afterward.
+- [ ] Add MirrorDownloads=true and bounded DownloadsLayouts records, retaining
+  legacy DownloadsLayout as the single-mode anchor. Preserve explicit false/0,
+  missing-screen records, visibility and original metadata. Keep schema 7 because
+  these are additive settings; backup export includes them through its snapshot.
+- [ ] One shared DownloadsFeed, one view per connected screen in mirror mode;
+  independent position/visibility and selection, all views disposed on disable,
+  global hide/show includes every copy. No repeat reveal on unrelated changes.
+- [ ] Settings → Screens: separate clip and Downloads mode choices, optional clip
+  display selection, readable screen pickers/map, reset both sets of positions.
+  Settings → Downloads links the mirror choice to the same persistent setting.
+- [ ] Native checks: direct A→B→A move, width change mid-drag, named-window move,
+  mirror on/off, shared file update/direct transfer, hide/show, disconnect/reconnect,
+  repeated refresh/dispose, explicit false and saved layouts after restart.
+- [ ] Run full Core/Node/native Windows, published host/real Chrome/install checks;
+  inspect screen-settings captures and deliver a fresh version. Physical mixed-DPI
+  monitors/sleep remain a user-hardware check, not inferred from logical areas.
+
+Next: finish stage 3b hardware feedback before 5a2 backup restore preview and
+conflict-safe import. Do not combine backup import with this monitor stabilization.
+
+API references checked for this fix: [WM_DPICHANGED](https://learn.microsoft.com/en-us/windows/win32/hidpi/wm-dpichanged)
+(window scaling/position changes on monitor transitions),
+[GetCursorPos](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getcursorpos)
+(screen coordinates), and [MonitorFromWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-monitorfromwindow)
+(largest intersection and nearest fallback). WPF retains its DPI-message handling;
+ClipDrop must not undo it with an old display assignment during a drag.

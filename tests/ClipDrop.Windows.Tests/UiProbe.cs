@@ -102,6 +102,10 @@ internal static class UiProbe
     public static void DragTo(FrameworkElement source, Point destination, bool cancel = false)
     {
         var start = source.PointToScreen(new Point(source.ActualWidth / 2, source.ActualHeight / 2));
+        DragFrom(start, destination, cancel);
+    }
+    public static void DragFrom(Point start, Point destination, bool cancel = false)
+    {
         Exception? error = null; var done = false;
         var worker = new Thread(() => {
             try
