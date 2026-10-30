@@ -46,6 +46,7 @@ public sealed partial class DockCoordinator
                 view.OpenPanelsRequested = clips => { _library.AttachDock(created!); _session.ShowPanels(clips); };
                 view.OpenDownloadsRequested = OpenDownloads;
                 view.GeometryCommitted += SaveGeometry;
+                view.MoveCompleted += () => CompleteMove(created!);
                 view.IsVisibleChanged += (_, _) => SaveVisibility(created);
                 view.SizeChanged += (_, _) => QueuePlacement(created);
                 if (assignment.Layout.OffsetX is null && assignment.Layout.OffsetY is null)
@@ -69,9 +70,7 @@ public sealed partial class DockCoordinator
     private void RetargetWindowAfterMove(DockWindow view)
     {
         if (view.PanelId is not string id || view.Assignment is not { } old) return;
-        var bounds = WindowPlacement.PixelBounds(view); var center = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
-        bool Contains(DisplayArea d) => new Rect(d.Left, d.Top, d.Width, d.Height).Contains(center);
-        var display = Displays.FirstOrDefault(d => d.Id == old.Display.Id && Contains(d)) ?? Displays.FirstOrDefault(Contains);
+        var display = MovedDisplay(view, old.Display.Id);
         if (display is null || DockPlanning.Same(display.Id, old.Display.Id)) return;
         var layout = _session.State.Panels.Single(p => p.Id == id).Window!.Layout;
         layout.DisplayId = display.Id;

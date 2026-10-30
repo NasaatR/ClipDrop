@@ -4,9 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Threading;
+using System.Windows.Media;
+using System.Windows.Input;
 using ClipDrop.Core;
 using ClipDrop.Windows;
 using ClipDrop.Windows.Services;
+using ClipDrop.Windows.Views;
 
 internal static class MultiMonitorProbe
 {
@@ -19,7 +24,7 @@ internal static class MultiMonitorProbe
     public static void Run(MainWindow oldLibrary, DockWindow oldDock, string root, string output, Action<bool, string> check)
     {
         oldLibrary.Hide(); oldDock.HideDock();
-        var pixels = WindowPlacement.PixelBounds(oldDock); var scale = WindowPlacement.Scale(oldDock);
+        var scale = WindowPlacement.Scale(oldDock);
         var area = WindowPlacement.WorkArea(oldDock);
         // Two non-overlapping logical work areas inside the runner's real display.
         // This reproduces retarget/clamp behavior with real HWNDs and input, not hardware DPI.
@@ -44,6 +49,112 @@ internal static class MultiMonitorProbe
             check(state.Settings.HomeDisplayId == b.Id && ReferenceEquals(dock, coordinator.Views.Single()) &&
                 dock.Assignment!.Display.Id == b.Id && WindowPlacement.PixelBounds(dock).Left >= b.Left,
                 "Dragging the single main dock across a display boundary retargets the same HWND instead of snapping back");
+            var resized = false;
+            var duringMove = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(15) };
+            duringMove.Tick += (_, _) => {
+                if (!dock.IsMoving || resized) return;
+                resized = true; state.Settings.DockButtonSize = 48; session.Change(); coordinator.RefreshDisplays(); duringMove.Stop();
+            };
+            duringMove.Start();
+            try { UiProbe.DragFrom(free.PointToScreen(new Point(5, 5)), new Point(a.Left + 100, a.Top + 120)); }
+            finally { duringMove.Stop(); }
+            check(resized && state.Settings.HomeDisplayId == a.Id && ReferenceEquals(dock, coordinator.Views.Single()) && !dock.IsMoving &&
+                WindowPlacement.PixelBounds(dock).Right <= a.Left + a.Width + 1,
+                "Size/topology reconciliation during a real drag waits for release and retains the new screen and same HWND");
+            var expectedX = dock.Assignment!.Layout.OffsetX;
+            coordinator.RefreshDisplays(); coordinator.RefreshDisplays(); UiProbe.Pump();
+            check(dock.Assignment.Layout.OffsetX == expectedX && ReferenceEquals(dock, coordinator.Views.Single()),
+                "Repeated display refresh preserves the moved dock anchor without replacing its HWND");
+            var originalPanel = state.ActivePanelId;
+            var named = PanelSets.Create(state, "Movable references", new[] { state.Items[0].Id });
+            PanelSets.Activate(state, originalPanel); session.Change(); coordinator.OpenPanelWindow(named.Id); UiProbe.Pump();
+            var independent = coordinator.IndependentViews.Single();
+            UiProbe.DragFrom(UiProbe.Find<Border>(independent, border => border.Name == "Body").PointToScreen(new Point(5, 5)), new Point(b.Left + 80, b.Top + 200));
+            check(named.Window!.Layout.DisplayId == b.Id && state.Settings.HomeDisplayId == a.Id && ReferenceEquals(independent, coordinator.IndependentViews.Single()),
+                "Independent panel movement retargets only its own saved screen and keeps the main panel in place");
+            coordinator.ClosePanelWindow(named.Id);
+            state.Settings.MirrorDocks = true; state.Settings.Docks.Single(l => l.DisplayId == b.Id).Enabled = true; session.Change(); UiProbe.Pump();
+            check(coordinator.Views.Count == 2 && coordinator.Views.All(v => v.Pins.Items.Count == 1),
+                "Clip duplication shows the shared active set on both screens");
+            var folder = Path.Combine(root, "mirror-downloads"); Directory.CreateDirectory(folder);
+            var file = Path.Combine(folder, "Shared download.png");
+            File.WriteAllBytes(file, ImageFiles.Encode(System.Windows.Media.Imaging.BitmapSource.Create(1, 1, 96, 96, PixelFormats.Bgra32, null, new byte[] { 80, 120, 220, 255 }, 4)));
+            state.Settings.DownloadsSource = "Folder"; state.Settings.DownloadsFolder = folder;
+            coordinator.OpenDownloads();
+            check(UiProbe.Until(() => coordinator.DownloadsViews.Count == 2 && coordinator.DownloadsViews.All(v => v.DownloadList.Items.Count == 1), 6000),
+                "Downloads defaults to one linked populated window per connected display");
+            var copies = coordinator.DownloadsViews.ToArray();
+            check(copies.All(v => v.IsVisible) && copies.Select(v => v.Assignment!.Display.Id).Distinct().Count() == 2 &&
+                copies.All(v => v.DownloadList.Items.Cast<DownloadsWindow.Row>().Single().File.Path == file),
+                "Mirrored Downloads show the same original file with separate display assignments");
+            var added = Path.Combine(folder, "Another ready file.fig"); File.WriteAllText(added, "original bytes");
+            check(UiProbe.Until(() => copies.All(v => v.DownloadList.Items.Count == 2), 6000),
+                "One file catalog update refreshes every linked Downloads view");
+            var one = copies.Single(v => v.Assignment!.Display.Id == a.Id);
+            var two = copies.Single(v => v.Assignment!.Display.Id == b.Id);
+            UiProbe.Hover(one.StackButton); one.DownloadList.UpdateLayout();
+            var row = UiProbe.Find<ListBoxItem>(one.DownloadList, r => r.DataContext is DownloadsWindow.Row item && item.File.Path == added);
+            UiProbe.Click(row, ModifierKeys.Control);
+            check(one.DownloadList.SelectedItems.Count == 1 && two.DownloadList.SelectedItems.Count == 0,
+                "Downloads selection is local to each copy rather than leaking between screens");
+            var receiver = new Border { Background = Brushes.SteelBlue, AllowDrop = true };
+            string[]? received = null;
+            receiver.DragOver += (_, e) => { e.Effects = DragDropEffects.Copy; e.Handled = true; };
+            receiver.Drop += (_, e) => { received = e.Data.GetData(DataFormats.FileDrop) as string[]; e.Effects = DragDropEffects.Copy; e.Handled = true; };
+            var target = new Window { Content = receiver, Width = 220, Height = 130, Left = 20, Top = 40, ShowInTaskbar = false };
+            target.Show();
+            try
+            {
+                UiProbe.Hover(two.StackButton); two.DownloadList.UpdateLayout();
+                var transfer = UiProbe.Find<ListBoxItem>(two.DownloadList, r => r.DataContext is DownloadsWindow.Row item && item.File.Path == added);
+                UiProbe.DragTo(transfer, receiver.PointToScreen(new Point(100, 65)));
+                check(received is { Length: 1 } && received[0] == added && state.Trash.Count == 0 && File.ReadAllText(added) == "original bytes",
+                    "A direct native drag from the second Downloads copy exposes the original file and keeps the library and file intact");
+            }
+            finally { target.Close(); }
+            coordinator.HideAll(); check(coordinator.DownloadsViews.All(v => !v.IsVisible), "Hide all includes every Downloads copy");
+            source.Current = new[] { a }; coordinator.RefreshDisplays();
+            check(coordinator.DownloadsViews.Count == 1 && !coordinator.DownloadsViews.Single().IsVisible && state.Settings.DownloadsLayouts.Count == 2,
+                "Disconnect removes only the unavailable Downloads HWND and keeps its hidden layout");
+            source.Current = new[] { b, a }; coordinator.RefreshDisplays(); coordinator.RefreshDisplays();
+            check(coordinator.DownloadsViews.Count == 2 && coordinator.DownloadsViews.All(v => !v.IsVisible),
+                "Reconnect never duplicates or unexpectedly reveals hidden Downloads copies");
+            coordinator.ShowAll(); UiProbe.Pump();
+            check(coordinator.DownloadsViews.All(v => v.IsVisible), "Show all restores every enabled linked Downloads copy");
+            state.Settings.MirrorDownloads = false; session.Change(); UiProbe.Pump();
+            check(coordinator.DownloadsViews.Count == 1 && coordinator.Views.Count == 2,
+                "Turning off Downloads duplication leaves clip duplication independent");
+            var singleStack = coordinator.DownloadsView!;
+            var from = singleStack.Assignment!.Display;
+            var to = from.Id == a.Id ? b : a;
+            UiProbe.Hover(singleStack.StackButton);
+            var capsule = (Border)singleStack.FindName("CapsuleShell");
+            UiProbe.DragFrom(capsule.PointToScreen(new Point(3, capsule.ActualHeight / 2)), new Point(to.Left + to.Width - 110, to.Top + to.Height - 30));
+            check(state.Settings.DownloadsLayout.DisplayId == to.Id && ReferenceEquals(singleStack, coordinator.DownloadsView),
+                "Single Downloads still moves across screens using the same HWND");
+            state.Settings.MirrorDocks = false; session.Change();
+            check(coordinator.Views.Count == 1 && coordinator.DownloadsViews.Count == 1,
+                "Both surfaces can independently use one movable window");
+            var settingsWindow = new SettingsWindow(state.Settings, () => session.Change(), session.TrySave, session.Report, session.Root, coordinator);
+            settingsWindow.Show(); UiProbe.Pump();
+            var screens = UiProbe.Find<MonitorSettings>(settingsWindow, _ => true); screens.BringIntoView(); UiProbe.Pump();
+            var mode = UiProbe.Find<ComboBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Clip panel mode");
+            mode.SelectedIndex = 1; UiProbe.Pump();
+            check(coordinator.Views.Count == 2 && state.Settings.MirrorDocks, "The real Screens mode picker enables clip copies immediately");
+            var mirrorDownloads = UiProbe.Find<CheckBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Duplicate Downloads on every display");
+            UiProbe.Click(mirrorDownloads); UiProbe.Pump();
+            check(state.Settings.MirrorDownloads && coordinator.DownloadsViews.Count == 2,
+                "The real Screens checkbox independently enables Downloads copies immediately");
+            UiProbe.CaptureWindow(settingsWindow, Path.Combine(output, "settings-multiple-screens.png"));
+            settingsWindow.Close();
+            state.Settings.MirrorDownloads = false; session.Change();
+            session.TrySave(); var saved = new StateStore(store.Root).Load();
+            check(!saved.Settings.MirrorDownloads && saved.Settings.MirrorDocks && saved.Settings.DownloadsLayouts.Count == 2 &&
+                saved.Settings.DownloadsLayout.DisplayId == to.Id && saved.Settings.Docks.Count == 2,
+                "Restart retains independent mirror choices, the moved Downloads home and both screens' layouts");
+            coordinator.CloseDownloads(); check(coordinator.DownloadsViews.Count == 0, "Closing Downloads disposes every linked window");
+            state.Settings.MirrorDownloads = true; coordinator.OpenDownloads(); coordinator.CloseDownloads();
+            check(coordinator.DownloadsViews.Count == 0, "Repeated enabling/closing does not retain hidden Downloads windows");
         }
         finally { library.Hide(); oldDock.ShowDock(); oldLibrary.ShowShelf(); }
     }

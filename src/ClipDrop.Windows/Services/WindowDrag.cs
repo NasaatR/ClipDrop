@@ -17,7 +17,8 @@ public sealed class WindowDrag
     private readonly Action _started;
     private readonly Action _completed;
     private Point? _start;
-    private Point _position;
+    private Point _grab;
+    private double _startScale;
     public bool IsMoving { get; private set; }
     public WindowDrag(Window window, Action started, Action completed)
     {
@@ -40,8 +41,10 @@ public sealed class WindowDrag
     private void Down(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left || e.ClickCount != 1 || !CanStart(e.OriginalSource as DependencyObject)) return;
-        _start = _window.PointToScreen(e.GetPosition(_window));
-        _position = WindowPlacement.PixelBounds(_window).Location;
+        if (!WindowPlacement.TryCursorPoint(out var cursor)) return;
+        _start = cursor; _startScale = WindowPlacement.Scale(_window);
+        var bounds = WindowPlacement.PixelBounds(_window);
+        _grab = new Point((cursor.X - bounds.Left) / _startScale, (cursor.Y - bounds.Top) / _startScale);
         if (!_window.CaptureMouse()) _start = null;
         else e.Handled = true;
     }
@@ -49,14 +52,20 @@ public sealed class WindowDrag
     {
         if (_start is not Point start) return;
         if (e.LeftButton != MouseButtonState.Pressed) { Finish(); return; }
-        var current = _window.PointToScreen(e.GetPosition(_window));
+        if (!WindowPlacement.TryCursorPoint(out var current)) return;
         var delta = current - start;
         if (!IsMoving)
         {
-            if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+            if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance * _startScale && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance * _startScale) return;
             IsMoving = true; _started();
         }
-        WindowPlacement.MovePixels(_window, _position.X + delta.X, _position.Y + delta.Y);
+        var scale = WindowPlacement.Scale(_window);
+        WindowPlacement.MovePixels(_window, current.X - _grab.X * scale, current.Y - _grab.Y * scale);
+        // SetWindowPos can synchronously change WPF's DPI/size at a boundary.
+        // Keep the same DIP grab point under the physical pointer after that change.
+        var nextScale = WindowPlacement.Scale(_window);
+        if (nextScale != scale)
+            WindowPlacement.MovePixels(_window, current.X - _grab.X * nextScale, current.Y - _grab.Y * nextScale);
         e.Handled = true;
     }
     private void Finish()

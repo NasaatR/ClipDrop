@@ -154,6 +154,11 @@ public sealed class StateStore
             state.Settings.SavedStyles.Any(s => s is null || !Guid.TryParse(s.Id, out _) || string.IsNullOrWhiteSpace(s.Name) || s.Name.Length > 40 || s.Style is null) ||
             state.Settings.SavedStyles.Select(s => s.Id).Distinct().Count() != state.Settings.SavedStyles.Count)
             throw new InvalidDataException("Invalid saved styles.");
+        if (state.Settings.DownloadsLayouts is null || state.Settings.DownloadsLayouts.Count > 64 ||
+            state.Settings.DownloadsLayouts.Any(d => d is null || string.IsNullOrWhiteSpace(d.DisplayId) || d.DisplayId.Length > 1024 ||
+                d.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) || d.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000)) ||
+            state.Settings.DownloadsLayouts.Select(d => d.DisplayId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != state.Settings.DownloadsLayouts.Count)
+            throw new InvalidDataException("Invalid downloads display layouts.");
         if (state.Settings.Docks is null || state.Settings.Docks.Count > 64 || state.Settings.HomeDisplayId is null ||
             state.Settings.Docks.Any(d => d is null || string.IsNullOrWhiteSpace(d.DisplayId) || d.DisplayId.Length > 1024 ||
                 d.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) || d.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000)) ||

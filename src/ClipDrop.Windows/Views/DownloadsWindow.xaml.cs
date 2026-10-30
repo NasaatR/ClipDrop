@@ -45,6 +45,8 @@ public partial class DownloadsWindow : Window
     public Button StackButton => Capsule;
     public string SummaryText => Summary.Text;
     public bool IsCompact { get; private set; }
+    public bool IsMoving => _moving;
+    public event Action? MoveCompleted;
     public bool HasDismissObserver => _outside?.IsObserving == true;
     public DockAssignment? Assignment { get; set; }
     public event Action? GeometryCommitted;
@@ -61,7 +63,10 @@ public partial class DownloadsWindow : Window
         }, transient: true);
         PopupDismiss.Attach(ContextMenu, this); ContextMenuOpening += (_, _) => Menu();
         SourceInitialized += (_, _) => NativePastePlatform.MakeNonActivating(this);
-        _ = new WindowDrag(this, () => { _moving = true; Presence(); }, () => { _moving = false; Presence(); GeometryCommitted?.Invoke(); });
+        _ = new WindowDrag(this, () => { _moving = true; Presence(); }, () => {
+            try { GeometryCommitted?.Invoke(); }
+            finally { _moving = false; Presence(); MoveCompleted?.Invoke(); }
+        });
         MouseEnter += (_, _) => _feed.RequestRefresh();
         IsVisibleChanged += (_, _) => WatchDismiss();
         LostMouseCapture += (_, _) => { if (!_busy && _origin.HasValue && _source?.IsMouseCaptured != true) ClearGesture(); };

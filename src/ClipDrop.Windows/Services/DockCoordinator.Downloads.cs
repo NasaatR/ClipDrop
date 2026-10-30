@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Windows;
 using ClipDrop.Core;
 using ClipDrop.Windows.Views;
 
@@ -9,79 +9,123 @@ namespace ClipDrop.Windows.Services;
 public sealed partial class DockCoordinator
 {
     private DownloadsFeed? _downloadsFeed;
-    public DownloadsWindow? DownloadsView { get; private set; }
+    private readonly Dictionary<string, DownloadsWindow> _downloadsViews = new(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyCollection<DownloadsWindow> DownloadsViews => _downloadsViews.Values.ToArray();
+    public DownloadsWindow? DownloadsView => _downloadsViews.GetValueOrDefault(_session.State.Settings.DownloadsLayout.DisplayId) ?? _downloadsViews.Values.FirstOrDefault();
     private string DownloadsSignature()
     {
         var s = _session.State.Settings; var l = s.DownloadsLayout;
-        return $"|downloads:{s.DownloadsEnabled}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}";
+        return $"|downloads:{s.DownloadsEnabled}:{s.MirrorDownloads}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}|" +
+            string.Join(";", s.DownloadsLayouts.Select(d => $"{d.DisplayId}:{d.Visible}:{d.OffsetX}:{d.OffsetY}"));
     }
     public void OpenDownloads()
     {
         var settings = _session.State.Settings;
         settings.DownloadsEnabled = true; settings.DownloadsLayout.Visible = true;
-        _session.Change(); DownloadsView?.ShowStack();
+        foreach (var layout in settings.DownloadsLayouts) layout.Visible = true;
+        _session.Change();
+        foreach (var view in DownloadsViews) view.ShowStack();
     }
     public void CloseDownloads()
     { _session.State.Settings.DownloadsEnabled = false; _session.Change(); }
+    private void DisposeDownloadsViews()
+    {
+        foreach (var window in DownloadsViews) window.DisposeView();
+        _downloadsViews.Clear();
+    }
     private void ReconcileDownloads()
     {
         var settings = _session.State.Settings;
         if (!settings.DownloadsEnabled || Displays.Count == 0)
         {
-            DownloadsView?.DisposeView(); DownloadsView = null;
-            _downloadsFeed?.Dispose(); _downloadsFeed = null; return;
+            DisposeDownloadsViews(); _downloadsFeed?.Dispose(); _downloadsFeed = null; return;
         }
         var chrome = settings.EffectiveDownloadsSource == "Chrome";
         var folder = chrome ? ChromeConnection.CatalogFolder : settings.DownloadsFolder.Length > 0 ? settings.DownloadsFolder : DownloadsFeed.DefaultFolder();
-        if (_downloadsFeed is null || _downloadsFeed.Folder != folder || _downloadsFeed.IsChrome != chrome)
+        if (_downloadsFeed is null || !string.Equals(_downloadsFeed.Folder, folder, StringComparison.OrdinalIgnoreCase) || _downloadsFeed.IsChrome != chrome)
         {
-            DownloadsView?.DisposeView(); DownloadsView = null; _downloadsFeed?.Dispose();
+            DisposeDownloadsViews(); _downloadsFeed?.Dispose();
             _downloadsFeed = new DownloadsFeed(folder, _library.Dispatcher, chrome);
         }
-        var layout = settings.DownloadsLayout;
-        if (layout.DisplayId.Length == 0) { layout.DisplayId = Target()?.Assignment?.Display.Id ?? Displays[0].Id; _session.Change(false); }
-        var display = Displays.FirstOrDefault(d => DockPlanning.Same(d.Id, layout.DisplayId));
-        var temporary = display is null;
-        display ??= Displays.FirstOrDefault(d => d.Primary) ?? Displays[0];
-        var assigned = temporary ? new DockLayout { DisplayId = display.Id, Visible = layout.Visible } : layout;
-        if (DownloadsView is null)
+        var home = settings.DownloadsLayout;
+        var changed = false;
+        if (home.DisplayId.Length == 0)
+        { home.DisplayId = Target()?.Assignment?.Display.Id ?? Displays[0].Id; changed = true; }
+        var records = settings.DownloadsLayouts.Count;
+        var plan = DockPlanning.Downloads(settings, Displays);
+        changed |= records != settings.DownloadsLayouts.Count;
+        var wanted = plan.Select(a => a.Display.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in _downloadsViews.Keys.Where(id => !wanted.Contains(id)).ToArray())
+        { var old = _downloadsViews[id]; _downloadsViews.Remove(id); old.DisposeView(); }
+        foreach (var assignment in plan)
         {
-            var view = new DownloadsWindow(_session, _downloadsFeed!, _library.OpenSettings, CloseDownloads);
-            DownloadsView = view;
-            view.GeometryCommitted += () => SaveDownloadsGeometry(view);
+            if (!_downloadsViews.TryGetValue(assignment.Display.Id, out var window))
+            {
+                window = new DownloadsWindow(_session, _downloadsFeed, _library.OpenSettings, CloseDownloads);
+                _downloadsViews.Add(assignment.Display.Id, window);
+                var captured = window;
+                window.GeometryCommitted += () => SaveDownloadsGeometry(captured);
+                window.MoveCompleted += () => CompleteMove();
+                window.IsVisibleChanged += (_, _) => SaveDownloadsVisibility(captured);
+            }
+            else if (assignment.Temporary && window.Assignment is { Temporary: true } old)
+            { assignment.Layout.OffsetX = old.Layout.OffsetX; assignment.Layout.OffsetY = old.Layout.OffsetY; assignment.Layout.Visible = old.Layout.Visible; }
+            window.Assignment = assignment;
+            var display = assignment.Display; var layout = assignment.Layout;
+            // Prime the target HWND DPI before deriving DIP dimensions/default offsets.
+            WindowPlacement.PlaceOnDisplay(window, display, layout);
+            var scale = WindowPlacement.Scale(window);
+            window.Height = Math.Max(180, Math.Min(508, display.Height / scale));
+            window.Width = Math.Max(240, Math.Min(344, display.Width / scale));
+            if (layout.OffsetX is null || layout.OffsetY is null)
+            {
+                layout.OffsetX ??= Math.Max(0, display.Width / scale - window.Width - 16);
+                layout.OffsetY ??= Math.Max(0, display.Height / scale - window.Height - 16);
+                changed |= !assignment.Temporary;
+            }
+            if (_startHidden) { home.Visible = layout.Visible = false; changed = true; }
+            WindowPlacement.PlaceOnDisplay(window, display, layout);
+            if (!_startHidden && layout.Visible) { if (!window.IsVisible) window.ShowStack(); }
+            else if (window.IsVisible) window.HideStack();
+            WindowPlacement.PlaceOnDisplay(window, display, layout);
         }
-        else if (temporary && DownloadsView.Assignment is { Temporary: true } old)
-        { assigned.OffsetX = old.Layout.OffsetX; assigned.OffsetY = old.Layout.OffsetY; }
-        var window = DownloadsView;
-        window.Assignment = new(display, assigned, temporary);
-        window.Height = Math.Max(180, Math.Min(508, display.Height / WindowPlacement.Scale(window)));
-        window.Width = Math.Max(240, Math.Min(344, display.Width / WindowPlacement.Scale(window)));
-        if (assigned.OffsetX is null || assigned.OffsetY is null)
-        {
-            assigned.OffsetX = Math.Max(0, display.Width / WindowPlacement.Scale(window) - window.Width - 16);
-            assigned.OffsetY = Math.Max(0, display.Height / WindowPlacement.Scale(window) - window.Height - 16);
-            if (!temporary) _session.Change(false);
-        }
-        WindowPlacement.PlaceOnDisplay(window, display, assigned);
-        if (_startHidden) { layout.Visible = assigned.Visible = false; }
-        if (!_startHidden && layout.Visible) window.ShowStack(); else window.HideStack();
-        WindowPlacement.PlaceOnDisplay(window, display, assigned);
+        if (changed) _session.Change(false);
+    }
+    private void SaveDownloadsVisibility(DownloadsWindow window)
+    {
+        if (_sync || _disposed || window.Assignment is not { } a) return;
+        a.Layout.Visible = window.IsVisible;
+        _layoutSignature = LayoutSignature(); _session.Change(false);
     }
     private void SaveDownloadsGeometry(DownloadsWindow window)
     {
         if (_sync || _disposed || window.Assignment is not { } old) return;
-        var bounds = WindowPlacement.PixelBounds(window);
-        var center = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
-        var display = Displays.FirstOrDefault(d => new Rect(d.Left, d.Top, d.Width, d.Height).Contains(center)) ?? old.Display;
-        var layout = _session.State.Settings.DownloadsLayout;
-        // Moving a fallback on the same remaining screen preserves the missing
-        // screen record; explicitly crossing to another screen retargets it.
-        if (old.Temporary && DockPlanning.Same(display.Id, old.Display.Id)) layout = old.Layout;
-        else layout.DisplayId = display.Id;
-        window.Assignment = new(display, layout, ReferenceEquals(layout, old.Layout) && old.Temporary);
-        WindowPlacement.ClampTo(window, display); bounds = WindowPlacement.PixelBounds(window);
-        var scale = WindowPlacement.Scale(window);
+        var settings = _session.State.Settings;
+        var display = settings.MirrorDownloads ? old.Display : MovedDisplay(window, old.Display.Id) ?? old.Display;
+        var layout = old.Layout;
+        if (!settings.MirrorDownloads && !(old.Temporary && DockPlanning.Same(display.Id, old.Display.Id)))
+        {
+            layout = settings.DownloadsLayout; layout.DisplayId = display.Id;
+            var key = _downloadsViews.First(p => ReferenceEquals(p.Value, window)).Key;
+            _downloadsViews.Remove(key); _downloadsViews[display.Id] = window;
+        }
+        var temporary = old.Temporary && ReferenceEquals(layout, old.Layout) && DockPlanning.Same(display.Id, old.Display.Id);
+        window.Assignment = new(display, layout, temporary);
+        WindowPlacement.ClampTo(window, display);
+        var bounds = WindowPlacement.PixelBounds(window); var scale = WindowPlacement.Scale(window);
         layout.OffsetX = (bounds.Left - display.Left) / scale; layout.OffsetY = (bounds.Top - display.Top) / scale;
-        _session.Change(false); _layoutSignature = LayoutSignature();
+        if (settings.MirrorDownloads)
+        {
+            // Turning mirroring off keeps the last moved copy as the single stack.
+            var home = settings.DownloadsLayout;
+            home.DisplayId = display.Id; home.OffsetX = layout.OffsetX; home.OffsetY = layout.OffsetY; home.Visible = layout.Visible;
+        }
+        else if (!temporary)
+        {
+            // Keep the corresponding mirror position current when moving in single mode.
+            var record = settings.DownloadsLayouts.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, display.Id));
+            if (record is not null) { record.OffsetX = layout.OffsetX; record.OffsetY = layout.OffsetY; record.Visible = layout.Visible; }
+        }
+        _layoutSignature = LayoutSignature(); _session.Change(false); DisplaysChanged?.Invoke();
     }
 }

@@ -21,6 +21,8 @@ public partial class DockWindow : Window
     public Action<IReadOnlyList<ShelfItem>>? OpenPanelsRequested { get; set; }
     public Action? OpenDownloadsRequested { get; set; }
     public event Action<DockWindow>? GeometryCommitted;
+    public bool IsMoving => _moving;
+    public event Action? MoveCompleted;
     private readonly bool _managed;
     private readonly DockPresence _presence;
     private bool _transferring, _dropHover, _moving;
@@ -64,9 +66,12 @@ public partial class DockWindow : Window
         Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
         Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove; Strip.PinMenu += OnPinMenu;
         _ = new WindowDrag(this, () => { _feedback.IsOpen = false; _moving = true; UpdatePresence(); }, () => {
-            _moving = false; UpdatePresence();
-            if (_managed) GeometryCommitted?.Invoke(this);
-            else { Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false); }
+            try
+            {
+                if (_managed) GeometryCommitted?.Invoke(this);
+                else { Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false); }
+            }
+            finally { _moving = false; UpdatePresence(); MoveCompleted?.Invoke(); }
         });
         PreviewMouseLeftButtonDown += (_, e) => {
             if (e.ClickCount != 2 || !WindowDrag.CanStart(e.OriginalSource as DependencyObject)) return;
@@ -80,7 +85,7 @@ public partial class DockWindow : Window
             else { var area = WindowPlacement.WorkArea(this); Left = area.Left + (area.Width - ActualWidth) / 2; Top = area.Bottom - ActualHeight - 24; }
             WindowPlacement.Clamp(this);
         };
-        SizeChanged += (_, _) => { if (IsLoaded && !_managed) WindowPlacement.Clamp(this); };
+        SizeChanged += (_, _) => { if (IsLoaded && !_managed && !_moving) WindowPlacement.Clamp(this); };
         Closing += (_, e) => {
             if (_disposing || Dispatcher.HasShutdownStarted || (Application.Current as App)?.IsQuitting == true) return;
             e.Cancel = true;

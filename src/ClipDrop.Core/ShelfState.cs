@@ -74,6 +74,8 @@ public sealed class ShelfSettings : AppearanceStyle
     [System.Text.Json.Serialization.JsonIgnore]
     public string EffectiveDownloadsSource => DownloadsSource == "Auto" ? (DownloadsFolder.Length > 0 ? "Folder" : "Chrome") : DownloadsSource;
     public DockLayout DownloadsLayout { get; set; } = new();
+    public bool MirrorDownloads { get; set; } = true;
+    public List<DockLayout> DownloadsLayouts { get; set; } = new();
     public bool MirrorDocks { get; set; }
     public string HomeDisplayId { get; set; } = "";
     public List<DockLayout> Docks { get; set; } = new();

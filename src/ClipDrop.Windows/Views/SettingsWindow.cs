@@ -159,6 +159,7 @@ public sealed class SettingsWindow : Window
         }
         Section("Downloads");
         Check("Downloads stack", () => settings.DownloadsEnabled, value => settings.DownloadsEnabled = value, false);
+        Hint("Downloads appears on every attached display by default. Change duplication independently in Settings → Screens; turn it off for one movable Downloads window.");
         Hint("Hover the Downloads capsule, then drag any file row directly to another app. Use Ctrl/Shift to select a group; right-click for Copy, Save to Library or Show in Explorer. Original files stay in place.");
         Choice("Source", () => settings.EffectiveDownloadsSource, new[] { "Chrome", "Folder" }, new[] { "Chrome · all save locations", "One watched folder" }, value => settings.DownloadsSource = value, false);
         var connectChrome = new Button { Content = "Connect Chrome", HorizontalAlignment = HorizontalAlignment.Left };

@@ -11,9 +11,13 @@ public static class WindowPlacement
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out NativeRect rect);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool GetCursorPos(out NativePoint point);
+    [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X, Y; }
     [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left, Top, Right, Bottom; }
     private static IntPtr Handle(Window window) => new WindowInteropHelper(window).EnsureHandle();
     public static double Scale(Window window) { var dpi = GetDpiForWindow(Handle(window)); return dpi == 0 ? 1 : dpi / 96d; }
+    public static bool TryCursorPoint(out Point point)
+    { var ok = GetCursorPos(out var native); point = new Point(native.X, native.Y); return ok; }
     public static Rect PixelBounds(Window window)
     {
         if (!GetWindowRect(Handle(window), out var r)) return new Rect(0, 0, Math.Max(1, window.ActualWidth), Math.Max(1, window.ActualHeight));

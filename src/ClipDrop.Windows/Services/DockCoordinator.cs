@@ -16,6 +16,8 @@ public sealed partial class DockCoordinator : IDisposable
     private readonly Dictionary<string, DockWindow> _views = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _displayChange = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private bool _sync, _disposed, _startHidden;
+    private bool _reconcilePending, _reloadPending;
+    private readonly HashSet<DockWindow> _placementQueued = new();
     private string _layoutSignature = "";
     private string LayoutSignature() => _session.State.Settings.HomeDisplayId + "|" + _session.State.Settings.MirrorDocks + "|" + string.Join(";", _session.State.Settings.Docks.Select(d => $"{d.DisplayId}:{d.Enabled}:{d.Visible}:{d.OffsetX}:{d.OffsetY}")) + WindowSignature() + DownloadsSignature();
     public IReadOnlyCollection<DockWindow> Views => _views.Values.Concat(_panelViews.Values).ToArray();
@@ -41,6 +43,8 @@ public sealed partial class DockCoordinator : IDisposable
     public void Reconcile(bool reloadDisplays = true)
     {
         if (_disposed || _sync) return;
+        if (Views.Any(v => v.IsMoving) || DownloadsViews.Any(v => v.IsMoving))
+        { _reconcilePending = true; _reloadPending |= reloadDisplays; return; }
         _sync = true;
         try
         {
@@ -75,6 +79,7 @@ public sealed partial class DockCoordinator : IDisposable
                     view.OpenPanelsRequested = clips => { _library.AttachDock(created!); _session.ShowPanels(clips); };
                     view.OpenDownloadsRequested = OpenDownloads;
                     view.GeometryCommitted += SaveGeometry;
+                    view.MoveCompleted += () => CompleteMove(created!);
                     view.IsVisibleChanged += (_, _) => SaveVisibility(created);
                     view.SizeChanged += (_, _) => QueuePlacement(created);
                     view.Assignment = assignment;
@@ -103,11 +108,23 @@ public sealed partial class DockCoordinator : IDisposable
     }
     private void QueuePlacement(DockWindow view)
     {
-        if (_sync || _disposed) return;
-        view.Dispatcher.BeginInvoke(() => { if (!_disposed && Views.Contains(view)) Place(view); }, DispatcherPriority.Loaded);
+        if (_sync || _disposed || view.IsMoving || !_placementQueued.Add(view)) return;
+        view.Dispatcher.BeginInvoke(() => {
+            _placementQueued.Remove(view);
+            if (!_disposed && !view.IsMoving && Views.Contains(view)) Place(view);
+        }, DispatcherPriority.Loaded);
+    }
+    private void CompleteMove(DockWindow? view = null)
+    {
+        if (_disposed) return;
+        if (view is not null) QueuePlacement(view);
+        if (!_reconcilePending) return;
+        var reload = _reloadPending; _reconcilePending = _reloadPending = false;
+        Reconcile(reload); DisplaysChanged?.Invoke();
     }
     private void Place(DockWindow view)
     {
+        if (view.IsMoving) return;
         if (view.Assignment is { } assignment)
         {
             WindowPlacement.PlaceOnDisplay(view, assignment.Display, assignment.Layout);
@@ -128,8 +145,30 @@ public sealed partial class DockCoordinator : IDisposable
     {
         if (_sync || _disposed) return;
         if (view.PanelId is not null) RetargetWindowAfterMove(view);
+        else RetargetMainAfterMove(view);
+        view.RefreshDock(); view.UpdateLayout();
         if (view.Assignment is { } assignment) WindowPlacement.ClampTo(view, assignment.Display);
-        CaptureGeometry(view); _session.Change(false); _layoutSignature = LayoutSignature();
+        CaptureGeometry(view); _layoutSignature = LayoutSignature(); _session.Change(false);
+        DisplaysChanged?.Invoke();
+    }
+    private DisplayArea? MovedDisplay(System.Windows.Window view, string previous)
+    {
+        var r = WindowPlacement.PixelBounds(view);
+        return DockPlanning.DisplayForBounds(Displays, previous, r.Left, r.Top, r.Width, r.Height);
+    }
+    private void RetargetMainAfterMove(DockWindow view)
+    {
+        if (_session.State.Settings.MirrorDocks || view.Assignment is not { } old) return;
+        var display = MovedDisplay(view, old.Display.Id);
+        if (display is null || DockPlanning.Same(display.Id, old.Display.Id)) return;
+        var settings = _session.State.Settings;
+        var layout = settings.Docks.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, display.Id));
+        if (layout is null) return; // Bounded persistent records; never overwrite a disconnected one.
+        var key = _views.FirstOrDefault(p => ReferenceEquals(p.Value, view)).Key;
+        if (key is null) return;
+        _views.Remove(key); _views[display.Id] = view;
+        settings.HomeDisplayId = display.Id; layout.Enabled = true; layout.Visible = view.IsVisible;
+        view.Assignment = new DockAssignment(display, layout);
     }
     private void SaveVisibility(DockWindow view)
     {
@@ -150,7 +189,7 @@ public sealed partial class DockCoordinator : IDisposable
     public void ShowTarget() => Target()?.ShowDock();
     public void ShowLibrary() { var view = Target(); if (view is not null) ShowLibrary(view); else _library.ShowShelf(); }
     public void ShowLibrary(DockWindow view) { _library.AttachDock(view); _library.ShowShelf(); }
-    public void ToggleAll() { if (Views.Any(v => v.IsShown) || DownloadsView?.IsVisible == true) HideAll(); else ShowAll(); }
+    public void ToggleAll() { if (Views.Any(v => v.IsShown) || DownloadsViews.Any(v => v.IsVisible)) HideAll(); else ShowAll(); }
     public void ShowAll() => SetAllVisibility(true);
     public void HideAll() => SetAllVisibility(false);
     private void SetAllVisibility(bool visible)
@@ -160,7 +199,8 @@ public sealed partial class DockCoordinator : IDisposable
         foreach (var panel in _session.State.Panels.Where(p => p.Window?.IsOpen == true)) panel.Window!.Layout.Visible = visible;
         foreach (var view in Views) { if (visible) view.ShowDock(); else view.HideDock(); }
         _session.State.Settings.DownloadsLayout.Visible = visible;
-        if (DownloadsView is { } downloads) { if (visible) downloads.ShowStack(); else downloads.HideStack(); }
+        foreach (var layout in _session.State.Settings.DownloadsLayouts) layout.Visible = visible;
+        foreach (var downloads in DownloadsViews) { if (visible) downloads.ShowStack(); else downloads.HideStack(); }
         _session.Change(false); _layoutSignature = LayoutSignature();
     }
     public void Dispose()
@@ -168,7 +208,7 @@ public sealed partial class DockCoordinator : IDisposable
         if (_disposed) return; _disposed = true;
         _displayChange.Stop(); SystemEvents.DisplaySettingsChanged -= OnDisplayChange; SystemEvents.PowerModeChanged -= OnPowerChange;
         _session.Changed -= OnSessionChange;
-        DownloadsView?.DisposeView(); DownloadsView = null; _downloadsFeed?.Dispose(); _downloadsFeed = null;
+        DisposeDownloadsViews(); _downloadsFeed?.Dispose(); _downloadsFeed = null;
         foreach (var view in Views) { _library.DetachDock(view); view.DisposeView(); }
         _views.Clear(); _panelViews.Clear();
     }

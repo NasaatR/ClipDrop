@@ -33,7 +33,17 @@ public sealed class MonitorSettings : StackPanel, IDisposable
                 Canvas.SetLeft(box, (display.Left - minX) * scale); Canvas.SetTop(box, (display.Top - minY) * scale); map.Children.Add(box);
             }
             Children.Add(map);
-            Children.Add(new TextBlock { Text = "Main dock on", Margin = new Thickness(0, 0, 0, 4) });
+            Children.Add(new TextBlock { Text = "Clip panel", Margin = new Thickness(0, 0, 0, 4) });
+            var mode = new ComboBox { ItemsSource = new[] { "One movable panel", "Duplicate on selected displays" }, SelectedIndex = _settings.MirrorDocks ? 1 : 0, MinHeight = 32 };
+            System.Windows.Automation.AutomationProperties.SetName(mode, "Clip panel mode"); Children.Add(mode);
+            mode.SelectionChanged += (_, _) => {
+                _settings.MirrorDocks = mode.SelectedIndex == 1;
+                if (_settings.MirrorDocks)
+                    foreach (var layout in _settings.Docks.Where(l => displays.Any(d => DockPlanning.Same(d.Id, l.DisplayId))))
+                    { layout.Enabled = true; layout.Visible = true; }
+                Commit();
+            };
+            Children.Add(new TextBlock { Text = "Main panel on", Margin = new Thickness(0, 8, 0, 4) });
             var home = new ComboBox { ItemsSource = displays, DisplayMemberPath = nameof(DisplayArea.Label), SelectedItem = displays.FirstOrDefault(d => DockPlanning.Same(d.Id, _settings.HomeDisplayId)), MinHeight = 32 };
             System.Windows.Automation.AutomationProperties.SetName(home, "Main dock display"); Children.Add(home);
             home.SelectionChanged += (_, _) => {
@@ -42,22 +52,39 @@ public sealed class MonitorSettings : StackPanel, IDisposable
                 var record = _settings.Docks.FirstOrDefault(d => DockPlanning.Same(d.DisplayId, selected.Id)); if (record is not null) { record.Enabled = true; record.Visible = true; }
                 Commit();
             };
-            var mirror = new CheckBox { Content = "Duplicate dock on selected displays (preview)", IsChecked = _settings.MirrorDocks, Margin = new Thickness(0, 10, 0, 6) };
-            System.Windows.Automation.AutomationProperties.SetName(mirror, "Duplicate dock on selected displays"); Children.Add(mirror);
-            mirror.Click += (_, _) => { _settings.MirrorDocks = mirror.IsChecked == true; Commit(); };
-            foreach (var display in displays)
+            foreach (var display in displays.Where(_ => _settings.MirrorDocks))
             {
                 var record = _settings.Docks.FirstOrDefault(d => DockPlanning.Same(d.DisplayId, display.Id)); if (record is null) continue;
                 var isHome = DockPlanning.Same(display.Id, _settings.HomeDisplayId);
                 var check = new CheckBox { Content = display.Label + $" · {display.Width:N0} × {display.Height:N0}", IsChecked = isHome || record.Enabled, IsEnabled = _settings.MirrorDocks && !isHome, Margin = new Thickness(0, 4, 0, 4) };
                 Children.Add(check); check.Click += (_, _) => { record.Enabled = check.IsChecked == true; if (record.Enabled) record.Visible = true; Commit(); };
             }
+            var downloads = new CheckBox { Content = "Downloads on every display", IsChecked = _settings.MirrorDownloads, Margin = new Thickness(0, 14, 0, 6) };
+            System.Windows.Automation.AutomationProperties.SetName(downloads, "Duplicate Downloads on every display"); Children.Add(downloads);
+            downloads.Click += (_, _) => { _settings.MirrorDownloads = downloads.IsChecked == true; Commit(); };
+            if (!_settings.MirrorDownloads)
+            {
+                Children.Add(new TextBlock { Text = "Downloads on", Margin = new Thickness(0, 4, 0, 4) });
+                var location = new ComboBox { ItemsSource = displays, DisplayMemberPath = nameof(DisplayArea.Label),
+                    SelectedItem = displays.FirstOrDefault(d => DockPlanning.Same(d.Id, _settings.DownloadsLayout.DisplayId)), MinHeight = 32 };
+                System.Windows.Automation.AutomationProperties.SetName(location, "Downloads display"); Children.Add(location);
+                location.SelectionChanged += (_, _) => {
+                    if (location.SelectedItem is not DisplayArea selected) return;
+                    var record = _settings.DownloadsLayouts.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, selected.Id));
+                    var single = _settings.DownloadsLayout;
+                    single.DisplayId = selected.Id; single.OffsetX = record?.OffsetX; single.OffsetY = record?.OffsetY; single.Visible = true;
+                    Commit();
+                };
+            }
         }
         var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 4) }; Children.Add(actions);
         void ActionButton(string label, Action action) { var button = new Button { Content = label }; button.Click += (_, _) => action(); actions.Children.Add(button); }
         ActionButton("Show all", _docks.ShowAll); ActionButton("Hide all", _docks.HideAll); ActionButton("Refresh displays", _docks.RefreshDisplays);
-        ActionButton("Reset positions", () => { foreach (var layout in _settings.Docks) { layout.OffsetX = null; layout.OffsetY = null; } Commit(); });
-        var hint = new TextBlock { Text = "Shared clips · separate positions and visibility. Ctrl+Alt+Space uses the active app's display. To move a dock to another screen, change Main dock on. Disconnected display layouts are kept.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 5, 0, 0) };
+        ActionButton("Reset positions", () => {
+            foreach (var layout in _settings.Docks.Concat(_settings.DownloadsLayouts).Append(_settings.DownloadsLayout)) { layout.OffsetX = null; layout.OffsetY = null; }
+            Commit();
+        });
+        var hint = new TextBlock { Text = "Drag free space to move a single panel between screens. Duplicated panels share content and keep separate positions on their screens. Downloads duplication is independent and on by default. Ctrl+Alt+Space uses the active app's screen. Disconnected layouts are kept.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 5, 0, 0) };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(hint);
         var offline = _settings.Docks.Count(d => !displays.Any(s => DockPlanning.Same(s.Id, d.DisplayId)));
         if (offline > 0) Children.Add(new TextBlock { Text = $"{offline} disconnected display layout(s) kept", FontSize = 11, Margin = new Thickness(0, 5, 0, 0) });
