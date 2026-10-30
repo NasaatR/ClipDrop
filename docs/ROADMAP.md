@@ -15,7 +15,7 @@ in FOUNDATION.md; those sections also document historical releases.
 | 3e · Responsiveness | Stable Library rows, bounded background file checks, background autosave, fitted icons | Delivered in 0.9 |
 | 3f · Collect and transfer | Save-only dock, contextual commands, direct Library intake, checkbox selection and group drag | Delivered in 0.10 |
 | 3g · Compact idle state | Save capsule, immediate hover/drop expansion, click-through empty area and preview | Delivered in 0.11 |
-| 3b · Hardware feedback | Physical dual-monitor scaling, sleep/reconnect, user feedback | Next stabilization slice |
+| 3b · Monitor stabilization | Movable single dock, independent Downloads copies, native gesture/topology checks | Delivered in 0.16; physical mixed-DPI/sleep gate remains open |
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
 | 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | Delivered in 0.11 |
 | 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Delivered in 0.12 |
@@ -479,37 +479,37 @@ backup import/merge remains a separate 5a2 step.
 
 ### Task 1: compact transient Downloads
 
-- [ ] `DownloadsWindow.xaml/.cs`: 34 DIP one-line rows, 24 DIP thumbnails, full
+- [x] `DownloadsWindow.xaml/.cs`: 34 DIP one-line rows, 24 DIP thumbnails, full
   path/size/time on tooltip, no checkbox column or persistent action bar. Keep
   direct single/group copy-only drags; Ctrl/Shift and contextual Select all choose
   groups. Show source setup in empty/error state and keep actions contextual.
-- [ ] `DockPresence` transient mode + `FlyoutDismiss`: no click-to-latch state;
+- [x] `DockPresence` transient mode + `FlyoutDismiss`: no click-to-latch state;
   300 ms idle collapse after a 90 ms pointer settle, immediate outside-click/action
   dismiss. Observe outside input only while expanded, pass it through, dispose on
   compact/hide/close and hold during actual movement/press/OLE/menu interactions.
   Main dock presence keeps its existing preferences and timings.
-- [ ] Native `DownloadsProbe`: prove no selector, at least ten visible short rows
+- [x] Native `DownloadsProbe`: prove no selector, at least ten visible short rows
   in the normal window, direct/cancel/group transfers, drag while foreground app
   remains unchanged, outside click, repeated open/close, menu and focus changes.
   Inspect light/dark/empty/long-name captures and keep existing Chrome tests.
 
 ### Task 2: stage 5a1 verified export
 
-- [ ] `StateStore.CaptureSnapshot` / `ReadSnapshot`: capture the current UI-owned
+- [x] `StateStore.CaptureSnapshot` / `ReadSnapshot`: capture the current UI-owned
   metadata once; persistence reuses the same immutable snapshot path.
-- [ ] `BackupArchive.Create(root, snapshot, destination, progress, token)`: stream
+- [x] `BackupArchive.Create(root, snapshot, destination, progress, token)`: stream
   referenced owned assets, opaque clipboard blobs and current/saved-style PNGs
   into a versioned ZIP; include current metadata, Trash, panel/window state and
   original external file references. Do not copy external originals, orphaned
   caches, exports no longer referenced or the disposable Chrome catalog.
-- [ ] `BackupArchive.Verify`: validate version/paths/required membership, lengths
+- [x] `BackupArchive.Verify`: validate version/paths/required membership, lengths
   and SHA256 of every entry by bounded streaming. Reopen/verify the finished temp
   archive, then atomically publish to a fresh filename; failure/cancel keeps any existing destination
   and source metadata untouched. Never extract/restore in this increment.
-- [ ] `BackupSection` in Settings: choose destination, background create/verify,
+- [x] `BackupSection` in Settings: choose destination, background create/verify,
   honest completion/error, cancel and disposed-window cleanup. Each copy uses a new filename; explain external
   originals remain references. No controls added to the floating dock.
-- [ ] Core backup checks: raw bytes/Trash/panels/zero settings/style icons,
+- [x] Core backup checks: raw bytes/Trash/panels/zero settings/style icons,
   deduplication, changed/missing owned asset, corrupt archive/hash, traversal,
   cancellation and preserved destination. Native check: current unsaved metadata
   snapshot, responsive export UI and cancel. Finish with installer/Chrome CI.
@@ -627,28 +627,28 @@ HWND. Mirrored mode keeps one copy per selected screen and moves each copy withi
 its own work area; switch to one movable mode for cross-screen relocation. Named
 independent panel windows remain separately movable and are not multiplied.
 
-- [ ] Reproduce the old single-dock snap-back with real mouse input and two
+- [x] Reproduce the old single-dock snap-back with real mouse input and two
   non-overlapping logical work areas on the Windows runner. Prove the regression
   fails before the fix; separately test Core defaults and migration.
-- [ ] Use native screen cursor coordinates for background dragging; suppress and
+- [x] Use native screen cursor coordinates for background dragging; suppress and
   coalesce size-driven placement during gestures, commit the destination/offset
   once on release. Preserve physical coordinates/negative origins, clamp only
   after the gesture, and retain the same HWND in single mode. Defer topology
   reconciliation during a live move and flush it afterward.
-- [ ] Add MirrorDownloads=true and bounded DownloadsLayouts records, retaining
+- [x] Add MirrorDownloads=true and bounded DownloadsLayouts records, retaining
   legacy DownloadsLayout as the single-mode anchor. Preserve explicit false/0,
   missing-screen records, visibility and original metadata. Keep schema 7 because
   these are additive settings; backup export includes them through its snapshot.
-- [ ] One shared DownloadsFeed, one view per connected screen in mirror mode;
+- [x] One shared DownloadsFeed, one view per connected screen in mirror mode;
   independent position/visibility and selection, all views disposed on disable,
   global hide/show includes every copy. No repeat reveal on unrelated changes.
-- [ ] Settings → Screens: separate clip and Downloads mode choices, optional clip
+- [x] Settings → Screens: separate clip and Downloads mode choices, optional clip
   display selection, readable screen pickers/map, reset both sets of positions.
   Settings → Downloads links the mirror choice to the same persistent setting.
-- [ ] Native checks: direct A→B→A move, width change mid-drag, named-window move,
+- [x] Native checks: direct A→B→A move, width change mid-drag, named-window move,
   mirror on/off, shared file update/direct transfer, hide/show, disconnect/reconnect,
   repeated refresh/dispose, explicit false and saved layouts after restart.
-- [ ] Run full Core/Node/native Windows, published host/real Chrome/install checks;
+- [x] Run full Core/Node/native Windows, published host/real Chrome/install checks;
   inspect screen-settings captures and deliver a fresh version. Physical mixed-DPI
   monitors/sleep remain a user-hardware check, not inferred from logical areas.
 
@@ -661,3 +661,26 @@ API references checked for this fix: [WM_DPICHANGED](https://learn.microsoft.com
 (screen coordinates), and [MonitorFromWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-monitorfromwindow)
 (largest intersection and nearest fallback). WPF retains its DPI-message handling;
 ClipDrop must not undo it with an old display assignment during a drag.
+
+
+0.16 verification record: the old snap-back failed on native Windows input in
+commit e665695; the same A→B→A test passes after the coordinator fix, including
+size/topology changes during capture. A separate red Windows regression proved
+that switching mirror→single during a crossing move could orphan a destination
+HWND; collision-safe retirement fixes it. Core red→green also pins hidden fallback
+intent and bounded temporary records. Downloads destination sizing is exercised
+with a shorter logical work area. Native QA additionally checks direct transfers,
+shared catalog updates, mirror switches/opt-outs, hidden disconnect/reconnect,
+restart persistence, named-window moves and disposal. The OLE test receiver is
+explicitly above the mirrored docks, so the target is not obscured by a shelf.
+
+At 64 saved layout records, new unrecorded displays use temporary assignments:
+keep current live positions across refresh without erasing retained monitor data.
+These extra positions are not persisted to the full record list. Reset positions
+covers both the clip and Downloads records; appearance presets leave both modes
+alone. Diagnostics add only bounded numeric coordinates/size/DPI and mode flags.
+
+No new dependencies or permanent input observers were added. Mirrored Downloads
+shares one catalog watcher and frozen thumbnail cache. Physical mixed-DPI display
+and sleep/resume acceptance remains unchecked in the stage 3b table above; CI
+logical work areas do not establish it. Stage 5a2 backup restore/merge stays next.

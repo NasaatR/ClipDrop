@@ -116,7 +116,9 @@ internal static class MultiMonitorProbe
             string[]? received = null;
             receiver.DragOver += (_, e) => { e.Effects = DragDropEffects.Copy; e.Handled = true; };
             receiver.Drop += (_, e) => { received = e.Data.GetData(DataFormats.FileDrop) as string[]; e.Effects = DragDropEffects.Copy; e.Handled = true; };
-            var target = new Window { Content = receiver, Width = 220, Height = 130, Left = 20, Top = 40, ShowInTaskbar = false };
+            // A mirrored main dock can occupy this destination. Keep the explicit
+            // native receiver above it so we test the intended target, not a dock intake.
+            var target = new Window { Content = receiver, Width = 220, Height = 130, Left = 20, Top = 40, ShowInTaskbar = false, Topmost = true };
             target.Show();
             try
             {
@@ -180,6 +182,14 @@ internal static class MultiMonitorProbe
             var mode = UiProbe.Find<ComboBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Clip panel mode");
             mode.SelectedIndex = 1; UiProbe.Pump();
             check(coordinator.Views.Count == 2 && state.Settings.MirrorDocks, "The real Screens mode picker enables clip copies immediately");
+            var nonHome = state.Settings.Docks.Single(l => l.DisplayId != state.Settings.HomeDisplayId);
+            nonHome.Enabled = false; session.Change();
+            mode = UiProbe.Find<ComboBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Clip panel mode");
+            mode.SelectedIndex = 0; UiProbe.Pump();
+            mode = UiProbe.Find<ComboBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Clip panel mode");
+            mode.SelectedIndex = 1; UiProbe.Pump();
+            check(!nonHome.Enabled && coordinator.Views.Count == 1, "Switching clip modes preserves a previously excluded screen");
+            nonHome.Enabled = true; session.Change(); coordinator.RefreshDisplays(); UiProbe.Pump();
             var mirrorDownloads = UiProbe.Find<CheckBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Duplicate Downloads on every display");
             UiProbe.Click(mirrorDownloads); UiProbe.Pump();
             check(state.Settings.MirrorDownloads && coordinator.DownloadsViews.Count == 2,

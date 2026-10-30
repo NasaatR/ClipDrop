@@ -27,8 +27,12 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.15.0
+## Features in 0.16.0
 
+- Freely move one clip panel between screens; Settings → Screens independently
+  chooses clip copies and Downloads copies. Downloads defaults to every display.
+- Stable drag geometry through size changes, deferred display refresh, separate
+  saved positions/visibility and one shared Downloads catalog for all copies.
 - Bundled WebP previews/alpha, consistent image classification and background
   retrieval of an actual image URL supplied by an explicit browser drop.
 - Clip stacks: drop at the center to combine, drop at an edge to insert separately;
@@ -97,8 +101,8 @@ from Trash, including after restarting.
 - Experimental mouse-shake summon, off by default.
 - Copyable diagnostics: version/environment and bounded sanitized error history,
   without recording item contents.
-- Local operation; no accounts, subscription, telemetry, clipboard monitoring,
-  app-initiated network requests or cloud storage.
+- Local storage; no accounts, subscription, telemetry, clipboard monitoring or
+  cloud sync. Only an explicit browser image drop can request an image URL.
 
 ## Saved panels and combining
 
@@ -199,7 +203,10 @@ can separate it from its stack; moving the whole stack keeps its structure.
 ## Downloads stack
 
 Right-click Save/free dock space → **Downloads**, or use the tray's **Downloads**
-command. A separate capsule appears near the bottom-right of the selected screen.
+command. A capsule appears near the bottom-right of every attached display by
+default. **Settings → Screens → Downloads on every display** turns duplication
+off for one freely movable window. Clip-panel duplication is a separate choice.
+Copies share the catalog but keep separate selection, position and visibility.
 Hover or click the capsule to reveal the recent files; it never latches the list
 open. The list closes promptly when the pointer leaves, immediately on an outside
 click, **Close**, or after a transfer/action. Menus, an actual drag and window
@@ -395,8 +402,16 @@ Research and manual acceptance: [foundation notes](docs/FOUNDATION.md).
 Incremental stages and the two-monitor mirror design: [roadmap](docs/ROADMAP.md).
 Monitor mirroring is a preview. Native window checks and simulated topologies pass
 through CI; physical mixed-DPI dual-monitor, sleep/reconnect testing remains open.
-Drag a main/mirrored dock within its assigned display; choose a different display
-in Settings. Independent set windows can be moved between displays.
+In **Settings → Screens**, choose **One movable panel** to drag the main dock
+freely between displays; the destination and offset are saved on release.
+**Duplicate on selected displays** shows shared clips in separate per-screen
+copies; each copy moves within its screen. Per-screen opt-outs survive changing
+mode. Independent named-set windows remain individually movable. Downloads
+duplication defaults on, independently of clip mode. Show all / Hide all includes
+every copy, including saved visibility for disconnected displays. Up to 64 layout
+records per surface are retained; additional screens use reachable temporary
+positions without erasing older records. Their live positions survive refresh
+but are not added to the full persistent record list.
 Backup/version UI and an optional Send to Figma image adapter remain planned;
 the latter is not enabled in this release. PNG icons: ≤5 MB, ≤2048 × 2048;
 managed copies render at bounded size. Missing assets fall back to emoji.
