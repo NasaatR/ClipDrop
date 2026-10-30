@@ -15,7 +15,7 @@ namespace ClipDrop.Windows.Views;
 
 public static class ClipMenu
 {
-    public static ContextMenu Create(ShelfSession session, IReadOnlyList<ShelfItem> items, Window owner, bool dock, bool trash = false, Action<ShelfItem>? edit = null, string? panelId = null)
+    public static ContextMenu Create(ShelfSession session, IReadOnlyList<ShelfItem> items, Window owner, bool dock, bool trash = false, Action<ShelfItem>? edit = null, string? panelId = null, Action? splitStack = null)
     {
         var selected = items.ToArray();
         var targetPanel = panelId ?? session.State.ActivePanelId;
@@ -53,6 +53,7 @@ public static class ClipMenu
             }
             if (!trash && selected.Length > 0)
             {
+                if (splitStack is not null) Add("Split stack", "SplitStack", "Panels", splitStack);
                 var members = session.Pins(targetPanel).Select(i => i.Id).ToHashSet();
                 var pinned = selected.All(i => members.Contains(i.Id));
                 Add(pinned ? "Remove from this panel" : "Add to this panel", "Pin", "Pin", () => session.TogglePin(selected, targetPanel)).ToolTip = session.PanelName(targetPanel);

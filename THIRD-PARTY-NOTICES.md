@@ -11,3 +11,9 @@ components. Packaging includes `DOTNET-LICENSE.txt` and
 The installer is generated using Inno Setup, a separate build tool. The installer
 engine's license: <https://github.com/jrsoftware/issrc/blob/main/license.txt>.
 Windows system fonts/icons come from the OS, not redistributed asset files.
+
+Raster decoding includes SkiaSharp 4.154.0 (MIT), Microsoft/Xamarin, and its
+Win32 native Skia dependencies. Distributions include the exact package license
+as `SKIASHARP-LICENSE.txt` and native dependencies' notices as
+`SKIA-THIRD-PARTY-NOTICES.txt`. Source/version:
+<https://www.nuget.org/packages/SkiaSharp/4.154.0> and <https://github.com/mono/SkiaSharp>.

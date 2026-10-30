@@ -19,6 +19,7 @@ public sealed class ShelfItem
     public long PinOrder { get; set; }
     public string Group { get; set; } = "";
     public ClipboardSnapshot? Clipboard { get; set; }
+    public string? SourceUrl { get; set; }
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
 
     public static ShelfItem FromPath(string path)
@@ -27,8 +28,7 @@ public sealed class ShelfItem
         if (!File.Exists(path) && !Directory.Exists(path))
             throw new FileNotFoundException("The original file or folder is unavailable.");
         var folder = Directory.Exists(path);
-        var ext = Path.GetExtension(path).ToLowerInvariant();
-        var image = ext is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".gif" or ".tif" or ".tiff";
+        var image = MediaFiles.IsImage(path);
         return new ShelfItem {
             Kind = folder ? ItemKind.Folder : image ? ItemKind.Image : ItemKind.File,
             Title = Path.GetFileName(Path.TrimEndingDirectorySeparator(path)), FilePath = path
@@ -45,7 +45,7 @@ public sealed class ShelfItem
             Content = text, Title = title.Length > 90 ? title[..90] + "…" : title };
     }
 
-    public bool SameContent(ShelfItem other) => Kind == other.Kind &&
+    public bool SameContent(ShelfItem other) => (SourceUrl is not null && SourceUrl == other.SourceUrl && Clipboard?.Identity == other.Clipboard?.Identity) || Kind == other.Kind &&
         (FilePath is not null && other.FilePath is not null
             ? string.Equals(FilePath, other.FilePath, StringComparison.OrdinalIgnoreCase)
             : FilePath is null && other.FilePath is null && Content == other.Content)
@@ -67,6 +67,7 @@ public sealed class ShelfSettings : AppearanceStyle
     public bool LibraryFollowsDock { get; set; } = true;
     public bool AnimationsEnabled { get; set; } = true;
     public bool CollapseWhenIdle { get; set; } = true;
+    public bool FetchDroppedImages { get; set; } = true;
     public bool DownloadsEnabled { get; set; }
     public string DownloadsFolder { get; set; } = "";
     public DockLayout DownloadsLayout { get; set; } = new();
@@ -78,7 +79,7 @@ public sealed class ShelfSettings : AppearanceStyle
 
 public sealed class ShelfState
 {
-    public const int CurrentSchema = 6;
+    public const int CurrentSchema = 7;
     public int SchemaVersion { get; set; } = CurrentSchema;
     public List<ShelfItem> Items { get; set; } = new();
     public List<TrashEntry> Trash { get; set; } = new();
@@ -96,8 +97,15 @@ public sealed class PanelSet
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "Panel";
     public List<string> ClipIds { get; set; } = new();
+    public List<ClipStack> Stacks { get; set; } = new();
     public DateTimeOffset? ClosedUtc { get; set; }
     public PanelWindowState? Window { get; set; }
+}
+
+public sealed class ClipStack
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public List<string> ClipIds { get; set; } = new();
 }
 
 public sealed class PanelWindowState

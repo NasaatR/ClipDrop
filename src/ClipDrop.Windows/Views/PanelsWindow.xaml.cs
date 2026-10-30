@@ -95,7 +95,7 @@ public partial class PanelsWindow : Window
     private void OnSnapshot(object sender, RoutedEventArgs e)
     {
         var ids = _session.Pins(_sourcePanel).Select(i => i.Id).ToArray();
-        _closed = false; _session.PanelAction(() => PanelSets.Create(_session.State, NewName("Saved dock"), ids), "Dock saved as a panel");
+        _closed = false; _session.PanelAction(() => PanelSets.Create(_session.State, NewName("Saved dock"), ids, _sourcePanel), "Dock saved as a panel");
         SelectActive();
     }
     private void OnSaveSelection(object sender, RoutedEventArgs e)

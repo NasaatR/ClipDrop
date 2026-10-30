@@ -122,6 +122,7 @@ internal static class Program
             CompactProbe.Run(window, dock, root, output, Check);
             IndependentProbe.Run(window, dock, root, output, Check);
             DownloadsProbe.Run(window, dock, root, output, Check);
+            ImageStackProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MediaProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             Render(dock, Path.Combine(output, "dock-video.png"));
             Render(window, Path.Combine(output, "library-video.png"));

@@ -29,6 +29,8 @@ public static class PanelSets
                 if (deleted.Contains(active.ClipIds[i])) pins.Insert(Math.Min(i, pins.Count), active.ClipIds[i]);
         }
         if (!active.ClipIds.SequenceEqual(pins)) active.ClipIds = pins;
+        PanelStacks.Prune(active);
+        if (PanelStacks.Normalize(active)) ApplyActive(state);
     }
     public static ShelfItem[] Items(ShelfState state, string? panelId = null)
     {
@@ -51,17 +53,23 @@ public static class PanelSets
         else { var selected = requested.ToHashSet(); next.RemoveAll(selected.Contains); }
         if (panel.ClipIds.SequenceEqual(next)) return false;
         panel.ClipIds = next;
+        PanelStacks.Prune(panel);
+        PanelStacks.Normalize(panel);
         if (panelId == state.ActivePanelId) ApplyActive(state);
         return true;
     }
     public static bool Move(ShelfState state, string panelId, IEnumerable<string> ids, int insertionIndex)
     {
         var panel = Find(state, panelId);
+        var selectedIds = ids.Distinct().ToArray();
+        var liveIds = state.Items.Select(i => i.Id).ToHashSet();
+        if (selectedIds.Any(id => !liveIds.Contains(id))) throw new InvalidOperationException("A clip is no longer in Library.");
+        var detached = PanelStacks.DetachPartial(state, panel, selectedIds.ToHashSet());
         if (panelId == state.ActivePanelId)
         {
-            var changed = PinOrdering.Move(state, ids, insertionIndex); CaptureActive(state); return changed;
+            var changed = PinOrdering.Move(state, selectedIds, insertionIndex); CaptureActive(state); return changed || detached;
         }
-        var requested = ids.Distinct().ToArray(); var selected = requested.ToHashSet();
+        var requested = selectedIds; var selected = requested.ToHashSet();
         var live = state.Items.Select(i => i.Id).ToHashSet();
         if (requested.Any(id => !live.Contains(id))) throw new InvalidOperationException("A clip is no longer in Library.");
         var before = panel.ClipIds.Where(live.Contains).ToList();
@@ -69,11 +77,11 @@ public static class PanelSets
         var slot = Math.Clamp(insertionIndex, 0, before.Count);
         var adjusted = slot - before.Take(slot).Count(selected.Contains);
         var next = before.Where(id => !selected.Contains(id)).ToList(); next.InsertRange(adjusted, moving);
-        if (before.SequenceEqual(next)) return false;
+        if (before.SequenceEqual(next)) return detached;
         var deleted = state.Trash.Select(t => t.Item.Id).ToHashSet();
         for (var i = 0; i < panel.ClipIds.Count; i++)
             if (deleted.Contains(panel.ClipIds[i])) next.Insert(Math.Min(i, next.Count), panel.ClipIds[i]);
-        panel.ClipIds = next; return true;
+        panel.ClipIds = next; PanelStacks.Normalize(panel); return true;
     }
     public static void OpenWindow(ShelfState state, string id, string displayId)
     {
@@ -108,7 +116,7 @@ public static class PanelSets
         if (name.Length is < 1 or > 60) throw new InvalidOperationException("Use a panel name up to 60 characters.");
         return name;
     }
-    public static PanelSet Create(ShelfState state, string name, IEnumerable<string>? ids = null)
+    public static PanelSet Create(ShelfState state, string name, IEnumerable<string>? ids = null, string? sourcePanelId = null)
     {
         var title = Name(name);
         if (state.Panels.Count >= Maximum) throw new InvalidOperationException("Panel limit reached (100 including recently closed).");
@@ -116,7 +124,9 @@ public static class PanelSets
         var available = state.Items.Select(i => i.Id).Concat(state.Trash.Select(t => t.Item.Id)).ToHashSet();
         if (clips.Any(id => !available.Contains(id))) throw new InvalidOperationException("A clip is no longer available.");
         CaptureActive(state);
+        var source = state.Panels.FirstOrDefault(p => p.Id == (sourcePanelId ?? state.ActivePanelId));
         var panel = new PanelSet { Name = title, ClipIds = clips }; state.Panels.Add(panel);
+        if (source is not null) PanelStacks.Copy(new[] { source }, panel);
         state.ActivePanelId = panel.Id; ApplyActive(state); return panel;
     }
     public static PanelSet Merge(ShelfState state, IEnumerable<string> ids, string name)
@@ -125,7 +135,9 @@ public static class PanelSets
         if (requested.Length < 2 || requested.Any(id => state.Panels.All(p => p.Id != id))) throw new InvalidOperationException("Select at least two available panels.");
         Name(name); if (state.Panels.Count >= Maximum) throw new InvalidOperationException("Panel limit reached (100 including recently closed).");
         CaptureActive(state);
-        return Create(state, name, requested.SelectMany(id => state.Panels.Single(p => p.Id == id).ClipIds));
+        var sources = requested.Select(id => state.Panels.Single(p => p.Id == id)).ToArray();
+        var merged = Create(state, name, sources.SelectMany(p => p.ClipIds));
+        PanelStacks.Copy(sources, merged); ApplyActive(state); return merged;
     }
     public static void Rename(ShelfState state, string id, string name)
     {

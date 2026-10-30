@@ -11,4 +11,5 @@
   </PropertyGroup>
   <ItemGroup><Resource Include="Assets/ClipDrop.ico"/></ItemGroup>
   <ItemGroup><ProjectReference Include="../ClipDrop.Core/ClipDrop.Core.csproj" /></ItemGroup>
+  <ItemGroup><PackageReference Include="SkiaSharp" Version="4.154.0" /></ItemGroup>
 </Project>

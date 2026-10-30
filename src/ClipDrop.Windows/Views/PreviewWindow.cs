@@ -20,7 +20,7 @@ public sealed class PreviewWindow : Window
             var preview = new VideoPreview(video); Content = preview;
             Closed += (_, _) => preview.Dispose();
         }
-        else if (item.Kind == ItemKind.Image && item.FilePath is not null)
+        else if ((item.Kind == ItemKind.Image || MediaFiles.IsImage(item.FilePath)) && item.FilePath is not null)
         {
             try
             {

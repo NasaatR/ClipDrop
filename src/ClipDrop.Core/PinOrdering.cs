@@ -16,8 +16,9 @@ public static class PinOrdering
     public static bool Move(ShelfState state, IEnumerable<string> ids, int insertionIndex)
     {
         var requested = ids.Distinct().ToArray(); var selected = requested.ToHashSet();
+        var available = state.Items.ToDictionary(i => i.Id);
         var pins = state.Items.Where(i => i.IsPinned).OrderBy(i => i.PinOrder).ToList();
-        var moving = pins.Where(i => selected.Contains(i.Id)).Concat(requested.Select(id => state.Items.FirstOrDefault(i => i.Id == id && !i.IsPinned)).OfType<ShelfItem>()).ToArray();
+        var moving = pins.Where(i => selected.Contains(i.Id)).Concat(requested.Select(id => available.GetValueOrDefault(id)).OfType<ShelfItem>().Where(i => !i.IsPinned)).ToArray();
         if (moving.Length == 0) return false;
         var index = Math.Clamp(insertionIndex, 0, pins.Count);
         var adjusted = index - pins.Take(index).Count(i => selected.Contains(i.Id));

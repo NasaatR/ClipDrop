@@ -27,9 +27,8 @@ public partial class DownloadsWindow : Window
             File = file;
             // The catalog already validated the path off the dispatcher. This
             // lightweight reference is revalidated at the explicit transfer.
-            var ext = Path.GetExtension(file.Path).ToLowerInvariant();
             RowItem = new(new ShelfItem { Title = file.Name, FilePath = file.Path,
-                Kind = ext is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".gif" or ".tif" or ".tiff" ? ItemKind.Image : ItemKind.File });
+                Kind = MediaFiles.IsImage(file.Path) ? ItemKind.Image : ItemKind.File });
         }
     }
     private readonly ShelfSession _session;

@@ -44,8 +44,7 @@ public sealed class ThumbnailCache
                 {
                     if (new FileInfo(path).Length > ImageFiles.MaximumBytes) return null;
                     using var input = File.OpenRead(path);
-                    var image = new BitmapImage(); image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad;
-                    image.DecodePixelWidth = 160; image.StreamSource = input; image.EndInit(); image.Freeze(); return (BitmapSource)image;
+                    return ImageFiles.Load(ImageFiles.ReadStream(input), 160);
                 }
                 catch (Exception ex) when (ex is IOException or NotSupportedException or System.Runtime.InteropServices.COMException or ArgumentException or UnauthorizedAccessException)
                 { return null; }

@@ -19,9 +19,10 @@ in FOUNDATION.md; those sections also document historical releases.
 | 4a · Saved panels | Create/name/switch, save selection, combine sets, close/restore | Delivered in 0.9 |
 | 4b · Independent views | Simultaneous windows showing different sets, positions and closed-window recovery | Delivered in 0.11 |
 | 4c · Downloads stack | Separate hover capsule, recent ready files, native group transfers and explicit Library save | Delivered in 0.12 |
+| 4d · Images and clip stacks | WebP decoding, browser image source intake, center-stack/edge-insert gestures and recovery | Current 0.13 slice |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
-| 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.11 |
+| 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.13 |
 
 ## Stage 1: complete daily actions
 
@@ -298,7 +299,7 @@ click-through. These checks do not prove physical mixed-DPI or target-app gestur
 Physical mixed-DPI hardware feedback stays open. Backup/version UI, opt-in history
 and Send to Figma remain later releases; do not add them to this data/UI slice.
 
-## Current 0.12 slice: Downloads stack
+## Delivered 0.12 slice: Downloads stack
 
 - [x] Separate opt-in floating capsule. Dock/tray → Downloads opens it without
   adding another permanent button to the main dock. A short list sizes its painted
@@ -336,6 +337,56 @@ Implementation sources (reviewed 2026-10-30): Microsoft
 [SHGetKnownFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath),
 [FileSystemWatcher events/error/buffer guidance](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher?view=net-10.0).
 Code is original MIT implementation using existing ClipDrop components.
+
+## Current 0.13 slice: browser images and clip stacks
+
+User feedback on 2026-10-30 prioritizes image intake and clip-level grouping before
+backup UI. Combining saved panels remains available; it is distinct from stacking
+clips inside one panel.
+
+- [x] Classify WebP and common raster extensions consistently in file import,
+  virtual browser files, existing saved references, Downloads, Library and preview.
+  Bundle pinned SkiaSharp 4.154.0 for WebP decoding/alpha and scaled previews without
+  relying on a separately installed Windows WebP codec. Keep original file bytes;
+  first-frame image previews are distinct from animated playback. AVIF/HEIF and
+  uncommon formats still depend on available decoders; never claim every format.
+- [x] Read actual HTML img/srcset or a direct raster-image URL on the STA, then
+  fetch the public image off the dispatcher. Preserve a saved link until success;
+  upgrade the same item/key without undoing later user removal. Limit bytes,
+  pixels, redirects, queue, workers and time; no cookies/proxy/credentials or
+  private/loopback DNS connections. Default on only for explicit drops, with a
+  saved behavior switch. Ordinary clipboard saves retain their raw formats.
+- [x] Add flat per-panel ClipStack references. A center drop combines cards; an
+  edge drop inserts a separate card. Show a count and a distinct plus target cue.
+  Click opens members, drag transfers all, menu splits without deleting payloads.
+  Preserve scoped windows, order, protection, Trash restore and saved-panel copies.
+  Keep a bounded member popup and reuse per-revision tile/index caches.
+- [x] Schema 7 migrates 1–6 with immutable original bytes, promotes old local WebP
+  references and prevents older builds from erasing stack metadata. Downloads
+  preferences, closed windows, clipboard payloads and saved styles remain intact.
+- [ ] Verify native WebP pixels/alpha, previews, center/edge OLE, stack copy/drag,
+  split/restore, pending-image row identity, cancellation/denial and late completion.
+  Inspect real dark/light/popover captures and run published startup/installer checks.
+
+Next stage remains 5a backup/export/import with preview and conflict-safe merge,
+then 5b content versions. Do not combine these storage journeys with this fix.
+
+Optional Chrome companion after feedback: use an image context-menu command (and
+an optional hover action), currentSrc/srcset and explicitly granted image-origin
+access to send bounded image bytes plus provenance to ClipDrop. Use a per-user
+native messaging host restricted to the installed extension ID and a local IPC
+handoff to the running app; no unauthenticated public/local HTTP receiver. Preserve
+existing ordinary drag/copy and avoid automatic Pinterest page scraping, browser
+cookie harvesting or assumptions that a pin-page URL identifies its image. Actual
+Pinterest/Reddit browser-to-Windows execution remains a manual compatibility gate.
+No extension or native messaging registration is shipped in this release.
+
+Primary implementation evidence reviewed 2026-10-30:
+[SkiaSharp package/version/license](https://www.nuget.org/packages/SkiaSharp/4.154.0),
+[Chrome image context menu API](https://developer.chrome.com/docs/extensions/reference/api/contextMenus),
+[Chrome native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging).
+The pinned NuGet API surface was compiled separately before the Windows build;
+application and grouping code are original MIT implementation.
 
 ## Future: optional Send to Figma integration
 

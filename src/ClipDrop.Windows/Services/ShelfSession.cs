@@ -10,7 +10,7 @@ using ClipDrop.Core;
 namespace ClipDrop.Windows.Services;
 
 // One in-process owner for dock, library and settings. Views never save independent copies.
-public sealed class ShelfSession : IDisposable
+public sealed partial class ShelfSession : IDisposable
 {
     private readonly StateStore _store;
     private readonly DispatcherTimer _save;
@@ -37,9 +37,10 @@ public sealed class ShelfSession : IDisposable
     public event Action? QuitRequested;
     public event Action<IReadOnlyList<ShelfItem>?>? PanelsRequested;
 
-    public ShelfSession(StateStore store, ShelfState state)
+    public ShelfSession(StateStore store, ShelfState state, BrowserImageLoader? browserImages = null)
     {
         _store = store; State = state; IconAssets.Initialize(Root);
+        _browserImages = browserImages ?? new BrowserImageLoader();
         var assets = new AssetStore(Path.Combine(Root, "assets"));
         Transfer = new TransferService(assets); _clipboard = new NativeClipboard(assets);
         _save = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
@@ -112,7 +113,7 @@ public sealed class ShelfSession : IDisposable
     public ShelfItem[] Pins(string? panelId = null)
     {
         if (_pinRevision != _revision || _itemIndex.Count != State.Items.Count)
-        { _pinRevision = _revision; _itemIndex = State.Items.ToDictionary(i => i.Id); _pinCache.Clear(); }
+        { _pinRevision = _revision; _itemIndex = State.Items.ToDictionary(i => i.Id); _pinCache.Clear(); _tileCache.Clear(); }
         var id = panelId ?? State.ActivePanelId;
         if (_pinCache.TryGetValue(id, out var cached)) return cached;
         var panel = State.Panels.SingleOrDefault(p => p.Id == id && p.ClosedUtc is null) ?? throw new InvalidOperationException("Panel unavailable.");
@@ -169,13 +170,21 @@ public sealed class ShelfSession : IDisposable
         catch (Exception ex) { Error("Save clipboard", ex); }
     }
 
-    public bool Capture(IDataObject data, bool pin = true, string? panelId = null)
+    public bool Capture(IDataObject data, bool pin = true, string? panelId = null, int? insertion = null, string? mergeTarget = null)
     {
         var items = Transfer.Import(data);
         if (items.Count == 0) { Notify("No supported files, image or text"); return false; }
         var count = Add(items, pin, panelId);
+        var accepted = items.Select(source => State.Items.FirstOrDefault(i => i.SameContent(source))).OfType<ShelfItem>().Distinct().ToArray();
+        if (pin && accepted.Length > 0)
+        {
+            if (mergeTarget is not null) Stack(accepted, mergeTarget, panelId);
+            else if (insertion is int index) Reorder(accepted, index, panelId);
+        }
         if (TrySave()) Notify(count > 0 ? $"Saved {count} {(count == 1 ? "item" : "items")} · " + (pin ? "pinned to dock" : "in Library") : "Already in your library");
-        return true;
+        if (State.Settings.FetchDroppedImages)
+            foreach (var pending in accepted.Where(i => i.SourceUrl is not null && i.Kind == ItemKind.Link)) FetchImage(pending);
+        return accepted.Length > 0;
     }
 
     public void ToggleKeep(IReadOnlyList<ShelfItem> items)
@@ -303,6 +312,7 @@ public sealed class ShelfSession : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
+        _imageStop.Cancel();
         _save.Stop(); if (_dirty) TrySave(); _disposed = true; _clipboard.Dispose();
     }
 }

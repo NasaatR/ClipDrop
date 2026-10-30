@@ -14,7 +14,7 @@ public sealed class TransferService
     private readonly AssetStore _assets;
     public TransferService(AssetStore assets) { _assets = assets; }
     public static bool Supports(IDataObject data) => !data.GetDataPresent("NasaatR.ClipDrop.Internal") &&
-        data.GetFormats(false).Any(f => f is "FileDrop" or "PNG" or "Bitmap" or "UnicodeText" or "Text" or "FileGroupDescriptorW");
+        data.GetFormats(false).Any(f => f is "FileDrop" or "PNG" or "Bitmap" or "UnicodeText" or "Text" or "FileGroupDescriptorW" or "HTML Format" or "UniformResourceLocatorW" or "UniformResourceLocator");
 
     public DataObject BuildDrag(IReadOnlyList<ShelfItem> items, bool internalSource = true)
     {
@@ -53,15 +53,16 @@ public sealed class TransferService
         var virtualFiles = VirtualFileReader.Read(data, _assets.Root);
         if (virtualFiles.Count > 0) return virtualFiles;
 
-        var text = data.GetData(DataFormats.UnicodeText) as string
-            ?? data.GetData(DataFormats.Text) as string;
+        if (BrowserImageData.Read(data) is { } sourceImage) return new() { sourceImage };
+
+        var text = BrowserImageData.Text(data);
         if (!string.IsNullOrEmpty(text)) result.Add(ShelfItem.FromText(text));
         return result;
     }
 
     private ShelfItem CacheImage(byte[] bytes) => new() {
         Kind = ItemKind.Image, Title = "Image " + DateTime.Now.ToString("HH-mm-ss"),
-        FilePath = _assets.WriteImage(bytes), OwnedAsset = true
+        FilePath = _assets.WriteImage(bytes, ImageFiles.Extension(bytes)), OwnedAsset = true
     };
 
     public DataObject Build(IReadOnlyList<ShelfItem> items)

@@ -95,7 +95,7 @@ public sealed class StateStore
         originalVersion = state.SchemaVersion;
         if (state.SchemaVersion == 1) state.SchemaVersion = ShelfState.CurrentSchema;
         else if (!document.RootElement.TryGetProperty("Trash", out _)) throw new InvalidDataException("The saved trash structure is incomplete.");
-        if (originalVersion is 1 or 2 or 3 or 4 or 5) state.SchemaVersion = ShelfState.CurrentSchema;
+        if (originalVersion is 1 or 2 or 3 or 4 or 5 or 6) state.SchemaVersion = ShelfState.CurrentSchema;
         if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null || state.Trash is null)
             throw new InvalidDataException("Invalid shelf structure.");
         if (state.Trash.Any(t => t is null || t.Item is null || !Guid.TryParse(t.Batch, out _))) throw new InvalidDataException("Invalid trash entry.");
@@ -104,6 +104,12 @@ public sealed class StateStore
             throw new InvalidDataException("Invalid shelf item.");
         if (originalVersion is 1 or 2) PinOrdering.Migrate(state);
         if (all.Select(i => i.Id).Distinct().Count() != all.Length) throw new InvalidDataException("Duplicate shelf identities.");
+        foreach (var item in all)
+        {
+            if (item.SourceUrl is not null && (item.SourceUrl.Length > 8192 || !Uri.TryCreate(item.SourceUrl, UriKind.Absolute, out var source) || source.Scheme is not ("http" or "https")))
+                throw new InvalidDataException("Invalid image source URL.");
+            if (item.Kind == ItemKind.File && MediaFiles.IsImage(item.FilePath)) item.Kind = ItemKind.Image;
+        }
         if (originalVersion < 5) PanelSets.Migrate(state);
         else if (!document.RootElement.TryGetProperty("Panels", out _) || !document.RootElement.TryGetProperty("ActivePanelId", out _))
             throw new InvalidDataException("The saved panel structure is incomplete.");
@@ -113,6 +119,13 @@ public sealed class StateStore
                 p.ClipIds.Count > identities.Count || p.ClipIds.Distinct().Count() != p.ClipIds.Count || p.ClipIds.Any(id => !identities.Contains(id))) ||
             state.Panels.Select(p => p.Id).Distinct().Count() != state.Panels.Count || !state.Panels.Any(p => p.Id == state.ActivePanelId && p.ClosedUtc is null))
             throw new InvalidDataException("Invalid saved panels.");
+        if (originalVersion >= 7 && document.RootElement.GetProperty("Panels").EnumerateArray().Any(p => !p.TryGetProperty("Stacks", out _)))
+            throw new InvalidDataException("The saved clip stacks are incomplete.");
+        if (state.Panels.Any(p => p.Stacks is null || p.Stacks.Count > p.ClipIds.Count / 2 ||
+            p.Stacks.Any(s => s is null || !Guid.TryParse(s.Id, out _) || identities.Contains(s.Id) || s.ClipIds is null || s.ClipIds.Count < 2 || s.ClipIds.Any(id => !p.ClipIds.Contains(id))) ||
+            p.Stacks.Select(s => s.Id).Distinct().Count() != p.Stacks.Count ||
+            p.Stacks.SelectMany(s => s.ClipIds).Distinct().Count() != p.Stacks.Sum(s => s.ClipIds.Count)))
+            throw new InvalidDataException("Invalid clip stacks.");
         if (state.Panels.Count(p => p.Window?.IsOpen == true) > PanelSets.MaximumWindows ||
             state.Panels.Any(p => p.Window is { } w && (w.Layout is null || string.IsNullOrWhiteSpace(w.Layout.DisplayId) ||
                 w.Layout.DisplayId.Length > 1024 || w.IsOpen && (w.ClosedUtc is not null || p.ClosedUtc is not null) ||

@@ -10,9 +10,10 @@ public sealed class AssetStore
     public string Root { get; }
     public AssetStore(string root) { Root = Path.GetFullPath(root); Directory.CreateDirectory(Root); }
 
-    public string WriteImage(byte[] png)
+    public string WriteImage(byte[] png, string extension = ".png")
     {
-        var path = Path.Combine(Root, Guid.NewGuid().ToString("N") + ".png");
+        if (!MediaFiles.IsImage("image" + extension) || extension != Path.GetExtension(extension)) throw new InvalidDataException("Invalid image extension.");
+        var path = Path.Combine(Root, Guid.NewGuid().ToString("N") + extension.ToLowerInvariant());
         using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
         file.Write(png);
         return path;

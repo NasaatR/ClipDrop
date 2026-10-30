@@ -149,6 +149,8 @@ public sealed class SettingsWindow : Window
         Range("Opacity", () => settings.DockOpacity, 0, 100, value => settings.DockOpacity = value);
         Range("Idle visibility", () => settings.IdleDockOpacity, 5, 100, value => settings.IdleDockOpacity = value);
         Check("Collapse when idle", () => settings.CollapseWhenIdle, value => settings.CollapseWhenIdle = value, false);
+        Check("Fetch image URLs on drop", () => settings.FetchDroppedImages, value => settings.FetchDroppedImages = value, false);
+        Hint("Dropped image bytes/files are saved directly. A public image URL or HTML image source is fetched in the background; unavailable images stay as links. A Pinterest page link alone stays a link. No browser cookies or page scraping.");
         Hint("Idle visibility fades the whole dock away from the pointer. Hover, menus and transfers reveal it. Opacity changes only the background.");
         if (docks is not null)
         {
@@ -201,7 +203,7 @@ public sealed class SettingsWindow : Window
         diagnostics.Click += (_, _) => { try { Clipboard.SetText(report()); diagnostics.Content = "Copied"; } catch (System.Runtime.InteropServices.ExternalException) { diagnostics.Content = "Clipboard busy · retry"; } }; actions.Children.Add(diagnostics);
         var folder = new Button { Content = "Data folder" };
         folder.Click += (_, _) => { try { Process.Start(new ProcessStartInfo(dataRoot) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "ClipDrop"); } }; actions.Children.Add(folder);
-        Hint("Assets and exports remain on disk for reliable transfers.\nNo clipboard monitoring, accounts or network requests.");
+        Hint("Assets and exports remain on disk for reliable transfers.\nNo clipboard monitoring or accounts. Public image URLs can be fetched after an explicit drop; turn this off in Dock.");
         RebuildPresets();
         void FitFields()
         {

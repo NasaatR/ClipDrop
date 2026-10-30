@@ -67,10 +67,10 @@ internal static class IndependentChecks
         node["Settings"]!.AsObject().Remove("CollapseWhenIdle");
         var before = System.Text.Encoding.UTF8.GetBytes(node.ToJsonString()); File.WriteAllBytes(Path.Combine(legacyRoot, "shelf.json"), before);
         var oldStore = new StateStore(legacyRoot); var migrated = oldStore.Load(); oldStore.Save(migrated); oldStore.Save(migrated);
-        check(migrated.SchemaVersion == 6 && migrated.ActivePanelId == main.Id && migrated.Panels.All(p => p.Window is null) &&
+        check(migrated.SchemaVersion == ShelfState.CurrentSchema && migrated.ActivePanelId == main.Id && migrated.Panels.All(p => p.Window is null) &&
             migrated.Panels.Single(p => p.Id == other.Id).ClipIds.SequenceEqual(other.ClipIds) && migrated.Settings.CollapseWhenIdle,
             "Schema-5 migration keeps named memberships and introduces collapse without spawning windows");
-        check(File.ReadAllBytes(Path.Combine(legacyRoot, "shelf.json.schema-5-before-v6.bak")).SequenceEqual(before),
-            "Schema-6 saves preserve exact pre-upgrade schema-5 bytes");
+        check(File.ReadAllBytes(Path.Combine(legacyRoot, "shelf.json.schema-5-before-v" + ShelfState.CurrentSchema + ".bak")).SequenceEqual(before),
+            "Schema migration saves preserve exact pre-upgrade schema-5 bytes");
     }
 }

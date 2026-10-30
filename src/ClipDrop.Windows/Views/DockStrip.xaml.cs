@@ -74,18 +74,20 @@ public partial class DockStrip : UserControl
         SurfaceSize(false);
     }
     public void SetPins(IEnumerable<ShelfItem> pins, int capacity)
+        => SetTiles(pins.Select(i => new DockTile(i.Id, null, new[] { i })), capacity);
+    public void SetTiles(IEnumerable<DockTile> pins, int capacity)
     {
         var all = pins.ToArray();
-        var ids = all.Select(i => i.Id).ToHashSet();
-        for (var i = _rows.Count - 1; i >= 0; i--) if (!ids.Contains(_rows[i].Item.Id)) _rows.RemoveAt(i);
+        var ids = all.Select(i => i.Key).ToHashSet();
+        for (var i = _rows.Count - 1; i >= 0; i--) if (!ids.Contains(_rows[i].Key)) _rows.RemoveAt(i);
         var inserted = false;
-        var lookup = _rows.ToDictionary(r => r.Item.Id);
+        var lookup = _rows.ToDictionary(r => r.Key);
         for (var i = 0; i < all.Length; i++)
         {
-            if (i < _rows.Count && _rows[i].Item.Id == all[i].Id) { _rows[i].Refresh(); continue; }
-            lookup.TryGetValue(all[i].Id, out var existing);
-            if (existing is not null) _rows.Move(_rows.IndexOf(existing), i);
-            else { _rows.Insert(i, new ItemRow(all[i])); inserted = true; }
+            if (i < _rows.Count && _rows[i].Key == all[i].Key) { _rows[i].SetTile(all[i]); continue; }
+            lookup.TryGetValue(all[i].Key, out var existing);
+            if (existing is not null) { existing.SetTile(all[i]); _rows.Move(_rows.IndexOf(existing), i); }
+            else { var row = new ItemRow(all[i].Items[0]); row.SetTile(all[i]); _rows.Insert(i, row); inserted = true; }
         }
         PinnedItems.Width = Math.Min(all.Length, capacity) * _slot;
         PinnedItems.Height = _slot + 2;
@@ -98,7 +100,7 @@ public partial class DockStrip : UserControl
     }
     public void SetSelection(IReadOnlySet<string> selected, bool mode)
     {
-        foreach (var row in _rows) row.Selected = selected.Contains(row.Item.Id);
+        foreach (var row in _rows) row.Selected = selected.Contains(row.Key);
         SelectedButton.Content = selected.Count + " selected";
         SelectedButton.Visibility = selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         DoneButton.Visibility = mode || selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -134,6 +136,21 @@ public partial class DockStrip : UserControl
         }
         var offset = FindScroll(PinnedItems)?.HorizontalOffset ?? 0;
         return Math.Clamp((int)Math.Round((offset + point.X) / _slot), 0, _rows.Count);
+    }
+    public int PinIndex(int slot) => _rows.Take(slot).Sum(r => r.Members.Length);
+    public ItemRow? CenterAt(Point point)
+    {
+        var hit = PinnedItems.InputHitTest(point) as DependencyObject;
+        while (hit is not null && hit is not ListBoxItem) hit = VisualTreeHelper.GetParent(hit);
+        if (hit is not ListBoxItem { DataContext: ItemRow row } container) return null;
+        var local = PinnedItems.TranslatePoint(point, container);
+        return local.Y >= 0 && local.Y <= container.ActualHeight && local.X >= container.ActualWidth * .28 && local.X <= container.ActualWidth * .72 ? row : null;
+    }
+    public void ShowStackTarget(ItemRow? target)
+    {
+        if (target is null) return;
+        if (ReferenceEquals(_cue, target) && target.DropMark == 3) return;
+        ShowInsertion(null); _cue = target; target.DropMark = 3;
     }
     private static ScrollViewer? FindScroll(DependencyObject node)
     {

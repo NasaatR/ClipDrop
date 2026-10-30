@@ -12,6 +12,13 @@ try {
     dotnet publish src/ClipDrop.Windows -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o $publish
     if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
     Copy-Item LICENSE, README.md, README.ru.md, THIRD-PARTY-NOTICES.md $publish
+    [xml]$project = Get-Content src/ClipDrop.Windows/ClipDrop.Windows.csproj
+    $skiaVersion = $project.SelectSingleNode("/Project/ItemGroup/PackageReference[@Include='SkiaSharp']").Version
+    $packageCache = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.nuget/packages' }
+    Copy-Item (Join-Path $packageCache "skiasharp/$skiaVersion/LICENSE.txt") "$publish/SKIASHARP-LICENSE.txt"
+    Copy-Item (Join-Path $packageCache "skiasharp.nativeassets.win32/$skiaVersion/THIRD-PARTY-NOTICES.txt") "$publish/SKIA-THIRD-PARTY-NOTICES.txt"
+    if (!(Test-Path "$publish/libSkiaSharp.dll")) { throw 'Bundled raster decoder is missing.' }
+    if (Test-Path "$publish/libSkiaSharp.pdb") { Remove-Item "$publish/libSkiaSharp.pdb" }
     Invoke-WebRequest 'https://raw.githubusercontent.com/dotnet/runtime/main/LICENSE.TXT' -OutFile "$publish/DOTNET-LICENSE.txt"
     Invoke-WebRequest 'https://raw.githubusercontent.com/dotnet/runtime/main/THIRD-PARTY-NOTICES.TXT' -OutFile "$publish/DOTNET-THIRD-PARTY-NOTICES.txt"
     $portableRoot = Join-Path $projectRoot "artifacts/portable/ClipDrop_$version"
