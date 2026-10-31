@@ -35,7 +35,7 @@ public static partial class Motion
     {
         var duration = (int)Appearance.Bound(settings.MotionDuration, 100, 600, 240);
         var spring = settings.MotionStyle != "Soft";
-        if (DurationMs != duration || _spring != spring) StopDisclosures();
+        if (DurationMs != duration || _spring != spring) { StopDisclosures(); StopRowHovers(); }
         DurationMs = duration; _spring = spring;
     }
     private static void StopDisclosures()
@@ -73,7 +73,7 @@ public static partial class Motion
         var previous = surface.Opacity;
         var interrupted = state.Active;
         var scale = interrupted ? state.Scale.ScaleX : .965;
-        var travel = interrupted ? state.Move.Y : 7;
+        var travel = interrupted ? state.Move.Y : origin.Y < .5 ? -7 : 7;
         state.Stop();
         surface.RenderTransform = state.Group; surface.RenderTransformOrigin = origin;
         if (!Allowed) { surface.Opacity = 1; surface.BeginAnimation(UIElement.OpacityProperty, null); return; }

@@ -13,6 +13,7 @@ void Throws<T>(Action action, string name) where T : Exception
 try
 {
     LayoutChecks.Run(root, Check);
+    DownloadsGeometryChecks.Run(Check);
     UsageChecks.Run(root, Check);
     PanelSetChecks.Run(root, Check);
     IndependentChecks.Run(root, Check);

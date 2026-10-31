@@ -80,6 +80,7 @@ public sealed class ShelfSettings : AppearanceStyle
     public bool DownloadsShowTime { get; set; } = true;
     public bool DownloadsAlwaysShowFolder { get; set; }
     public string DownloadsRevealMode { get; set; } = "Default";
+    public string DownloadsDirection { get; set; } = "Auto";
     public string DownloadsFolder { get; set; } = "";
     public string DownloadsSource { get; set; } = "Auto";
     [System.Text.Json.Serialization.JsonIgnore]

@@ -67,7 +67,7 @@ public partial class DownloadsWindow : Window
                 _selection.Clear(); SyncSelection();
                 Motion.Conceal(Details, () => { if (IsCompact) Details.Visibility = Visibility.Hidden; }, _immediateDismiss);
             }
-            else { Motion.Disclose(Details, new Point(1, 1)); Details.Visibility = Visibility.Visible; }
+            else { Motion.Disclose(Details, RevealOrigin); Details.Visibility = Visibility.Visible; QueueRecentScroll(); }
             WatchDismiss();
         }, transient: true);
         PopupDismiss.Attach(ContextMenu, this); ContextMenuOpening += (_, _) => Menu();
@@ -75,11 +75,15 @@ public partial class DownloadsWindow : Window
         _ = new WindowDrag(this, () => { _moving = true; Presence(); }, () => {
             try { GeometryCommitted?.Invoke(); }
             finally { _moving = false; Presence(); MoveCompleted?.Invoke(); }
-        }, button => ItemsControl.ContainerFromElement(Files, button) is null);
+        }, button => ItemsControl.ContainerFromElement(Files, button) is null, clamp: () => { if (Assignment is null) WindowPlacement.Clamp(this); });
         MouseEnter += (_, _) => _feed.RequestRefresh();
         IsVisibleChanged += (_, _) => WatchDismiss();
         LostMouseCapture += (_, _) => { if (!_busy && _origin.HasValue && _source?.IsMouseCaptured != true) ClearGesture(); };
         SizeChanged += (_, _) => FitDetails();
+        Files.PreviewMouseDown += (_, _) => _scrollRevision++;
+        Files.GotMouseCapture += (_, _) => _scrollRevision++;
+        Files.PreviewMouseWheel += (_, _) => _scrollRevision++;
+        Files.PreviewKeyDown += (_, _) => _scrollRevision++;
         Closing += (_, e) => { if (!_disposing) { e.Cancel = true; Dispatcher.BeginInvoke(_close); } };
         _session.Changed += AppearanceChanged; _feed.Changed += Refresh;
         AppearanceChanged(); Refresh(); Menu();
@@ -117,7 +121,9 @@ public partial class DownloadsWindow : Window
     private void Refresh()
     {
         if (_disposing || _busy || _origin.HasValue) return; // Never mutate an OLE source or a pressed row.
-        var snapshot = _feed.Snapshot; var desired = snapshot.Files;
+        var snapshot = _feed.Snapshot; var desired = DownloadsGeometry.Order(snapshot.Files, OpensDown);
+        var stick = IsCompact || _rows.Count == 0 || AtRecentEnd();
+        var anchor = stick ? null : ReadScrollAnchor();
         _refreshing = true;
         try
         {
@@ -137,10 +143,10 @@ public partial class DownloadsWindow : Window
         Notice.Visibility = snapshot.Notice is not null || _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         SourceButton.Content = _feed.IsChrome ? "Connect Chrome" : "Open folder";
         SourceButton.Visibility = Notice.Visibility == Visibility.Visible && (snapshot.Notice is not null || _feed.IsChrome) ? Visibility.Visible : Visibility.Collapsed;
-        UpdateCount(); FitDetails();
+        UpdateCount(); FitDetails(); RestoreScroll(stick, anchor);
     }
     private ShelfItem[] Selected() => _rows.Where(r => _selection.Ids.Contains(r.File.Path)).Select(r => r.RowItem.Item).ToArray();
-    private void UpdateCount() => Count.Text = _selection.Ids.Count > 1 ? $"{_selection.Ids.Count} selected" : $"{_rows.Count} files";
+    private void UpdateCount() => Count.Text = _selection.Ids.Count > 1 ? $"{_selection.Ids.Count} selected" : $"{_rows.Count} {(_rows.Count == 1 ? "file" : "files")}";
     private void SyncSelection()
     {
         var refreshing = _refreshing; _refreshing = true;
@@ -156,7 +162,7 @@ public partial class DownloadsWindow : Window
     {
         var notice = Notice.Visibility == Visibility.Visible ? (SourceButton.Visibility == Visibility.Visible ? 86 : 44) : 0;
         var size = SurfaceSizing.Downloads(_session.State.Settings);
-        Details.Height = Math.Max(80, Math.Min(58 + Math.Max(1, Math.Min(size.Rows, _rows.Count)) * size.RowStride + notice, Math.Max(80, Height - size.IconSize - 33)));
+        Details.Height = Math.Max(0, Math.Min(58 + Math.Max(1, Math.Min(size.Rows, _rows.Count)) * size.RowStride + notice, Math.Max(0, Height - size.IconSize - 33)));
     }
     private void OnSelection(object sender, SelectionChangedEventArgs e)
     {

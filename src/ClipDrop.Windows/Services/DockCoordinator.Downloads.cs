@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 using ClipDrop.Core;
 using ClipDrop.Windows.Views;
 
@@ -15,8 +16,8 @@ public sealed partial class DockCoordinator
     private string DownloadsSignature()
     {
         var s = _session.State.Settings; var l = s.DownloadsLayout;
-        return $"|downloads:{s.DownloadsEnabled}:{s.MirrorDownloads}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{s.DownloadsWidth}:{s.DownloadsRows}:{s.DownloadsRowHeight}:{s.DownloadsRowSpacing}:{s.DownloadsIconSize}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}|" +
-            string.Join(";", s.DownloadsLayouts.Select(d => $"{d.DisplayId}:{d.Visible}:{d.OffsetX}:{d.OffsetY}"));
+        return $"|downloads:{s.DownloadsEnabled}:{s.MirrorDownloads}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{s.DownloadsWidth}:{s.DownloadsRows}:{s.DownloadsRowHeight}:{s.DownloadsRowSpacing}:{s.DownloadsIconSize}:{s.DownloadsDirection}:{l.AnchorX}:{l.AnchorY}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}|" +
+            string.Join(";", s.DownloadsLayouts.Select(d => $"{d.DisplayId}:{d.Visible}:{d.OffsetX}:{d.OffsetY}:{d.AnchorX}:{d.AnchorY}"));
     }
     public void OpenDownloads()
     {
@@ -33,13 +34,22 @@ public sealed partial class DockCoordinator
         foreach (var window in DownloadsViews) window.DisposeView();
         _downloadsViews.Clear();
     }
+    private static void PrimeDownloads(DownloadsWindow window, DisplayArea display)
+    {
+        var bounds = WindowPlacement.PixelBounds(window);
+        if (!new Rect(display.Left, display.Top, display.Width, display.Height).Contains(new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2)))
+        { WindowPlacement.MovePixels(window, display.Left + 16, display.Top + 16); window.UpdateLayout(); }
+    }
     private void FitDownloads(DownloadsWindow window, DisplayArea display)
     {
-        var scale = WindowPlacement.Scale(window);
-        var size = SurfaceSizing.Downloads(_session.State.Settings);
-        window.Height = Math.Max(1, Math.Min(size.Height, display.Height / scale));
-        window.Width = Math.Max(1, Math.Min(size.Width, display.Width / scale));
-        window.UpdateLayout();
+        PrimeDownloads(window, display);
+        var scale = WindowPlacement.Scale(window); var layout = window.Assignment!.Layout;
+        var legacy = DownloadsGeometry.LegacyAnchor(_session.State.Settings, layout, display.Width / scale, display.Height / scale);
+        layout.AnchorX ??= legacy.X; layout.AnchorY ??= legacy.Y;
+        var placement = DownloadsGeometry.Place(_session.State.Settings, display.Width / scale, display.Height / scale, new(layout.AnchorX.Value, layout.AnchorY.Value));
+        window.ApplyPlacement(placement);
+        WindowPlacement.MovePixels(window, display.Left + placement.Left * scale, display.Top + placement.Top * scale);
+        layout.OffsetX = placement.Left; layout.OffsetY = placement.Top;
     }
     private void ReconcileDownloads()
     {
@@ -77,24 +87,16 @@ public sealed partial class DockCoordinator
                 window.IsVisibleChanged += (_, _) => SaveDownloadsVisibility(captured);
             }
             else if (assignment.Temporary && window.Assignment is { Temporary: true } old)
-            { assignment.Layout.OffsetX = old.Layout.OffsetX; assignment.Layout.OffsetY = old.Layout.OffsetY; assignment.Layout.Visible = old.Layout.Visible; }
+            { assignment.Layout.OffsetX = old.Layout.OffsetX; assignment.Layout.OffsetY = old.Layout.OffsetY; assignment.Layout.AnchorX = old.Layout.AnchorX; assignment.Layout.AnchorY = old.Layout.AnchorY; assignment.Layout.Visible = old.Layout.Visible; }
             window.Assignment = assignment;
             var display = assignment.Display; var layout = assignment.Layout;
-            // Prime the target HWND DPI before deriving DIP dimensions/default offsets.
-            WindowPlacement.PlaceOnDisplay(window, display, layout);
-            var scale = WindowPlacement.Scale(window);
-            FitDownloads(window, display);
-            if (layout.OffsetX is null || layout.OffsetY is null)
-            {
-                layout.OffsetX ??= Math.Max(0, display.Width / scale - window.Width - 16);
-                layout.OffsetY ??= Math.Max(0, display.Height / scale - window.Height - 16);
-                changed |= !assignment.Temporary;
-            }
+            var missingAnchor = layout.AnchorX is null || layout.AnchorY is null;
+            FitDownloads(window, display); changed |= missingAnchor && !assignment.Temporary;
+            if (!assignment.Temporary && DockPlanning.Same(display.Id, home.DisplayId) && (home.AnchorX is null || home.AnchorY is null))
+            { home.AnchorX = layout.AnchorX; home.AnchorY = layout.AnchorY; home.OffsetX = layout.OffsetX; home.OffsetY = layout.OffsetY; changed = true; }
             if (_startHidden) { home.Visible = layout.Visible = false; changed = true; }
-            WindowPlacement.PlaceOnDisplay(window, display, layout);
             if (!_startHidden && layout.Visible) { if (!window.IsVisible) window.ShowStack(); }
             else if (window.IsVisible) window.HideStack();
-            WindowPlacement.PlaceOnDisplay(window, display, layout);
         }
         if (changed) _session.Change(false);
     }
@@ -108,7 +110,8 @@ public sealed partial class DockCoordinator
     {
         if (_sync || _disposed || window.Assignment is not { } old) return;
         var settings = _session.State.Settings;
-        var display = settings.MirrorDownloads ? old.Display : MovedDisplay(window, old.Display.Id) ?? old.Display;
+        var center = window.CapsuleCenterPixels();
+        var display = settings.MirrorDownloads ? old.Display : DockPlanning.DisplayForBounds(Displays, old.Display.Id, center.X - 1, center.Y - 1, 2, 2) ?? old.Display;
         var layout = old.Layout;
         if (!settings.MirrorDownloads && !(old.Temporary && DockPlanning.Same(display.Id, old.Display.Id)))
         {
@@ -120,21 +123,23 @@ public sealed partial class DockCoordinator
         }
         var temporary = old.Temporary && ReferenceEquals(layout, old.Layout) && DockPlanning.Same(display.Id, old.Display.Id);
         window.Assignment = new(display, layout, temporary);
+        PrimeDownloads(window, display);
+        var scale = WindowPlacement.Scale(window);
+        layout.AnchorX = (center.X - display.Left) / scale; layout.AnchorY = (center.Y - display.Top) / scale;
+        var fitted = DownloadsGeometry.Place(settings, display.Width / scale, display.Height / scale, new(layout.AnchorX.Value, layout.AnchorY.Value));
+        layout.AnchorX = fitted.AnchorX; layout.AnchorY = fitted.AnchorY;
         FitDownloads(window, display);
-        WindowPlacement.ClampTo(window, display);
-        var bounds = WindowPlacement.PixelBounds(window); var scale = WindowPlacement.Scale(window);
-        layout.OffsetX = (bounds.Left - display.Left) / scale; layout.OffsetY = (bounds.Top - display.Top) / scale;
         if (settings.MirrorDownloads)
         {
             // Turning mirroring off keeps the last moved copy as the single stack.
             var home = settings.DownloadsLayout;
-            home.DisplayId = display.Id; home.OffsetX = layout.OffsetX; home.OffsetY = layout.OffsetY; home.Visible = layout.Visible;
+            home.DisplayId = display.Id; home.OffsetX = layout.OffsetX; home.OffsetY = layout.OffsetY; home.AnchorX = layout.AnchorX; home.AnchorY = layout.AnchorY; home.Visible = layout.Visible;
         }
         else if (!temporary)
         {
             // Keep the corresponding mirror position current when moving in single mode.
             var record = settings.DownloadsLayouts.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, display.Id));
-            if (record is not null) { record.OffsetX = layout.OffsetX; record.OffsetY = layout.OffsetY; record.Visible = layout.Visible; }
+            if (record is not null) { record.OffsetX = layout.OffsetX; record.OffsetY = layout.OffsetY; record.AnchorX = layout.AnchorX; record.AnchorY = layout.AnchorY; record.Visible = layout.Visible; }
         }
         _layoutSignature = LayoutSignature(); _session.Change(false); RecordMove(window, "Downloads"); DisplaysChanged?.Invoke();
     }

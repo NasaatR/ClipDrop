@@ -55,3 +55,13 @@ test("MV3 has no page/History/cookie permissions and a stable allowlisted extens
   const extensionId = [...hash].map(c => String.fromCharCode(97 + parseInt(c, 16))).join("");
   assert.equal(extensionId, "iedbmkchlbjjabmopniipnffmdjdpmmn");
 });
+
+
+test("native version, display label and release rollover stay aligned", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../../browser/chrome/manifest.json", import.meta.url)));
+  const props = await readFile(new URL("../../Directory.Build.props", import.meta.url), "utf8");
+  const native = props.match(/<VersionPrefix>([^<]+)<\/VersionPrefix>/)[1];
+  assert.match(native, /^[1-9][0-9]*\.[0-9]\.0$/);
+  assert.equal(manifest.version, native);
+  assert.equal(manifest.version_name, native.split(".").slice(0, 2).join(".") + " Preview");
+});

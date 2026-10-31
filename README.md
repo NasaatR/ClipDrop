@@ -7,11 +7,11 @@ switch applications, then drag it out. Made by Nasaat.
 
 ## Download and start
 
-[Windows preview downloads](https://github.com/NasaatR/ClipDrop/releases)
+[Windows preview downloads](https://github.com/NasaatR/ClipDrop/releases) · [Version policy](docs/VERSIONING.md)
 
-- `ClipDrop_<version>_windows-x64_setup.exe`: recommended per-user installer,
+- `ClipDrop_v<release>_windows-x64_setup.exe`: recommended per-user installer,
   optional desktop shortcut and start at sign-in; no administrator rights needed.
-- `ClipDrop_<version>_windows-x64_portable.zip`: extract the entire versioned
+- `ClipDrop_v<release>_windows-x64_portable.zip`: extract the entire versioned
   folder and run `ClipDrop.exe`. Keep the other runtime files alongside it.
 
 Both include .NET. No developer tools or extra runtime installation required.
@@ -27,7 +27,16 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.19.0
+## Features in 1.0 Preview
+
+- Understandable releases: **1.0 Preview**, then 1.1,…,1.9,2.0. Native package
+  version 1.0.0, display 1.0 Preview, tag v1.0 and assets ClipDrop_v1.0 are derived
+  from one authority; old 0.x releases and app/data identity remain intact.
+- Downloads anchors its **icon center**, independently of panel size. Move it near
+  the top to open downward, or near the bottom to open upward. Newest files always
+  sit at the end nearest the icon. Auto fits available space on either side.
+- Subtle icon lift/scale and row tint respond to hover/focus while scrolling,
+  with immediate reduced-motion/disabled-animation cleanup. No layout growth.
 
 - A right-side **Show in Explorer** folder button appears on download-row hover or
   keyboard focus without moving the filename. Both this button and the context
@@ -224,6 +233,16 @@ returns the same stack/order. An edge move of an individual member from Library
 can separate it from its stack; moving the whole stack keeps its structure.
 
 ## Downloads stack
+
+The icon center stays fixed when width, row count, density or spacing changes.
+Drag the icon near the top of a screen to open down; near the bottom it opens up.
+**Settings → Downloads → List opens** chooses Auto, Above or Below (space limits
+can override the preference). Newest files remain adjacent to the icon in both
+orientations; opening starts there. Arrivals follow that edge while you are there,
+and keep your place when browsing older files or holding the scrollbar. Preview
+has its own **Preview icon at top** toggle. Saved positions migrate from old window
+offsets without changing file data; reset and display selection include anchors.
+
 
 Right-click Save/free dock space → **Downloads**, or use the tray's **Downloads**
 command. One icon appears near the bottom-right of every attached display by

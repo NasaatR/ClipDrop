@@ -9,8 +9,10 @@ namespace ClipDrop.Windows.Services;
 public sealed class Diagnostics
 {
     private readonly Queue<string> _events = new();
-    public static string Version => typeof(Diagnostics).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+    public static string NativeVersion => typeof(Diagnostics).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
         ?.InformationalVersion.Split('+')[0] ?? "unknown";
+
+    public static string Version => ClipDrop.Core.ReleaseVersion.Label(NativeVersion) + " Preview";
 
     public void Record(string operation, Exception error)
     {
@@ -28,7 +30,7 @@ public sealed class Diagnostics
         while (_events.Count > 30) _events.Dequeue();
     }
     public string Report(int count, string state) =>
-        $"ClipDrop {Version}\nMade by Nasaat\nOS: {RuntimeInformation.OSDescription}\n" +
+        $"ClipDrop {Version}\nNative version: {NativeVersion}\nMade by Nasaat\nOS: {RuntimeInformation.OSDescription}\n" +
         $"Architecture: {RuntimeInformation.ProcessArchitecture}\nRuntime: {RuntimeInformation.FrameworkDescription}\n" +
         $"Items: {count}\nStorage: {state}\nUTC: {DateTimeOffset.UtcNow:O}\n\n" +
         "Recent events and errors (no clipboard or item contents are recorded):\n" + string.Join("\n", _events) +

@@ -11,6 +11,10 @@ public sealed class DockLayout
     public bool Visible { get; set; } = true;
     public double? OffsetX { get; set; }
     public double? OffsetY { get; set; }
+    // Downloads capsule center, work-area-relative DIPs. Legacy offsets remain
+    // whole-window positions for migration and older readers.
+    public double? AnchorX { get; set; }
+    public double? AnchorY { get; set; }
 }
 
 public sealed record DisplayArea(string Id, string Label, double Left, double Top, double Width, double Height, bool Primary = false)
@@ -63,7 +67,9 @@ public static class DockPlanning
             if (settings.DownloadsLayouts.All(l => !Same(l.DisplayId, display.Id)) && settings.DownloadsLayouts.Count < 64)
                 settings.DownloadsLayouts.Add(new DockLayout { DisplayId = display.Id, Enabled = true, Visible = home.Visible,
                     OffsetX = Same(display.Id, home.DisplayId) ? home.OffsetX : null,
-                    OffsetY = Same(display.Id, home.DisplayId) ? home.OffsetY : null });
+                    OffsetY = Same(display.Id, home.DisplayId) ? home.OffsetY : null,
+                    AnchorX = Same(display.Id, home.DisplayId) ? home.AnchorX : null,
+                    AnchorY = Same(display.Id, home.DisplayId) ? home.AnchorY : null });
         return displays.Select(d => {
             var layout = settings.DownloadsLayouts.FirstOrDefault(l => Same(l.DisplayId, d.Id));
             return new DockAssignment(d, layout ?? new DockLayout { DisplayId = d.Id, Visible = home.Visible }, layout is null);

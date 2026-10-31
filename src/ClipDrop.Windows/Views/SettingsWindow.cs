@@ -179,6 +179,8 @@ public sealed class SettingsWindow : Window
         Check("Always show folder button", () => settings.DownloadsAlwaysShowFolder, value => settings.DownloadsAlwaysShowFolder = value, false);
         Choice("Show in Explorer", () => settings.DownloadsRevealMode, new[] { "Default", "WindowsExplorer" }, new[] { "Default file manager", "Windows Explorer · select file" }, value => settings.DownloadsRevealMode = value, false);
         Hint("Default file manager opens the containing folder using your Windows folder association, including configured File Pilot. Selecting a file is specific to the manager; the Explorer option selects it in Windows Explorer.");
+        Choice("List opens", () => settings.DownloadsDirection, new[] { "Auto", "Above", "Below" }, new[] { "Auto · toward free space", "Above icon", "Below icon" }, value => settings.DownloadsDirection = value, false);
+        Hint("Panel settings keep the icon center fixed. Auto follows its screen position; edge limits can override a direction. Newest files stay nearest the icon. Compare top/bottom placement in the preview.");
         var resetDownloads = new Button { Content = "Reset Downloads layout", HorizontalAlignment = HorizontalAlignment.Left };
         resetDownloads.Click += (_, _) => { settings.DownloadsWidth = 272; settings.DownloadsRows = 10; settings.DownloadsRowHeight = 34; settings.DownloadsIconSize = 44; settings.DownloadsRowSpacing = 4; settings.DownloadsShowTime = true; settings.DownloadsAlwaysShowFolder = false; Change(false); foreach (var sync in _syncControls) sync(); };
         _section.Children.Add(resetDownloads);

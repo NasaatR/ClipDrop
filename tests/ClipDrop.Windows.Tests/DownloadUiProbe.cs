@@ -91,7 +91,8 @@ internal static class DownloadUiProbe
             state.Settings.DownloadsWidth = 480; state.Settings.DownloadsRowHeight = 52; state.Settings.DownloadsIconSize = 64;
             state.Settings.DownloadsAlwaysShowFolder = true; session.ChangeSettings(); preview.Apply(state.Settings); UiProbe.Pump();
             UiProbe.CaptureWindow(settings, Path.Combine(output, "downloads-settings-preview-narrow-light.png"));
-            check(preview.IsVisible && preview.Files.ActualHeight == 64 && UiProbe.Find<ScrollViewer>(preview, s => s.Name == "DownloadsSampleViewport").ScrollableHeight == 0 && UiProbe.Find<Button>(previewRow, b => b.Name == "FolderButton").ActualHeight == 28,
+            var narrowRow = UiProbe.Find<ListBoxItem>(preview.Files, r => r.IsVisible && r.ActualHeight == 52);
+            check(preview.IsVisible && preview.Files.ActualHeight == 64 && UiProbe.Find<ScrollViewer>(preview, s => s.Name == "DownloadsSampleViewport").ScrollableHeight == 0 && UiProbe.Find<Button>(narrowRow, b => b.Name == "FolderButton").ActualHeight == 28,
                 "The narrow extreme preview fits a complete row, capsule and usable folder action without clipping");
             settings.Height = 480; UiProbe.Pump();
             check(rootScroll.ViewportHeight >= 100 && preview.IsVisible,

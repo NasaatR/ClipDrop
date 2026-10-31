@@ -21,7 +21,7 @@ public static partial class Motion
             if (_enabled == value) return;
             _enabled = value;
             if (value) return;
-            StopDisclosures();
+            StopDisclosures(); StopRowHovers();
             Buttons.RemoveAll(reference => {
                 if (!reference.TryGetTarget(out var button)) return true;
                 if (button.RenderTransform is ScaleTransform scale) { scale.BeginAnimation(ScaleTransform.ScaleXProperty, null); scale.BeginAnimation(ScaleTransform.ScaleYProperty, null); scale.ScaleX = scale.ScaleY = 1; }

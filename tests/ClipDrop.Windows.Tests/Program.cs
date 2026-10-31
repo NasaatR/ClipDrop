@@ -129,6 +129,7 @@ internal static class Program
             InteractionProbe.Run(window, dock, root, output, Check);
             SmoothProbe.Run(window, dock, root, output, Check);
             DownloadUiProbe.Run(window, dock, root, output, Check);
+            DownloadsAnchorProbe.Run(window, dock, root, output, Check);
             UsageProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             PresenceProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             PanelsProbe.Run(root, output, Check, (element, path) => RenderElement(element, path));

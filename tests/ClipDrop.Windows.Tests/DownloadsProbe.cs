@@ -170,7 +170,7 @@ internal static class DownloadsProbe
                 Files = new[] { new BrowserDownload(a, now.AddSeconds(-1)), new BrowserDownload(b, now) } };
             BrowserDownloads.Save(catalog, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(message, BrowserDownloads.Json));
             check(UiProbe.Until(() => stack.DownloadList.Items.Count == 2, 5000), "A Chrome snapshot updates the floating view across different Save As folders without scanning them");
-            check(stack.DownloadList.Items.Cast<DownloadsWindow.Row>().First().File.Path == b && state.Items.Count == 0 && state.Trash.Count == 0,
+            check((stack.OpensDown ? stack.DownloadList.Items.Cast<DownloadsWindow.Row>().First() : stack.DownloadList.Items.Cast<DownloadsWindow.Row>().Last()).File.Path == b && state.Items.Count == 0 && state.Trash.Count == 0,
                 "Chrome view follows actual completion order while leaving Library and Trash untouched");
             UiProbe.DragTo(Row(stack, a), receiver.PointToScreen(new Point(110, 70)));
             check(received is { Length: 1 } && received[0] == a && File.Exists(a) && stack.DownloadList.SelectedItems.Count == 0,

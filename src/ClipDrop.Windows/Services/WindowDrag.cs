@@ -16,6 +16,7 @@ public sealed class WindowDrag
     private readonly Window _window;
     private readonly Action _started;
     private readonly Action _completed;
+    private readonly Action _clamp;
     private readonly Func<Button, bool>? _moveButton;
     private Button? _button;
     private bool _capturing;
@@ -23,9 +24,9 @@ public sealed class WindowDrag
     private Point _grab;
     private double _startScale;
     public bool IsMoving { get; private set; }
-    public WindowDrag(Window window, Action started, Action completed, Func<Button, bool>? moveButton = null)
+    public WindowDrag(Window window, Action started, Action completed, Func<Button, bool>? moveButton = null, Action? clamp = null)
     {
-        _window = window; _started = started; _completed = completed; _moveButton = moveButton;
+        _window = window; _started = started; _completed = completed; _moveButton = moveButton; _clamp = clamp ?? (() => WindowPlacement.Clamp(window));
         window.PreviewMouseLeftButtonDown += Down;
         window.PreviewMouseMove += Move;
         window.PreviewMouseLeftButtonUp += (_, e) => { if (IsMoving) e.Handled = true; Finish(); };
@@ -93,6 +94,6 @@ public sealed class WindowDrag
         _start = null; _button = null;
         var moved = IsMoving; IsMoving = false;
         if (_window.IsMouseCaptured) _window.ReleaseMouseCapture();
-        if (moved) { WindowPlacement.Clamp(_window); _completed(); }
+        if (moved) { _clamp(); _completed(); }
     }
 }

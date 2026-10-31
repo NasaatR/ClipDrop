@@ -1,10 +1,15 @@
 #ifndef MyAppVersion
   #error Supply MyAppVersion from Directory.Build.props through scripts/package.ps1
 #endif
+#ifndef MyAppRelease
+  #error Supply MyAppRelease derived from Directory.Build.props
+#endif
 [Setup]
 AppId={{657DCFD1-3CCB-46E7-9BB1-534F69B57C36}
 AppName=ClipDrop
 AppVersion={#MyAppVersion}
+AppVerName=ClipDrop {#MyAppRelease} Preview
+VersionInfoVersion={#MyAppVersion}
 AppPublisher=NasaatR
 AppPublisherURL=https://github.com/NasaatR/ClipDrop
 DefaultDirName={localappdata}\Programs\ClipDrop
@@ -13,7 +18,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\artifacts\release
-OutputBaseFilename=ClipDrop_{#MyAppVersion}_windows-x64_setup
+OutputBaseFilename=ClipDrop_v{#MyAppRelease}_windows-x64_setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

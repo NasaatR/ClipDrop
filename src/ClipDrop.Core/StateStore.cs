@@ -141,7 +141,9 @@ public sealed class StateStore
         if (state.Settings.DownloadsSource is not ("Auto" or "Chrome" or "Folder") || state.Settings.DownloadsFolder is null || state.Settings.DownloadsFolder.Length > 32767 ||
             downloads is null || downloads.DisplayId is null || downloads.DisplayId.Length > 1024 ||
             downloads.OffsetX is double dx && (!double.IsFinite(dx) || Math.Abs(dx) > 100000) ||
-            downloads.OffsetY is double dy && (!double.IsFinite(dy) || Math.Abs(dy) > 100000))
+            downloads.OffsetY is double dy && (!double.IsFinite(dy) || Math.Abs(dy) > 100000) ||
+            downloads.AnchorX is double ax && (!double.IsFinite(ax) || Math.Abs(ax) > 100000) ||
+            downloads.AnchorY is double ay && (!double.IsFinite(ay) || Math.Abs(ay) > 100000))
             throw new InvalidDataException("Invalid downloads preferences.");
         foreach (var item in all.Where(i => i.Clipboard is not null))
         {
@@ -156,12 +158,14 @@ public sealed class StateStore
             throw new InvalidDataException("Invalid saved styles.");
         if (state.Settings.DownloadsLayouts is null || state.Settings.DownloadsLayouts.Count > 64 ||
             state.Settings.DownloadsLayouts.Any(d => d is null || string.IsNullOrWhiteSpace(d.DisplayId) || d.DisplayId.Length > 1024 ||
-                d.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) || d.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000)) ||
+                d.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) || d.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000) ||
+                d.AnchorX is double ax && (!double.IsFinite(ax) || Math.Abs(ax) > 100000) || d.AnchorY is double ay && (!double.IsFinite(ay) || Math.Abs(ay) > 100000)) ||
             state.Settings.DownloadsLayouts.Select(d => d.DisplayId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != state.Settings.DownloadsLayouts.Count)
             throw new InvalidDataException("Invalid downloads display layouts.");
         if (state.Settings.Docks is null || state.Settings.Docks.Count > 64 || state.Settings.HomeDisplayId is null ||
             state.Settings.Docks.Any(d => d is null || string.IsNullOrWhiteSpace(d.DisplayId) || d.DisplayId.Length > 1024 ||
-                d.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) || d.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000)) ||
+                d.OffsetX is double x && (!double.IsFinite(x) || Math.Abs(x) > 100000) || d.OffsetY is double y && (!double.IsFinite(y) || Math.Abs(y) > 100000) ||
+                d.AnchorX is double ax && (!double.IsFinite(ax) || Math.Abs(ax) > 100000) || d.AnchorY is double ay && (!double.IsFinite(ay) || Math.Abs(ay) > 100000)) ||
             state.Settings.Docks.Select(d => d.DisplayId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != state.Settings.Docks.Count)
             throw new InvalidDataException("Invalid monitor layout.");
         foreach (var style in state.Settings.SavedStyles.Select(s => s.Style).Prepend(state.Settings))

@@ -11,13 +11,26 @@ public partial class DownloadRowView : UserControl
     public static readonly RoutedEvent ShowFolderRequestedEvent = EventManager.RegisterRoutedEvent(nameof(ShowFolderRequested), RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(DownloadRowView));
     public event RoutedEventHandler ShowFolderRequested { add => AddHandler(ShowFolderRequestedEvent, value); remove => RemoveHandler(ShowFolderRequestedEvent, value); }
     private int _thumbnailRevision;
+    private ListBoxItem? _hoverParent;
     private static readonly ImageSource SampleImage = MakeSample();
     public DownloadRowView()
     {
-        InitializeComponent(); Loaded += (_, _) => LoadThumbnail();
-        DataContextChanged += (_, _) => { if (IsLoaded) LoadThumbnail(); };
-        Unloaded += (_, _) => { _thumbnailRevision++; Thumbnail.Source = null; };
+        InitializeComponent(); Loaded += (_, _) => {
+            DependencyObject? parent = this;
+            while (parent is not null && parent is not ListBoxItem) parent = VisualTreeHelper.GetParent(parent);
+            _hoverParent = parent as ListBoxItem;
+            if (_hoverParent is not null) { _hoverParent.MouseEnter += HoverChanged; _hoverParent.MouseLeave += HoverChanged; _hoverParent.IsKeyboardFocusWithinChanged += FocusChanged; }
+            LoadThumbnail(); UpdateHover();
+        };
+        DataContextChanged += (_, _) => { Motion.ResetHover(PreviewGraphic); if (IsLoaded) { LoadThumbnail(); UpdateHover(); } };
+        Unloaded += (_, _) => {
+            _thumbnailRevision++; Thumbnail.Source = null; Motion.ResetHover(PreviewGraphic);
+            if (_hoverParent is not null) { _hoverParent.MouseEnter -= HoverChanged; _hoverParent.MouseLeave -= HoverChanged; _hoverParent.IsKeyboardFocusWithinChanged -= FocusChanged; _hoverParent = null; }
+        };
     }
+    private void HoverChanged(object sender, System.Windows.Input.MouseEventArgs e) => UpdateHover();
+    private void FocusChanged(object sender, DependencyPropertyChangedEventArgs e) => UpdateHover();
+    private void UpdateHover() => Motion.RowHover(PreviewGraphic, HoverWash, _hoverParent is { } row && (row.IsMouseOver || row.IsKeyboardFocusWithin));
     private void OnFolder(object sender, RoutedEventArgs e)
     { e.Handled = true; RaiseEvent(new RoutedEventArgs(ShowFolderRequestedEvent, this)); }
     private async void LoadThumbnail()

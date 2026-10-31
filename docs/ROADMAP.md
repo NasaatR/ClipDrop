@@ -795,3 +795,32 @@ References: [File Pilot integration](https://filepilot.tech/download),
 
 The exact-commit Windows build/render/transfer/Chrome/startup/upgrade workflow is
 the release gate; verify native screenshots before delivering the installer.
+
+
+## 1.0 Preview: icon-anchored Downloads and understandable releases
+
+User-requested numbering migration: 0.19.0 → 1.0 Preview. Directory.Build.props
+keeps the authoritative native1.0.0; derive display1.0, tagv1.0 and versioned asset
+names. Personal sequential labels carry1.9 →2.0; they do not claim SemVer API
+compatibility or stability. Preserve all historical tags/assets and app/data IDs.
+
+- [x] One release mapping and validation across native files, UI/diagnostics,
+  Chrome, installer, workflow/tag and archives; test legacy/current upgrades.
+- [x] Store the Downloads capsule center in work-area DIP coordinates separately
+  from legacy window offsets. Derive fitted window geometry from that center;
+  preserve it across width/rows/density/gap changes, mirror modes and restart.
+- [x] Auto placement opens down near the top and up near the bottom; explicit
+  Above/Below options remain. Near left/right edges fit the list to available
+  space without moving the capsule. Resolve target monitor from the moved icon.
+- [x] Feed stays newest-first internally; view orders recent files nearest the
+  capsule in either direction. Reveal starts at the recent end; new arrivals
+  follow that end unless the user is browsing older rows. Freeze during transfers.
+- [x] Shared preview follows placement/order; subtle icon lift/scale and row tint
+  respond to hover/focus/recycling, cancel on unload and obey reduced motion.
+  No animated native bounds, card reordering or transfer effects for decoration.
+- [x] Core geometry/order/version/default/migration tests and native resize/drag/
+  upper-lower/restart/mirror/scroll/reduced-motion tests, then existing full gate
+  and actual light/dark captures. Physical mixed-DPI remains a hardware gate.
+
+This user priority precedes stage5a2b restore/import; no additional unrelated
+feature in the same release. Next: recovery conflict preview and safe merge.

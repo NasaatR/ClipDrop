@@ -69,7 +69,7 @@ public sealed class MonitorSettings : StackPanel, IDisposable
                     if (location.SelectedItem is not DisplayArea selected) return;
                     var record = _settings.DownloadsLayouts.FirstOrDefault(l => DockPlanning.Same(l.DisplayId, selected.Id));
                     var single = _settings.DownloadsLayout;
-                    single.DisplayId = selected.Id; single.OffsetX = record?.OffsetX; single.OffsetY = record?.OffsetY; single.Visible = true;
+                    single.DisplayId = selected.Id; single.OffsetX = record?.OffsetX; single.OffsetY = record?.OffsetY; single.AnchorX = record?.AnchorX; single.AnchorY = record?.AnchorY; single.Visible = true;
                     Commit();
                 };
             }
@@ -78,7 +78,7 @@ public sealed class MonitorSettings : StackPanel, IDisposable
         void ActionButton(string label, Action action) { var button = new Button { Content = label }; button.Click += (_, _) => action(); actions.Children.Add(button); }
         ActionButton("Show all", _docks.ShowAll); ActionButton("Hide all", _docks.HideAll); ActionButton("Refresh displays", _docks.RefreshDisplays);
         ActionButton("Reset positions", () => {
-            foreach (var layout in _settings.Docks.Concat(_settings.DownloadsLayouts).Append(_settings.DownloadsLayout)) { layout.OffsetX = null; layout.OffsetY = null; }
+            foreach (var layout in _settings.Docks.Concat(_settings.DownloadsLayouts).Append(_settings.DownloadsLayout)) { layout.OffsetX = null; layout.OffsetY = null; layout.AnchorX = null; layout.AnchorY = null; }
             Commit();
         });
         var hint = new TextBlock { Text = "Drag free space to move a single panel between screens. Duplicated panels share content and keep separate positions on their screens. Downloads duplication is independent and on by default. Ctrl+Alt+Space uses the active app's screen. Disconnected layouts are kept.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 5, 0, 0) };
