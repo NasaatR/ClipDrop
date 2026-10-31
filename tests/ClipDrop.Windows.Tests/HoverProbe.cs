@@ -84,7 +84,7 @@ internal static class HoverProbe
             var before = loads[0].Result;
             File.WriteAllBytes(path, ImageFiles.Encode(BitmapSource.Create(2, 1, 96, 96, PixelFormats.Bgra32, null, new byte[] { 80, 120, 40, 255, 30, 60, 90, 255 }, 8)));
             File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(2)); var changed = ThumbnailCache.Shared.Get(path);
-            check(UiProbe.Until(() => changed.IsCompleted, 5000) && changed.Result is { PixelWidth: 2 } && !ReferenceEquals(changed.Result, before),
+            check(UiProbe.Until(() => changed.IsCompleted, 5000) && changed.Result is { } refreshed && refreshed.PixelWidth == refreshed.PixelHeight * 2 && !ReferenceEquals(refreshed, before),
                 "A replaced thumbnail path is revalidated immediately without a stale time-based shortcut");
             File.Delete(path); var deleted = ThumbnailCache.Shared.Get(path);
             check(UiProbe.Until(() => deleted.IsCompleted, 5000) && deleted.Result is null, "A deleted original does not retain a falsely available cached thumbnail");
