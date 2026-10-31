@@ -100,7 +100,9 @@ internal static class InteractionProbe
                 UiProbe.CaptureWindow(settings, Path.Combine(output, "settings-style-motion.png"));
             }
             finally { settings.Close(); }
+            ClientAnimationProbe.Run(() => {
             state.Settings.AnimationsEnabled = true; state.Settings.MotionDuration = 300; session.Change();
+            if (Environment.GetEnvironmentVariable("CI") == "true") check(Motion.Allowed, "CI exercises enabled disclosure motion rather than skipping positive checks");
             UiProbe.MoveTo(new Point(area.Left + 5, area.Top + 5));
             check(UiProbe.Until(() => stack.IsCompact, 1800), "The icon returns to its compact state before the hover reveal");
             before = WindowPlacement.PixelBounds(stack);
@@ -111,6 +113,7 @@ internal static class InteractionProbe
             {
                 check(details.RenderTransform is TransformGroup group && group.Children.OfType<ScaleTransform>().Any(t => t.HasAnimatedProperties),
                     "Hover reveal uses the configured scale-and-rise motion instead of an opacity-only appearance");
+                UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-motion-in-progress.png"));
                 UiProbe.Pump(380);
                 check(details.Opacity == 1 && details.RenderTransform is TransformGroup settled && settled.Children.OfType<ScaleTransform>().All(t => t.ScaleX == 1 && t.ScaleY == 1) && settled.Children.OfType<TranslateTransform>().All(t => t.Y == 0),
                     "The spring reveal settles at exact full size and position within its configured duration");
@@ -124,6 +127,7 @@ internal static class InteractionProbe
             check(details.Opacity == 1 && details.RenderTransform is TransformGroup stopped && stopped.Children.All(t => !t.HasAnimatedProperties),
                 "Turning motion off immediately stops active reveal transforms and leaves content readable");
             UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-single-icon-narrow.png"));
+            }, check);
             session.TrySave(); var reloaded = new StateStore(store.Root).Load();
             check(reloaded.Settings.DownloadsWidth == 272 && reloaded.Settings.DownloadsRowHeight == 34 && reloaded.Settings.MotionDuration == 300,
                 "Layout reset and custom motion duration survive storage restart");
