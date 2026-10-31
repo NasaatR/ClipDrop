@@ -14,8 +14,8 @@ using ClipDrop.Windows.Views;
 
 internal static class HoverProbe
 {
-    private static double Scale(FrameworkElement icon) => icon.RenderTransform is TransformGroup group ? group.Children.OfType<ScaleTransform>().Single().ScaleX : 1;
-    private static bool Running(FrameworkElement icon) => icon.RenderTransform is TransformGroup group && group.Children.Any(t => t.HasAnimatedProperties);
+    private static double Scale(FrameworkElement icon) => icon.RenderTransform.Value.M11;
+    private static bool Running(FrameworkElement icon) => icon.RenderTransform.HasAnimatedProperties;
     public static void Run(MainWindow library, DockWindow original, string root, string output, Action<bool, string> check)
     {
         library.Hide(); original.HideDock();
@@ -34,7 +34,7 @@ internal static class HoverProbe
             UiProbe.MoveTo(new Point(5, 5)); host.Show(); host.Activate(); UiProbe.Hover(header);
             var row = UiProbe.Find<ListBoxItem>(list, r => list.ItemContainerGenerator.IndexFromContainer(r) == 2);
             var icon = UiProbe.Find<FrameworkElement>(row, e => e.Name == "PreviewGraphic");
-            check(icon.RenderTransform is not TransformGroup, "Inactive download rows do not allocate hover transform/clock state");
+            check(icon.RenderTransform is not MatrixTransform, "Inactive download rows do not allocate hover transform/clock state");
             var entered = new Stopwatch(); row.MouseEnter += (_, _) => entered.Restart();
             UiProbe.MoveTo(row.PointToScreen(new Point(row.ActualWidth / 2, row.ActualHeight / 2)), 1);
             check(UiProbe.Until(() => row.IsMouseOver, 500), "A real pointer enters the hover response fixture");
@@ -44,18 +44,35 @@ internal static class HoverProbe
             {
                 check(UiProbe.Until(() => Scale(icon) >= 1.06, 200) && entered.ElapsedMilliseconds <= 100,
                     "Hover reaches visible feedback within100ms even when panel disclosure is configured to600ms");
-                UiProbe.Pump(140);
+                check(UiProbe.Until(() => !Running(icon), 600), "Native hover finishes its soft settling tail and releases its clock");
                 var bounds = icon.TransformToAncestor(row).TransformBounds(new Rect(icon.RenderSize));
-                check(Scale(icon) == 1.16 && !Running(icon) && bounds.Top >= 0 && bounds.Bottom <= row.ActualHeight && bounds.Left >= 0,
-                    "The stronger hover settles at1.16scale without clipping a minimum-height row");
+                check(Scale(icon) == 1.12 && !Running(icon) && bounds.Top >= 0 && bounds.Bottom <= row.ActualHeight && bounds.Left >= 0,
+                    "The stronger hover settles at1.12scale without clipping a minimum-height row");
                 UiProbe.CaptureWindow(host, Path.Combine(output, "downloads-hover-emphasis.png"));
+                Motion.ResetHover(icon);
+                var frames = new System.Collections.Generic.List<(double Time, double Scale)>();
+                EventHandler sampleFrame = (_, e) => frames.Add((((RenderingEventArgs)e).RenderingTime.TotalSeconds, Scale(icon)));
+                CompositionTarget.Rendering += sampleFrame;
+                try { Motion.RowHover(icon, true); UiProbe.Pump(380); }
+                finally { CompositionTarget.Rendering -= sampleFrame; }
+                check(frames.Select(f => Math.Round(f.Scale, 6)).Where(s => s > 1.001 && s < 1.119).Distinct().Count() >= 3 &&
+                    frames.Zip(frames.Skip(1)).All(pair => pair.Second.Scale >= pair.First.Scale - 1e-8) && frames.All(f => f.Scale is >= 1 and <= 1.12),
+                    "Native rendered frames progress through a bounded, monotone scale ramp instead of a one-frame jump");
+                File.WriteAllLines(Path.Combine(output, "downloads-hover-frame-samples.csv"), new[] { "render_time_seconds,scale" }.Concat(frames.Select(f => FormattableString.Invariant($"{f.Time:F6},{f.Scale:F6}"))));
+                Motion.ResetHover(icon); Motion.RowHover(icon, true); UiProbe.Pump(45);
+                var beforeReverse = Scale(icon); Motion.RowHover(icon, false);
+                check(Math.Abs(Scale(icon) - beforeReverse) < 1e-8, "Interrupting a live native clock preserves the exact displayed position");
+                UiProbe.Pump(25); var beforeReturn = Scale(icon); Motion.RowHover(icon, true);
+                check(Math.Abs(Scale(icon) - beforeReturn) < 1e-8, "Returning mid-exit preserves the displayed position without a restart jump");
+                check(UiProbe.Until(() => !Running(icon), 600) && Scale(icon) == 1.12, "An interrupted spring settles at the latest requested target only");
                 UiProbe.MoveTo(header.PointToScreen(new Point(80, 12)), 1); var leaving = Stopwatch.StartNew();
-                check(UiProbe.Until(() => Scale(icon) == 1 && !Running(icon), 300) && leaving.ElapsedMilliseconds <= 120,
-                    "Leaving a row clears its transform quickly instead of leaving a long animated trail");
+                check(UiProbe.Until(() => Scale(icon) <= 1.04, 180) && leaving.ElapsedMilliseconds <= 180,
+                    "Exit removes most emphasis promptly without snapping back to neutral");
+                check(UiProbe.Until(() => Scale(icon) == 1 && !Running(icon), 600), "Exit settles exactly and removes its native clock");
                 UiProbe.Click(row);
-                UiProbe.Hover(header); UiProbe.Pump(120);
-                check(Scale(icon) == 1.16, "Keyboard hover fallback remains available when the pointer leaves the list");
-                var next = UiProbe.Find<ListBoxItem>(list, r => list.ItemContainerGenerator.IndexFromContainer(r) == 3); UiProbe.Hover(next); UiProbe.Pump(120);
+                UiProbe.Hover(header); UiProbe.Pump(350);
+                check(Scale(icon) == 1.12, "Keyboard hover fallback remains available when the pointer leaves the list");
+                var next = UiProbe.Find<ListBoxItem>(list, r => list.ItemContainerGenerator.IndexFromContainer(r) == 3); UiProbe.Hover(next); UiProbe.Pump(350);
                 check(row.IsKeyboardFocusWithin && Scale(icon) == 1,
                     "Keyboard focus does not hold a second icon hover while the pointer moves through other rows");
                 var previous = next;
@@ -69,17 +86,17 @@ internal static class HoverProbe
                         "A direct row switch transfers full-card feedback without waiting for icon animation");
                     previous = sweep;
                 }
-                UiProbe.Hover(header); UiProbe.Pump(100);
+                UiProbe.Hover(header); UiProbe.Pump(350);
                 check(Enumerable.Range(0, 8).Select(i => list.ItemContainerGenerator.ContainerFromIndex(i)).OfType<ListBoxItem>().Where(r => !r.IsKeyboardFocusWithin)
                     .Select(r => UiProbe.Find<FrameworkElement>(r, e => e.Name == "PreviewGraphic")).All(i => Scale(i) == 1 && !Running(i)),
                     "A rapid pointer sweep leaves no stale transforms or clocks on previous rows");
-                UiProbe.Hover(row); UiProbe.Pump(120);
+                UiProbe.Hover(row); UiProbe.Pump(350);
                 var view = UiProbe.Find<DownloadRowView>(row, _ => true);
                 view.DataContext = new DownloadsWindow.Row(new DownloadFile(Path.Combine(root, "recycled.webp"), "Recycled example", 1, DateTimeOffset.UtcNow), true);
-                check(Scale(icon) == 1.16 && !Running(icon), "Rebinding a hovered recycled row keeps the pointer effect instead of restarting from neutral");
-                var scroll = UiProbe.Find<ScrollViewer>(list, _ => true); scroll.ScrollToVerticalOffset(32); UiProbe.Pump(160);
+                check(Scale(icon) == 1.12 && !Running(icon), "Rebinding a hovered recycled row keeps the pointer effect instead of restarting from neutral");
+                var scroll = UiProbe.Find<ScrollViewer>(list, _ => true); scroll.ScrollToVerticalOffset(32); UiProbe.Pump(350);
                 var hovered = Enumerable.Range(0, 15).Select(i => list.ItemContainerGenerator.ContainerFromIndex(i)).OfType<ListBoxItem>().Where(r => r.IsMouseOver).ToArray();
-                check(hovered.Length == 1 && Scale(UiProbe.Find<FrameworkElement>(hovered[0], e => e.Name == "PreviewGraphic")) == 1.16,
+                check(hovered.Length == 1 && Scale(UiProbe.Find<FrameworkElement>(hovered[0], e => e.Name == "PreviewGraphic")) == 1.12,
                     "Scrolling under a stationary pointer keeps exactly one correctly emphasized row");
             }
             Motion.Enabled = false; UiProbe.Pump();

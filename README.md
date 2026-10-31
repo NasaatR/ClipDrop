@@ -27,21 +27,23 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 1.2 Preview
+## Features in 1.3 Preview
 
-- Immediate whole-card Downloads hover, with a short 60ms icon lift/scale and
-  40ms return. No inset highlight or accent stripe. Pointer feedback stays
-  immediate while moving directly between rows; panel reveal speed is separate.
+- Immediate whole-card Downloads feedback with a softly settling, critically
+  damped icon response. Mid-flight reversals preserve position and velocity;
+  12% scale and a1-DIP lift share one native WPF matrix clock. No added per-frame
+  UI event loop, layout animation, inset wash or stripe. Reduced motion resets it.
 - Inactive rows allocate no hover transforms. Same-path image revalidation keeps
   the visible preview; concurrent requests share file stats and image decoding.
   Changed/deleted files still get immediate fresh validation, with no stale TTL.
 - Inspect backup now compares active clip IDs with a captured library snapshot:
   new IDs, identical metadata, changed metadata and IDs already in Trash. The
   read-only list names each differing clip and its changed metadata fields, with
-  an option to include identical clips. Conflict selection and restore remain next.
+  an option to include identical clips. Per-clip restore choices now preview the
+  planned adds/replacements/Trash restores; actual restore execution remains next.
 
-- Understandable releases: **1.2 Preview**, then 1.3,…,1.9,2.0. Native package
-  version 1.2.0, display 1.2 Preview, tag v1.2 and assets ClipDrop_v1.2 are derived
+- Understandable releases: **1.3 Preview**, then 1.4,…,1.9,2.0. Native package
+  version 1.3.0, display 1.3 Preview, tag v1.3 and assets ClipDrop_v1.3 are derived
   from one authority; old 0.x releases and app/data identity remain intact.
 - Downloads anchors its **icon center**, independently of panel size. Move it near
   the top to open downward, or near the bottom to open upward. Newest files always
@@ -356,7 +358,11 @@ length and SHA256 checks and is published. A failure keeps source data untouched
 Trash, panel and managed-asset counts. It also compares active clip IDs with the
 library snapshot captured at check start: new, identical recorded metadata, changed
 metadata or already in Trash. The compact list shows differing clips and changed
-fields; **Include identical** reveals matching entries. It does not extract files or change the library. Cancel or closing Settings stops the check.
+fields; **Include identical** reveals matching entries. Session-only choices
+preview Add/Skip, Keep current/Use backup and Leave in Trash/Restore actions.
+Conflicts default to keeping current data. Changing filters preserves choices;
+reinspection resets them. This is a preview only, with no Apply/Restore execution.
+It does not extract files or change the library. Cancel or closing Settings stops the check.
 
 This stage provides export and read-only inspection. Conflict-safe restore and
 import/merge are the next separate increment. Format 1 supports up to 512 MiB per

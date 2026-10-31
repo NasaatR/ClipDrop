@@ -75,14 +75,14 @@ internal static class DownloadsAnchorProbe
             var graphic = UiProbe.Find<FrameworkElement>(row, e => e.Name == "PreviewGraphic");
             if (Motion.Allowed)
             {
-                check(graphic.RenderTransform is TransformGroup group && group.Children.OfType<ScaleTransform>().Single().ScaleX is >= 1 and <= 1.16,
+                check(graphic.RenderTransform.Value.M11 is >= 1 and <= 1.12,
                     "Row hover uses render transforms without depending on whether a short animation has already settled");
-                UiProbe.Pump(260);
-                check(graphic.RenderTransform is TransformGroup settled && settled.Children.OfType<ScaleTransform>().Single().ScaleX == 1.16 && (stack.CapsuleCenterPixels() - center).Length <= 1.5,
+                UiProbe.Pump(350);
+                check(graphic.RenderTransform.Value.M11 == 1.12 && (stack.CapsuleCenterPixels() - center).Length <= 1.5,
                     "Hover settles at a bounded lift/scale while the capsule stays fixed");
             }
             state.Settings.AnimationsEnabled = false; session.ChangeSettings(); UiProbe.Pump();
-            check(graphic.RenderTransform is TransformGroup stopped && stopped.Children.All(t => !t.HasAnimatedProperties) && stopped.Children.OfType<ScaleTransform>().Single().ScaleX == 1,
+            check(!graphic.RenderTransform.HasAnimatedProperties && graphic.RenderTransform.Value.IsIdentity,
                 "Disabling animation immediately removes active row clocks and restores exact icon size");
             UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-anchor-top.png"));
             var screens = new MonitorSettings(state.Settings, coordinator, session.ChangeSettings);

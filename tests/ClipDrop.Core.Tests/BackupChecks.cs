@@ -66,6 +66,18 @@ internal static class BackupChecks
             "Per-clip comparison names the exact changed field and separates new and trashed identities");
         check(comparisonBytes.SequenceEqual(store.CaptureSnapshot(comparison)) && !File.Exists(Path.Combine(store.Root, "shelf.json")),
             "Comparison keeps captured live state and source shelf metadata untouched");
+        var draft = new BackupRestoreDraft(compared); var defaultActions = draft.Preview();
+        check(defaultActions is { Add: 1, Replace: 0, Restore: 0, Keep: 2 }, "Restore draft defaults to adding new clips while keeping conflicts and Trash unchanged");
+        draft.Choose(text.Id, BackupChoice.UseBackup); draft.Choose(image.Id, BackupChoice.UseBackup); draft.Choose(external.Id, BackupChoice.KeepCurrent);
+        var proposed = draft.Preview();
+        check(proposed is { Add: 0, Replace: 1, Restore: 1, Keep: 1 } && draft.Counts is { Add: 0, Replace: 1, Restore: 1, Keep: 1 } && comparisonBytes.SequenceEqual(store.CaptureSnapshot(comparison)),
+            "Explicit per-clip choices preview replacements and Trash restoration without changing current state");
+        draft.Choose(text.Id, BackupChoice.KeepCurrent);
+        check(draft.Preview() is { Replace: 0, Restore: 1 } && draft.Counts is { Add: 0, Replace: 0, Restore: 1, Keep: 2 }, "Changing a restore choice updates the latest plan without retaining an obsolete replacement");
+        var invalidChoice = false; try { draft.Choose("unknown", BackupChoice.UseBackup); } catch (ArgumentException) { invalidChoice = true; }
+        check(invalidChoice, "Restore drafts reject choices for unknown clip identities");
+        invalidChoice = false; try { new BackupRestoreDraft(exact).Choose(text.Id, BackupChoice.UseBackup); } catch (ArgumentException) { invalidChoice = true; }
+        check(invalidChoice, "Identical clips cannot acquire a meaningless overwrite action");
         var several = StateStore.ReadSnapshot(snapshot);
         var severalText = several.Items.Single(i => i.Id == text.Id); severalText.Title = "Renamed clip"; severalText.KeepAfterUse = !severalText.KeepAfterUse;
         severalText.Clipboard!.Identity = "changed-format-identity";

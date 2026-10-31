@@ -865,3 +865,24 @@ existing safe export/verification, original files and the unchanged data schema.
 Next5a2b2b: conflict choices and a recoverable restore/merge transaction. Revalidate
 the archive and current library before any future write; the displayed comparison
 is a snapshot, not a restore authorization or a guarantee about external files.
+
+
+## 1.3 Preview: continuous hover motion and restore-choice draft
+
+- [x] Replace short, hard ease-out with a critically damped response: soft onset,
+  visible early movement, bounded12% scale/1DIP lift, exact endpoint within320ms.
+  Retarget using the current native clock position and velocity, not wall time.
+- [x] Use one matrix clock for both scale axes and lift; remove old clocks on
+  interruption/unload/reduced motion. Whole-card pointer feedback stays immediate.
+- [x] Verify analytic bounds/continuity under repeated reversals, native frame
+  progression and live-clock interruption. No per-frame production event loop.
+- [x] Stage5a2b2b1: session-only per-clip restore-choice preview, conservative
+  conflict/Trash defaults, explicit add/replace/restore/keep counters, retained
+  choices through filtering and reset on reinspection. No execution button yet.
+- [x] Cache comparison row projection for the current inspection; filters reuse
+  models and cannot erase or duplicate the draft choices.
+
+Next5a2b2b2: revalidate archive and current snapshot, prepare owned assets with
+rebased references, and commit a recoverable restore/merge transaction. Keep
+originals, preserve current settings unless explicitly chosen, reject stale drafts,
+and test interruption/recovery before exposing Restore execution. Then content versions.

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using ClipDrop.Core;
 
 namespace ClipDrop.Windows.Services;
 
@@ -11,24 +12,22 @@ public static partial class Motion
 {
     private sealed class HoverState
     {
-        public readonly ScaleTransform Scale = new(1, 1);
-        public readonly TranslateTransform Move = new();
+        public readonly MatrixTransform Transform = new();
+        public HoverTransition Transition;
+        public AnimationClock? Clock;
         public bool Active;
         public bool? Animated;
         public int Revision;
         public HoverState(FrameworkElement icon)
+        { icon.RenderTransform = Transform; icon.RenderTransformOrigin = new Point(.5, .5); }
+        public void Settle(double target)
         {
-            var group = new TransformGroup(); group.Children.Add(Scale); group.Children.Add(Move);
-            icon.RenderTransform = group; icon.RenderTransformOrigin = new Point(.5, .5);
+            Transition = new(target, 0, target);
+            Transform.Matrix = HoverMatrixAnimation.MatrixAt(target);
+            Transform.ApplyAnimationClock(MatrixTransform.MatrixProperty, null);
+            Clock?.Controller?.Remove(); Clock = null;
         }
-        public void Reset()
-        {
-            Revision++; Active = false; Animated = null;
-            Set(Scale, ScaleTransform.ScaleXProperty, 1); Set(Scale, ScaleTransform.ScaleYProperty, 1);
-            Set(Move, TranslateTransform.YProperty, 0);
-        }
-        private static void Set(Animatable target, DependencyProperty property, double value)
-        { target.SetValue(property, value); target.BeginAnimation(property, null); }
+        public void Reset() { Revision++; Active = false; Animated = null; Settle(0); }
     }
     private static readonly ConditionalWeakTable<FrameworkElement, HoverState> HoverStates = new();
     private static readonly List<WeakReference<HoverState>> Hovers = new();
@@ -43,20 +42,18 @@ public static partial class Motion
         var allowed = Allowed;
         if (state.Active == active && state.Animated == allowed) return;
         state.Active = active; state.Animated = allowed; var revision = ++state.Revision;
-        // The whole card highlights immediately in its template. Only the icon
-        // animates; decoration never delays feedback or changes the hit area.
-        var duration = TimeSpan.FromMilliseconds(active ? 60 : 40);
-        void Paint(Animatable target, DependencyProperty property, double value)
-        {
-            var from = (double)target.GetValue(property);
-            void Base() { target.SetValue(property, value); target.BeginAnimation(property, null); }
-            if (!allowed || Math.Abs(from - value) < .0001) { Base(); return; }
-            var animation = new DoubleAnimation(from, value, duration) { FillBehavior = FillBehavior.HoldEnd, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-            animation.Completed += (_, _) => { if (state.Revision == revision) Base(); };
-            target.BeginAnimation(property, animation);
-        }
-        Paint(state.Scale, ScaleTransform.ScaleXProperty, active && allowed ? 1.16 : 1);
-        Paint(state.Scale, ScaleTransform.ScaleYProperty, active && allowed ? 1.16 : 1);
-        Paint(state.Move, TranslateTransform.YProperty, active && allowed ? -1 : 0);
+        var target = active && allowed ? 1d : 0;
+        if (!allowed) { state.Settle(0); return; }
+        // Sample WPF's clock, not wall time: this is the exact currently painted
+        // position/velocity, so retargeting does not jump ahead of the last frame.
+        var next = state.Transition.Retarget(state.Clock?.CurrentTime?.TotalSeconds ?? 0, target);
+        if (Math.Abs(next.Position - target) < .00001 && Math.Abs(next.Velocity) < .0001) { state.Settle(target); return; }
+        var animation = new HoverMatrixAnimation { Transition = next, Duration = TimeSpan.FromSeconds(HoverTransition.DurationSeconds), FillBehavior = FillBehavior.HoldEnd };
+        var clock = animation.CreateClock(true);
+        clock.Completed += (_, _) => { if (state.Revision == revision && ReferenceEquals(state.Clock, clock)) state.Settle(target); };
+        var previous = state.Clock;
+        state.Transition = next; state.Clock = clock;
+        state.Transform.ApplyAnimationClock(MatrixTransform.MatrixProperty, clock, HandoffBehavior.SnapshotAndReplace);
+        previous?.Controller?.Remove();
     }
 }

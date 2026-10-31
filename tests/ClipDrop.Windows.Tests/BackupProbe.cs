@@ -56,6 +56,16 @@ internal static class BackupProbe
             check(UiProbe.Find<TextBlock>(comparisons, t => t.Text == "Changed metadata · Text").IsVisible,
                 "Inspection names the changed clip and exact metadata field without mutating the live text");
             check(state.Items[1].Content == "Changed after archive", "Read-only conflict details preserve the current edited clip");
+            var choice = UiProbe.Find<ComboBox>(comparisons, _ => true);
+            check(choice.SelectedIndex == 0 && UiProbe.Find<TextBlock>(section, t => t.Name == "PlanSummary").Text.Contains("0 replace"),
+                "A conflicting clip defaults to keeping the current library version");
+            UiProbe.Click(choice); UiProbe.CaptureWindow(host, Path.Combine(output, "backup-choice-open.png"));
+            UiProbe.PressKey(0x23); UiProbe.PressKey(0x0D);
+            check(choice.SelectedIndex == 1 && UiProbe.Find<TextBlock>(section, t => t.Name == "PlanSummary").Text.Contains("1 replace") && state.Items[1].Content == "Changed after archive",
+                "Choosing the backup version updates only the preview plan through the real dropdown");
+            UiProbe.Click(include); UiProbe.Click(include);
+            check(UiProbe.Find<ComboBox>(comparisons, _ => true).SelectedIndex == 1,
+                "Filtering identical clips preserves the current preview choices");
             UiProbe.CaptureWindow(host, Path.Combine(output, "backup-inspected-screen.png"));
             var bad = Path.Combine(root, "invalid-preview.clipdrop.zip"); File.WriteAllText(bad, "invalid archive");
             var invalid = section.InspectFrom(bad);
@@ -65,6 +75,12 @@ internal static class BackupProbe
             var cancelledInspect = section.InspectFrom(path); section.Cancel();
             check(UiProbe.Until(() => cancelledInspect.IsCompleted, 10000) && cancelledInspect.GetAwaiter().GetResult() is null && section.StatusText.Contains("cancelled") && state.Items.Count == 2,
                 "Cancelling an inspection restores ready controls without changing the library");
+            var fresh = section.InspectFrom(path);
+            check(UiProbe.Until(() => fresh.IsCompleted, 10000) && fresh.GetAwaiter().GetResult() is not null,
+                "Another verified inspection creates a new session-only restore draft");
+            UiProbe.Pump();
+            check(UiProbe.Find<ComboBox>(comparisons, _ => true).SelectedIndex == 0 && UiProbe.Find<TextBlock>(section, t => t.Name == "PlanSummary").Text.Contains("0 replace"),
+                "Reinspection cannot silently reuse a prior archive's overwrite choice");
             var original = System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path));
             var cancelledPath = Path.Combine(root, "ui-backup-cancelled.clipdrop.zip");
             var cancel = section.ExportTo(cancelledPath); section.Cancel();

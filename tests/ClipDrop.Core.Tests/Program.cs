@@ -14,6 +14,7 @@ try
 {
     LayoutChecks.Run(root, Check);
     DownloadsGeometryChecks.Run(Check);
+    HoverTransitionChecks.Run(Check);
     UsageChecks.Run(root, Check);
     PanelSetChecks.Run(root, Check);
     IndependentChecks.Run(root, Check);

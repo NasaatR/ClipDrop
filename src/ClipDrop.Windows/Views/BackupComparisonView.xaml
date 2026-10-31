@@ -6,13 +6,16 @@
    <TextBlock Text="Clip differences" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
    <CheckBox x:Name="IncludeIdentical" Content="Include identical" FontSize="11" Margin="0,4" Click="OnFilter"/>
   </WrapPanel>
+  <TextBlock x:Name="PlanSummary" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,2,0,4"/>
   <TextBlock x:Name="Empty" Text="All active clips match the captured library." FontSize="11" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,4,0,6"/>
   <ListBox x:Name="Comparisons" MaxHeight="180" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" AutomationProperties.Name="Verified backup clip comparisons">
    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="Padding" Value="7,5"/><Setter Property="AutomationProperties.Name" Value="{Binding Title}"/></Style></ListBox.ItemContainerStyle>
    <ListBox.ItemTemplate><DataTemplate><StackPanel ToolTip="{Binding Identity}">
     <TextBlock Text="{Binding Title}" FontSize="12" TextTrimming="CharacterEllipsis"/>
     <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+    <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Selection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Label" Visibility="{Binding ChoiceVisibility}" MinHeight="27" FontSize="11" Margin="0,5,0,0" AutomationProperties.Name="Preview restore choice"/>
    </StackPanel></DataTemplate></ListBox.ItemTemplate>
   </ListBox>
+  <TextBlock Text="Preview choices only · nothing is restored. Restore execution is a separate next stage." FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,4,0,6"/>
  </StackPanel>
 </UserControl>
