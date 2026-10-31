@@ -34,7 +34,7 @@ internal static class HoverProbe
             UiProbe.MoveTo(new Point(5, 5)); host.Show(); host.Activate(); UiProbe.Hover(header);
             var row = UiProbe.Find<ListBoxItem>(list, r => list.ItemContainerGenerator.IndexFromContainer(r) == 2);
             var icon = UiProbe.Find<FrameworkElement>(row, e => e.Name == "PreviewGraphic");
-            check(icon.RenderTransform is not MatrixTransform, "Inactive download rows do not allocate hover transform/clock state");
+            check(icon.RenderTransform.Value.IsIdentity && !Running(icon), "Inactive download rows remain neutral without an active animation");
             var entered = new Stopwatch(); row.MouseEnter += (_, _) => entered.Restart();
             UiProbe.MoveTo(row.PointToScreen(new Point(row.ActualWidth / 2, row.ActualHeight / 2)), 1);
             check(UiProbe.Until(() => row.IsMouseOver, 500), "A real pointer enters the hover response fixture");
