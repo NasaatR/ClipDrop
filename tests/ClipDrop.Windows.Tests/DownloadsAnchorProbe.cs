@@ -75,7 +75,8 @@ internal static class DownloadsAnchorProbe
             var graphic = UiProbe.Find<FrameworkElement>(row, e => e.Name == "PreviewGraphic");
             if (Motion.Allowed)
             {
-                check(graphic.RenderTransform is TransformGroup group && group.Children.Any(t => t.HasAnimatedProperties), "Row hover animates the icon's render transform without changing its layout slot");
+                check(graphic.RenderTransform is TransformGroup group && group.Children.OfType<ScaleTransform>().Single().ScaleX is >= 1 and <= 1.16,
+                    "Row hover uses render transforms without depending on whether a short animation has already settled");
                 UiProbe.Pump(260);
                 check(graphic.RenderTransform is TransformGroup settled && settled.Children.OfType<ScaleTransform>().Single().ScaleX == 1.16 && (stack.CapsuleCenterPixels() - center).Length <= 1.5,
                     "Hover settles at a bounded lift/scale while the capsule stays fixed");
