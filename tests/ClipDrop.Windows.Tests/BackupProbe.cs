@@ -34,6 +34,18 @@ internal static class BackupProbe
             check(!File.Exists(Path.Combine(store.Root, "shelf.json")) && BackupArchive.Verify(path).Clips == 2,
                 "Creating a backup does not silently write source shelf metadata");
             UiProbe.CaptureWindow(host, Path.Combine(output, "backup-created-screen.png"));
+            var inspect = section.InspectFrom(path); var inspectResponsive = false; host.Dispatcher.BeginInvoke(() => inspectResponsive = true);
+            check(UiProbe.Until(() => inspectResponsive) && UiProbe.Until(() => inspect.IsCompleted, 10000) && inspect.GetAwaiter().GetResult() is { Clips: 2 } && section.StatusText.Contains("library unchanged"),
+                "Inspect backup verifies integrity and previews counts off-thread without replacing the live library");
+            check(!File.Exists(Path.Combine(store.Root, "shelf.json")) && state.Items.Count == 2, "Backup inspection never creates live metadata or changes clips");
+            host.Height = 280; UiProbe.CaptureWindow(host, Path.Combine(output, "backup-inspected-screen.png"));
+            var bad = Path.Combine(root, "invalid-preview.clipdrop.zip"); File.WriteAllText(bad, "invalid archive");
+            var invalid = section.InspectFrom(bad);
+            check(UiProbe.Until(() => invalid.IsCompleted, 10000) && invalid.GetAwaiter().GetResult() is null && section.StatusText.Contains("failed"),
+                "Invalid backup previews fail visibly without touching library data");
+            var cancelledInspect = section.InspectFrom(path); section.Cancel();
+            check(UiProbe.Until(() => cancelledInspect.IsCompleted, 10000) && cancelledInspect.GetAwaiter().GetResult() is null && section.StatusText.Contains("cancelled") && state.Items.Count == 2,
+                "Cancelling an inspection restores ready controls without changing the library");
             var original = System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path));
             var cancelledPath = Path.Combine(root, "ui-backup-cancelled.clipdrop.zip");
             var cancel = section.ExportTo(cancelledPath); section.Cancel();

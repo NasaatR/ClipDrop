@@ -23,6 +23,7 @@ public partial class DockStrip : UserControl
     private ItemRow? _cue;
     private long _lastScroll;
     private string _surfaceSignature = "";
+    private int _surfaceRevision;
     public bool IsCompact { get; private set; }
     public DockStrip()
     {
@@ -35,24 +36,33 @@ public partial class DockStrip : UserControl
         if (!Resources.Contains("DockSize")) return;
         var width = IsCompact ? CompactWidth : Body.ActualWidth;
         if (width <= 0) return;
-        var previous = Surface.ActualWidth;
-        Surface.BeginAnimation(WidthProperty, null); Surface.Width = width; Surface.Height = Body.ActualHeight;
+        var previous = double.IsNaN(Surface.Width) ? Surface.ActualWidth : Surface.Width;
+        var revision = ++_surfaceRevision; Surface.Height = Body.ActualHeight;
         if (animate && Motion.Allowed && Math.Abs(previous - width) > 1)
-            Surface.BeginAnimation(WidthProperty, new DoubleAnimation(previous, width, TimeSpan.FromMilliseconds(Motion.DurationMs)) {
-                FillBehavior = FillBehavior.Stop, EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut }
-            });
+        {
+            var resize = new DoubleAnimation(previous, width, TimeSpan.FromMilliseconds(Motion.DurationMs)) {
+                FillBehavior = FillBehavior.HoldEnd, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            resize.Completed += (_, _) => { if (revision == _surfaceRevision) { Surface.Width = width; Surface.BeginAnimation(WidthProperty, null); } };
+            Surface.BeginAnimation(WidthProperty, resize, HandoffBehavior.SnapshotAndReplace);
+        }
+        else { Surface.Width = width; Surface.BeginAnimation(WidthProperty, null); }
     }
     public void SetCompact(bool compact)
     {
         if (IsCompact == compact) return;
         IsCompact = compact;
-        // Hidden retains virtualization and geometry; alpha-zero pixels outside
-        // the small surface pass native input through instead of blocking apps.
-        Details.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
         Stage.Background = compact ? null : new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
-        SurfaceSize(true);
-        if (!compact) Motion.Disclose(Details, new Point(0, .5));
+        Details.IsHitTestVisible = !compact;
+        if (compact)
+            Motion.Conceal(Details, () => { if (IsCompact) { Details.Visibility = Visibility.Hidden; SurfaceSize(true); } });
+        else
+        {
+            SurfaceSize(true); Motion.Disclose(Details, new Point(0, .5));
+            Details.Visibility = Visibility.Visible;
+        }
     }
+
     public void Apply(ShelfSettings settings)
     {
         Appearance.Apply(settings, this, true);

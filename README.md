@@ -27,7 +27,7 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.17.0
+## Features in 0.18.0
 
 - Drag the dock by Save as well as free space; drag Downloads by its icon or
   header actions. A short release clicks normally; a drag cancels the action.
@@ -35,9 +35,12 @@ from Trash, including after restarting.
 - One Downloads icon surface, a narrower 272-DIP default list, adjustable width,
   visible rows, density and icon size. Main-panel width is capped at 640 DIP by
   default with configurable overflow; it remains movable between screens.
-- Settings shows one selected section at a time, with exact numeric entry,
-  minus/plus and keyboard control instead of sliders. Enter applies, Escape
-  restores; invalid drafts do not overwrite saved values. Larger useful ranges.
+- Settings shows one selected section at a time. Large sliders capture a drag
+  anywhere on the rail, follow the pointer continuously and preview changes at a
+  bounded rate. Exact numeric entry and keyboard control remain: Enter applies,
+  Escape restores; invalid drafts do not overwrite saved values.
+- Idle opacity fades continuously from the displayed value, including interrupted
+  transitions; content fades out before compacting. Captured presses keep it open.
 - Soft or Spring hover reveal with configurable 100–600 ms duration, subtle rise,
   scale/settle and smooth expansion of the dock surface; disabled/system reduced
   motion remains respected. Window geometry stays stable while revealing.
@@ -284,7 +287,7 @@ active writers. It cannot identify Chrome downloads saved elsewhere. Hover or
 its watchers; the separately enabled Chrome extension continues sharing locally.
 Position, source and global show/hide survive restart, independently of styles.
 
-## Backup export
+## Backup export and inspection
 
 **Settings → Backups → Create backup** creates a `.clipdrop.zip` archive of the
 current UI snapshot, including unsaved metadata, clips, Trash, saved panels/windows,
@@ -298,9 +301,14 @@ the background. **Cancel** or closing Settings abandons the temporary archive.
 Completion is reported only after the finished archive passes path, membership,
 length and SHA256 checks and is published. A failure keeps source data untouched.
 
-This stage provides export and verification. Restore preview and conflict-safe
+**Inspect backup** verifies an existing archive in the background and shows clip,
+Trash, panel and managed-asset counts. It does not extract files or change the
+library. Cancel or closing Settings stops the check.
+
+This stage provides export and read-only inspection. Conflict-safe restore and
 import/merge are the next separate increment. Format 1 supports up to 512 MiB per
-managed asset, 8 GiB total payload and 50,000 metadata/payload entries.
+managed asset, 8 GiB total payload, 50,000 metadata/payload entries and 64 MiB
+of ZIP directory metadata. Directory bounds are checked before entry allocation.
 
 ## Visibility and compact actions
 

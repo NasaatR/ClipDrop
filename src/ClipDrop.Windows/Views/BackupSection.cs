@@ -12,6 +12,8 @@ public sealed class BackupSection : StackPanel, IDisposable
     private readonly string _root;
     private readonly Func<byte[]> _snapshot;
     private readonly Button _create = new() { Content = "Create backup" };
+    private readonly Button _inspect = new() { Content = "Inspect backup" };
+    private readonly TextBlock _details = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 6), Visibility = Visibility.Collapsed };
     private readonly Button _cancel = new() { Content = "Cancel", Visibility = Visibility.Collapsed };
     private readonly TextBlock _status = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 4) };
     private CancellationTokenSource? _stop;
@@ -21,10 +23,14 @@ public sealed class BackupSection : StackPanel, IDisposable
     public BackupSection(string root, Func<byte[]> snapshot)
     {
         _root = root; _snapshot = snapshot;
-        var actions = new WrapPanel(); actions.Children.Add(_create); actions.Children.Add(_cancel); Children.Add(actions);
-        _status.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(_status);
+        var actions = new WrapPanel(); actions.Children.Add(_create); actions.Children.Add(_inspect); actions.Children.Add(_cancel); Children.Add(actions);
+        _status.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(_status); Children.Add(_details);
         var hint = new TextBlock { Text = "Includes clips, Trash, saved panels, clipboard content and styles. External files stay as references and are not copied. Each backup uses a new filename to keep earlier copies.", FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 4) };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(hint);
+        _inspect.Click += async (_, _) => {
+            var picker = new Microsoft.Win32.OpenFileDialog { Title = "Inspect ClipDrop backup", Filter = "ClipDrop backup (*.clipdrop.zip)|*.clipdrop.zip|ZIP archive (*.zip)|*.zip", CheckFileExists = true };
+            if (picker.ShowDialog(Window.GetWindow(this)) == true) await InspectFrom(picker.FileName);
+        };
         _cancel.Click += (_, _) => _stop?.Cancel();
         _create.Click += async (_, _) => {
             var picker = new Microsoft.Win32.SaveFileDialog { Title = "Create new ClipDrop backup", Filter = "ClipDrop backup (*.clipdrop.zip)|*.clipdrop.zip", DefaultExt = ".clipdrop.zip", AddExtension = true,
@@ -37,7 +43,7 @@ public sealed class BackupSection : StackPanel, IDisposable
         Dispatcher.VerifyAccess();
         if (_disposed || IsExporting) return Task.FromResult<BackupSummary?>(null);
         var stop = new CancellationTokenSource(); _stop = stop;
-        _create.IsEnabled = false; _cancel.Visibility = Visibility.Visible; _status.Text = "Preparing backup…";
+        _create.IsEnabled = _inspect.IsEnabled = false; _details.Visibility = Visibility.Collapsed; _cancel.Visibility = Visibility.Visible; _status.Text = "Preparing backup…";
         // Enter through the dispatcher even for a direct API call from an STA
         // thread without an ambient SynchronizationContext (including probes).
         // Progress and await continuations then belong to this view's dispatcher.
@@ -67,7 +73,38 @@ public sealed class BackupSection : StackPanel, IDisposable
         finally
         {
             if (ReferenceEquals(_stop, stop)) _stop = null;
-            if (!_disposed) { _create.IsEnabled = true; _cancel.Visibility = Visibility.Collapsed; }
+            if (!_disposed) { _create.IsEnabled = _inspect.IsEnabled = true; _cancel.Visibility = Visibility.Collapsed; }
+            stop.Dispose();
+        }
+    }
+    public Task<BackupSummary?> InspectFrom(string path)
+    {
+        Dispatcher.VerifyAccess();
+        if (_disposed || IsExporting) return Task.FromResult<BackupSummary?>(null);
+        var stop = new CancellationTokenSource(); _stop = stop;
+        _create.IsEnabled = _inspect.IsEnabled = false; _details.Visibility = Visibility.Collapsed;
+        _cancel.Visibility = Visibility.Visible; _status.Text = "Checking backup integrity…";
+        return Dispatcher.InvokeAsync(() => InspectOnDispatcher(path, stop)).Task.Unwrap();
+    }
+    private async Task<BackupSummary?> InspectOnDispatcher(string path, CancellationTokenSource stop)
+    {
+        try
+        {
+            var summary = await Task.Run(() => BackupArchive.Verify(path, stop.Token), stop.Token);
+            if (!_disposed)
+            {
+                _status.Text = "Backup verified · library unchanged";
+                _details.Text = $"{summary.Clips} clips · {summary.Trashed} in Trash · {summary.Panels} saved panels\n{summary.Assets} managed assets · {summary.Bytes / 1048576d:0.##} MB verified\nExternal files remain path references. Restore and merge are the next stage.";
+                _details.Visibility = Visibility.Visible;
+            }
+            return summary;
+        }
+        catch (OperationCanceledException) { if (!_disposed) _status.Text = "Backup check cancelled · library unchanged"; return null; }
+        catch (Exception ex) { if (!_disposed) _status.Text = "Backup check failed · " + ex.Message; return null; }
+        finally
+        {
+            if (ReferenceEquals(_stop, stop)) _stop = null;
+            if (!_disposed) { _create.IsEnabled = _inspect.IsEnabled = true; _cancel.Visibility = Visibility.Collapsed; }
             stop.Dispose();
         }
     }

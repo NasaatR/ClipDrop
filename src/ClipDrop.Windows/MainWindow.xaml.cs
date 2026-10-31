@@ -114,7 +114,7 @@ public partial class MainWindow : Window
         var existing = Application.Current.Windows.OfType<SettingsWindow>().FirstOrDefault();
         if (existing is not null) { existing.Activate(); return; }
         Session.Paster?.CaptureTarget();
-        var settings = new SettingsWindow(Session.State.Settings, () => Session.Change(), () => TrySave(), Session.Report, Session.Root, Docks, Session.BackupSnapshot) { Owner = IsVisible ? this : null, WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen };
+        var settings = new SettingsWindow(Session.State.Settings, Session.ChangeSettings, () => TrySave(), Session.Report, Session.Root, Docks, Session.BackupSnapshot) { Owner = IsVisible ? this : null, WindowStartupLocation = IsVisible ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen };
         void StorageStatus(string _) => settings.SetStorageStatus(Session.StorageStatus);
         Session.StatusChanged += StorageStatus; settings.Closed += (_, _) => Session.StatusChanged -= StorageStatus;
         settings.SetStorageStatus(Session.StorageStatus); settings.Show();

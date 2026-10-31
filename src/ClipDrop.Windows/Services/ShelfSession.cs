@@ -48,11 +48,16 @@ public sealed partial class ShelfSession : IDisposable
         if (store.RecoveryNotice is not null) Status = store.RecoveryNotice;
     }
 
-    public void Change(bool refresh = true)
+    public void Change(bool refresh = true) => MarkChanged(refresh, false);
+    // Settings do not change membership/content; keep the item and tile indexes.
+    public void ChangeSettings() => MarkChanged(true, true);
+    private void MarkChanged(bool refresh, bool settingsOnly)
     {
         if (_disposed) return;
-        if (refresh) PanelSets.CaptureActive(State);
+        if (refresh && !settingsOnly) PanelSets.CaptureActive(State);
+        var cacheCurrent = _pinRevision == _revision;
         _revision++;
+        if (settingsOnly && cacheCurrent) _pinRevision = _revision;
         _dirty = true; StorageStatus = "Saving"; SetStatus("Saving…");
         _save.Stop(); _save.Start();
         if (refresh) Changed?.Invoke();

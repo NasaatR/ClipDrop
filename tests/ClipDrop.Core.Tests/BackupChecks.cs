@@ -48,6 +48,51 @@ internal static class BackupChecks
         check(BackupArchive.Verify(output) == result && !File.Exists(Path.Combine(store.Root, "shelf.json")),
             "A verified backup does not silently save or rewrite source shelf metadata");
         var before = File.ReadAllBytes(output); var cancelled = false;
+        var zip64Path = Path.Combine(root, "zip64-preview.clipdrop.zip");
+        using (var file = File.Create(zip64Path))
+        using (var writer = new BinaryWriter(file))
+        {
+            var end = before.Length - 22; var count = BitConverter.ToUInt16(before, end + 10);
+            var directorySize = BitConverter.ToUInt32(before, end + 12); var directoryOffset = BitConverter.ToUInt32(before, end + 16);
+            writer.Write(before, 0, end);
+            writer.Write(0x06064b50u); writer.Write(44UL); writer.Write((ushort)45); writer.Write((ushort)45);
+            writer.Write(0u); writer.Write(0u); writer.Write((ulong)count); writer.Write((ulong)count); writer.Write((ulong)directorySize); writer.Write((ulong)directoryOffset);
+            writer.Write(0x07064b50u); writer.Write(0u); writer.Write((ulong)end); writer.Write(1u);
+            writer.Write(0x06054b50u); writer.Write((ushort)0); writer.Write((ushort)0); writer.Write(ushort.MaxValue); writer.Write(ushort.MaxValue);
+            writer.Write(uint.MaxValue); writer.Write(uint.MaxValue); writer.Write((ushort)0);
+        }
+        check(BackupArchive.Verify(zip64Path) == result, "Bounded directory preflight accepts ZIP64 backups before verifying their actual payloads");
+        var giant = Path.Combine(root, "oversized-directory.zip");
+        using (var file = File.Create(giant))
+        using (var writer = new BinaryWriter(file))
+        {
+            // Misreport the count: preflight must count real records without
+            // allocating an unbounded ZipArchive entry collection.
+            for (var i = 0; i < 50002; i++) { writer.Write(0x02014b50u); writer.Write(new byte[24]); writer.Write((ushort)1); writer.Write(new byte[16]); writer.Write((byte)'a'); }
+            var size = (uint)file.Position;
+            writer.Write(0x06054b50u); writer.Write((ushort)0); writer.Write((ushort)0); writer.Write((ushort)2); writer.Write((ushort)2);
+            writer.Write(size); writer.Write(0u); writer.Write((ushort)0);
+        }
+        var bounded = false;
+        try { BackupArchive.Verify(giant); } catch (InvalidDataException ex) { bounded = ex.Message.Contains("inspection limits"); }
+        check(bounded, "Inspection bounds actual central-directory records before ZipArchive can allocate their entries, even if the declared count lies");
+        var ambiguous = Path.Combine(root, "ambiguous-footer.zip");
+        using (var file = File.Create(ambiguous))
+        using (var writer = new BinaryWriter(file))
+        {
+            var commented = (byte[])before.Clone(); BitConverter.GetBytes((ushort)30).CopyTo(commented, commented.Length - 2); writer.Write(commented);
+            writer.Write(0x06054b50u); writer.Write((ushort)0); writer.Write((ushort)0); writer.Write(ushort.MaxValue); writer.Write(ushort.MaxValue);
+            writer.Write(0u); writer.Write(0u); writer.Write((ushort)0); writer.Write(new byte[8]);
+        }
+        bounded = false; try { BackupArchive.Verify(ambiguous); } catch (InvalidDataException ex) { bounded = ex.Message.Contains("inspection limits"); }
+        check(bounded, "Inspection rejects an ambiguous later ZIP footer instead of validating a different directory from the runtime reader");
+        var oversized = File.ReadAllBytes(zip64Path); var recordOffset = before.Length - 22;
+        BitConverter.GetBytes(1000000UL).CopyTo(oversized, recordOffset + 24); BitConverter.GetBytes(1000000UL).CopyTo(oversized, recordOffset + 32);
+        File.WriteAllBytes(zip64Path, oversized); bounded = false;
+        try { BackupArchive.Verify(zip64Path); } catch (InvalidDataException ex) { bounded = ex.Message.Contains("inspection limits"); }
+        check(bounded, "ZIP64 entry limits are checked before constructing the archive entry collection");
+        cancelled = false; try { BackupArchive.Verify(output, new CancellationToken(true)); } catch (OperationCanceledException) { cancelled = true; }
+        check(cancelled, "Cancelling archive inspection stops before directory parsing");
         var overwriteRejected = false;
         try { BackupArchive.Create(store.Root, snapshot, output); } catch (IOException) { overwriteRejected = true; }
         check(overwriteRejected && File.ReadAllBytes(output).SequenceEqual(before), "Backup publication never overwrites an existing file, including paths reached through an alias");

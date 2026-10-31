@@ -97,7 +97,7 @@ public sealed partial class DockCoordinator : IDisposable
                 view.Assignment = assignment;
                 view.RefreshDock(); Place(view);
                 var show = !_startHidden && (assignment.Layout.Visible || assignment.Temporary && oldVisible);
-                if (show) view.ShowDock(); else view.HideDock();
+                if (show) { if (!view.IsShown) view.ShowDock(); } else if (view.IsVisible) view.HideDock();
                 Place(view);
             }
             ReconcileWindows();

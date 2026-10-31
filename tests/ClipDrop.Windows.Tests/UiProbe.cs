@@ -105,15 +105,15 @@ internal static class UiProbe
         var start = source.PointToScreen(new Point(source.ActualWidth / 2, source.ActualHeight / 2));
         DragFrom(start, destination, cancel);
     }
-    public static void DragFrom(Point start, Point destination, bool cancel = false)
+    public static void DragFrom(Point start, Point destination, bool cancel = false, int steps = 12, int frameDelayMs = 45)
     {
         Exception? error = null; var done = false;
         var worker = new Thread(() => {
             try
             {
                 SetCursorPos((int)start.X, (int)start.Y); Thread.Sleep(80); MouseEvent(2); Thread.Sleep(80);
-                for (var step = 1; step <= 12; step++)
-                { SetCursorPos((int)(start.X + (destination.X - start.X) * step / 12), (int)(start.Y + (destination.Y - start.Y) * step / 12)); Thread.Sleep(45); }
+                for (var step = 1; step <= steps; step++)
+                { SetCursorPos((int)(start.X + (destination.X - start.X) * step / steps), (int)(start.Y + (destination.Y - start.Y) * step / steps)); Thread.Sleep(frameDelayMs); }
                 Thread.Sleep(100);
                 if (cancel) { KeyEvent(0x1B, false); KeyEvent(0x1B, true); }
             }

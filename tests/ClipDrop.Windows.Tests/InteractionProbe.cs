@@ -63,7 +63,7 @@ internal static class InteractionProbe
                 "Dragging directly on the Downloads icon moves the window and cancels its click action");
             UiProbe.Click(stack.StackButton);
             check(clicks == 1 && !stack.IsCompact, "The Downloads icon still opens its list with one normal click");
-            var settings = new SettingsWindow(state.Settings, () => session.Change(), session.TrySave, session.Report, store.Root, coordinator);
+            var settings = new SettingsWindow(state.Settings, session.ChangeSettings, session.TrySave, session.Report, store.Root, coordinator);
             settings.Show(); UiProbe.Pump();
             try
             {
@@ -75,8 +75,8 @@ internal static class InteractionProbe
                 UiProbe.Click(width.Input); width.Input.Text = "248"; UiProbe.PressKey(0x0D);
                 check(state.Settings.DownloadsWidth == 248 && stack.Width == 248,
                     "Typing an exact width and pressing Enter updates the actual Downloads window");
-                UiProbe.Click(UiProbe.Find<Button>(width, b => AutomationProperties.GetName(b) == "Downloads width increase"));
-                check(state.Settings.DownloadsWidth == 258 && width.Input.Text == "258", "Number controls support a precise plus step without dragging a slider");
+                UiProbe.PressKey(0x26);
+                check(state.Settings.DownloadsWidth == 258 && width.Input.Text == "258", "Exact entry retains keyboard adjustment alongside the smooth slider");
                 UiProbe.Click(width.Input); width.Input.Text = "invalid"; UiProbe.PressKey(0x0D);
                 check(state.Settings.DownloadsWidth == 258 && width.Input.BorderBrush == Brushes.IndianRed,
                     "An invalid numeric draft stays visible without writing corrupt settings");

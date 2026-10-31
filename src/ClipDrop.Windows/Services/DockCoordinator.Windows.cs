@@ -63,7 +63,7 @@ public sealed partial class DockCoordinator
             }
             if (_startHidden) { assignment.Layout.Visible = false; panel.Window!.Layout.Visible = false; }
             view.Assignment = assignment; view.RefreshDock(); Place(view);
-            if (!_startHidden && panel.Window!.Layout.Visible) view.ShowDock(); else view.HideDock();
+            if (!_startHidden && panel.Window!.Layout.Visible) { if (!view.IsShown) view.ShowDock(); } else if (view.IsVisible) view.HideDock();
             Place(view); ordinal++;
         }
     }

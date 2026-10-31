@@ -34,7 +34,7 @@ public partial class DownloadsWindow : Window
     private readonly ClipSelection _selection = new();
     private readonly DockPresence _presence;
     private FlyoutDismiss? _outside;
-    private bool _disposing, _busy, _moving, _refreshing;
+    private bool _disposing, _busy, _moving, _refreshing, _immediateDismiss;
     private Point? _origin;
     private FrameworkElement? _source;
     private Row? _pressedRow;
@@ -55,10 +55,14 @@ public partial class DownloadsWindow : Window
         _session = session; _feed = feed; _settings = settings; _close = close;
         InitializeComponent(); Files.ItemsSource = _rows;
         _presence = new DockPresence(this, () => session.State.Settings, compact => {
-            IsCompact = compact; Details.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
+            IsCompact = compact; Details.IsHitTestVisible = !compact;
             HoverBridge.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
-            if (compact) { _selection.Clear(); SyncSelection(); }
-            else Motion.Disclose(Details, new Point(1, 1));
+            if (compact)
+            {
+                _selection.Clear(); SyncSelection();
+                Motion.Conceal(Details, () => { if (IsCompact) Details.Visibility = Visibility.Hidden; }, _immediateDismiss);
+            }
+            else { Motion.Disclose(Details, new Point(1, 1)); Details.Visibility = Visibility.Visible; }
             WatchDismiss();
         }, transient: true);
         PopupDismiss.Attach(ContextMenu, this); ContextMenuOpening += (_, _) => Menu();
@@ -106,7 +110,9 @@ public partial class DownloadsWindow : Window
     private void Dismiss()
     {
         if (_busy || _moving) return;
-        PopupDismiss.CloseFor(this); ClearGesture(); _presence.Dismiss();
+        PopupDismiss.CloseFor(this); ClearGesture(); _immediateDismiss = true;
+        try { _presence.Dismiss(); Motion.Conceal(Details, () => Details.Visibility = Visibility.Hidden, true); }
+        finally { _immediateDismiss = false; }
     }
     private void OnDismiss(object sender, RoutedEventArgs e) => Dismiss();
     private void Refresh()

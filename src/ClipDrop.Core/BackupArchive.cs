@@ -16,7 +16,7 @@ public sealed record BackupSummary(int Clips, int Trashed, int Panels, int Asset
 
 // Export/verify only. No extraction, live-library replacement or external-file
 // copying. The explicit archive is a first increment toward previewed recovery.
-public static class BackupArchive
+public static partial class BackupArchive
 {
     private const long MaximumAsset = 512L * 1024 * 1024, MaximumTotal = 8L * 1024 * 1024 * 1024;
     private const int MaximumMetadata = 256 * 1024 * 1024, MaximumManifest = 32 * 1024 * 1024, MaximumEntries = 50000;
@@ -160,7 +160,10 @@ public static class BackupArchive
     public static BackupSummary Verify(string path, CancellationToken cancellation = default)
     {
         cancellation.ThrowIfCancellationRequested();
-        using var archive = ZipFile.OpenRead(path);
+        using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        PreflightDirectory(file, cancellation);
+        file.Position = 0;
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
         if (archive.Entries.Count is < 2 or > MaximumEntries + 1 || archive.Entries.Any(e => !SafeName(e.FullName)) ||
             archive.Entries.Select(e => e.FullName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != archive.Entries.Count)
             throw new InvalidDataException("Invalid or duplicate backup entry paths.");

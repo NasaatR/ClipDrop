@@ -1,6 +1,6 @@
 # ClipDrop — incremental delivery plan
 
-Updated 2026-10-30. Windows first. Each stage ends with a runnable installer,
+Updated 2026-10-31. Windows first. Each stage ends with a runnable installer,
 portable package, targeted checks and user feedback before expanding its scope.
 Main is the working branch. This plan supersedes the older future-stage lists
 in FOUNDATION.md; those sections also document historical releases.
@@ -23,7 +23,8 @@ in FOUNDATION.md; those sections also document historical releases.
 | 4e · Chrome downloads and consistent Keep | All save folders through an optional companion, direct row drag and target-owned protection | Delivered in 0.14 |
 | 4f · Compact Downloads | Dense one-line rows, contextual actions and reliable transient dismissal | Delivered in 0.15 |
 | 5a1 · Backup export | Current metadata and referenced payloads, streamed and verified to a fresh archive | Delivered in 0.15 |
-| 5a2 · Backup restore | Preview, conflict-safe import/merge and recovery boundaries | Next separate increment |
+| 5a2a · Backup inspection | Read-only integrity and archive summary | Delivered in 0.18 |
+| 5a2b · Backup restore | Conflict preview, safe import/merge and recovery boundaries | Next separate increment |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
 | 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
 | 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.14 |
@@ -729,3 +730,34 @@ Implementation/acceptance:
 Scope: this finishes the requested interaction/design increment. Backup restore
 preview/conflict-safe import remains next; clipboard history and Send to Figma stay
 separate. No source/assets copied and no new dependency.
+
+
+## 0.18: smooth closing and continuous settings sliders
+
+User priority: remove opacity steps and restore comfortable sliders. This supersedes
+0.17's plus/minus field presentation; exact entry remains alongside each rail.
+
+- [x] Hold the opacity clock to its endpoint before committing the base value;
+  reverse from the sampled effective value, with revision guards against stale
+  completion. Clear the reveal pulse on pointer leave. Captured presses hold the
+  surface open and capture release outside resumes the idle transition.
+- [x] Fade content before hiding it; coordinate the compact background transition,
+  disable hidden/closing hit areas immediately, and cancel a pending hide on reopen.
+  Preserve native window geometry and immediate explicit Downloads dismissal.
+- [x] Large 36-DIP slider hit area with full-rail capture, continuous double-valued
+  thumb tracking, coalesced 40ms integer model previews and final release flush.
+  Keep exact entry/validation/keyboard control; bind scrollbar range and viewport.
+- [x] Preserve clip caches on settings-only changes and avoid revealing an already
+  shown panel repeatedly during live preview.
+- [x] Stage 5a2a: Inspect backup in Settings verifies an archive off-thread and shows
+  counts, payload size and integrity. No extraction, import, schema change or live
+  library mutation. Invalid archives/cancellation leave the library unchanged.
+  Preflight ZIP/ZIP64 directory bounds before entry allocation using the same locked
+  stream; reject excessive/lying entry counts with a cancellable fixed-buffer scan.
+- [x] Add native regression probes for fade sampling/interruption, captured press,
+  fade-before-hide/reopen, rail drag/coalescing, scrollbar drag, persistence and
+  read-only inspection. Reuse existing transfer/monitor/Chrome/upgrade gates.
+
+Next: 5a2b conflict preview and recoverable restore/merge as its own bounded change,
+then content versions. Keep physical mixed-DPI/sleep acceptance open until actual
+hardware feedback; clipboard history and Send to Figma remain later stages.

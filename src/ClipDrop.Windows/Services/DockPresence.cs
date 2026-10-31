@@ -12,18 +12,20 @@ public sealed class DockPresence : IDisposable
     private readonly Window _window;
     private readonly Func<ShelfSettings> _settings;
     private readonly Action<bool> _compact;
-    private readonly DispatcherTimer _collapse = new() { Interval = TimeSpan.FromMilliseconds(650) };
+    private readonly DispatcherTimer _collapse = new() { Interval = TimeSpan.FromMilliseconds(1) };
     private bool _isCompact;
-    private readonly DispatcherTimer _settle = new() { Interval = TimeSpan.FromMilliseconds(180) };
+    private readonly DispatcherTimer _settle = new() { Interval = TimeSpan.FromMilliseconds(80) };
     private readonly DispatcherTimer _reveal = new() { Interval = TimeSpan.FromMilliseconds(900) };
-    private bool _busy, _pulse, _disposed, _dismissed;
+    private bool _busy, _pulse, _disposed, _dismissed, _captureQueued;
     private readonly bool _transient;
     private double _target = -1;
+    private int _fadeRevision;
     public DockPresence(Window window, Func<ShelfSettings> settings, Action<bool> compact, bool transient = false)
     {
         _window = window; _settings = settings; _compact = compact; _transient = transient;
-        if (transient) { _collapse.Interval = TimeSpan.FromMilliseconds(300); _settle.Interval = TimeSpan.FromMilliseconds(90); _reveal.Interval = TimeSpan.FromMilliseconds(350); }
+        if (transient) { _collapse.Interval = TimeSpan.FromMilliseconds(140); _settle.Interval = TimeSpan.FromMilliseconds(90); _reveal.Interval = TimeSpan.FromMilliseconds(350); }
         window.MouseEnter += Enter; window.MouseLeave += Leave; window.IsVisibleChanged += Visibility;
+        window.GotMouseCapture += CaptureChanged; window.LostMouseCapture += CaptureChanged;
         PopupDismiss.Changed += PopupChanged;
         _settle.Tick += (_, _) => { _settle.Stop(); Refresh(); };
         _reveal.Tick += (_, _) => { _reveal.Stop(); _pulse = false; Refresh(); };
@@ -34,11 +36,17 @@ public sealed class DockPresence : IDisposable
         Refresh();
     }
     private bool CollapseWhenIdle => _transient || _settings().CollapseWhenIdle;
-    private bool Active => !_dismissed && (_window.IsMouseOver || _busy || _pulse || PopupDismiss.IsOpenFor(_window));
+    private bool Active => !_dismissed && (_window.IsMouseOver || _window.IsMouseCaptureWithin || _busy || _pulse || PopupDismiss.IsOpenFor(_window));
     private void SetCompact(bool compact)
     { if (_isCompact == compact) return; _isCompact = compact; _compact(compact); }
-    private void Enter(object sender, MouseEventArgs e) { _dismissed = false; _settle.Stop(); Refresh(); }
-    private void Leave(object sender, MouseEventArgs e) { _settle.Stop(); _settle.Start(); }
+    private void Enter(object sender, MouseEventArgs e) { _dismissed = false; _pulse = false; _reveal.Stop(); _settle.Stop(); Refresh(); }
+    private void Leave(object sender, MouseEventArgs e) { _pulse = false; _reveal.Stop(); _settle.Stop(); _settle.Start(); }
+    private void CaptureChanged(object sender, MouseEventArgs e)
+    {
+        if (_disposed || _captureQueued || _window.Dispatcher.HasShutdownStarted) return;
+        _captureQueued = true;
+        _window.Dispatcher.BeginInvoke(() => { _captureQueued = false; if (!_disposed) Refresh(); }, DispatcherPriority.Input);
+    }
     private void Visibility(object sender, DependencyPropertyChangedEventArgs e)
     { if (!_window.IsVisible) { _settle.Stop(); _reveal.Stop(); _collapse.Stop(); _pulse = false; _busy = false; } Refresh(); }
     private void PopupChanged(Window owner) { if (ReferenceEquals(owner, _window)) Refresh(); }
@@ -58,17 +66,31 @@ public sealed class DockPresence : IDisposable
         else if (!_window.IsVisible || active || !CollapseWhenIdle) { _collapse.Stop(); SetCompact(false); }
         else if (!_isCompact && !_collapse.IsEnabled) _collapse.Start();
         var next = active ? 1 : Appearance.Bound(_settings().IdleDockOpacity, 5, 100, 20) / 100;
-        if (_target == next && (_settings().AnimationsEnabled || !_window.HasAnimatedProperties)) return;
-        _target = next; var from = _window.Opacity;
-        _window.BeginAnimation(UIElement.OpacityProperty, null); _window.Opacity = next;
-        if (_window.IsVisible && Motion.Allowed && Math.Abs(from - next) > .001)
-            _window.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(from, next, TimeSpan.FromMilliseconds(next == 1 ? 90 : 160)) { FillBehavior = FillBehavior.Stop, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        var animate = _window.IsVisible && Motion.Allowed;
+        if (_target == next && (animate || !_window.HasAnimatedProperties)) return;
+        _target = next; var from = _window.Opacity; var revision = ++_fadeRevision;
+        if (!animate || Math.Abs(from - next) < .001)
+        {
+            _window.Opacity = next; _window.BeginAnimation(UIElement.OpacityProperty, null); return;
+        }
+        // Keep the current base value until the held animation reaches its end.
+        // Clearing the old clock / setting the target first flashes HWND opacity.
+        var duration = next == 1 ? Math.Clamp(Motion.DurationMs * .6, 90, 260) : Math.Clamp(Motion.DurationMs * 1.5, 240, 900);
+        var fade = new DoubleAnimation(from, next, TimeSpan.FromMilliseconds(duration)) {
+            FillBehavior = FillBehavior.HoldEnd, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        fade.Completed += (_, _) => {
+            if (_disposed || revision != _fadeRevision) return;
+            _window.Opacity = next; _window.BeginAnimation(UIElement.OpacityProperty, null);
+        };
+        _window.BeginAnimation(UIElement.OpacityProperty, fade, HandoffBehavior.SnapshotAndReplace);
     }
     public void Dispose()
     {
-        if (_disposed) return; _disposed = true; _settle.Stop(); _reveal.Stop(); _collapse.Stop();
+        if (_disposed) return; _disposed = true; _fadeRevision++; _settle.Stop(); _reveal.Stop(); _collapse.Stop();
         PopupDismiss.Changed -= PopupChanged;
         _window.MouseEnter -= Enter; _window.MouseLeave -= Leave; _window.IsVisibleChanged -= Visibility;
+        _window.GotMouseCapture -= CaptureChanged; _window.LostMouseCapture -= CaptureChanged;
         _window.BeginAnimation(UIElement.OpacityProperty, null);
     }
 }
