@@ -27,7 +27,7 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 1.3 Preview
+## Features in 1.4 Preview
 
 - Immediate whole-card Downloads feedback with a softly settling, critically
   damped icon response. Mid-flight reversals preserve position and velocity;
@@ -42,8 +42,8 @@ from Trash, including after restarting.
   an option to include identical clips. Per-clip restore choices now preview the
   planned adds/replacements/Trash restores; actual restore execution remains next.
 
-- Understandable releases: **1.3 Preview**, then 1.4,…,1.9,2.0. Native package
-  version 1.3.0, display 1.3 Preview, tag v1.3 and assets ClipDrop_v1.3 are derived
+- Understandable releases: **1.4 Preview**, then 1.5,…,1.9,2.0. Native package
+  version 1.4.0, display 1.4 Preview, tag v1.4 and assets ClipDrop_v1.4 are derived
   from one authority; old 0.x releases and app/data identity remain intact.
 - Downloads anchors its **icon center**, independently of panel size. Move it near
   the top to open downward, or near the bottom to open upward. Newest files always

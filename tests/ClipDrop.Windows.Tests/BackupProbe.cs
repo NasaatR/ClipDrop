@@ -63,6 +63,8 @@ internal static class BackupProbe
             UiProbe.PressKey(0x23); UiProbe.PressKey(0x0D);
             check(choice.SelectedIndex == 1 && UiProbe.Find<TextBlock>(section, t => t.Name == "PlanSummary").Text.Contains("1 replace") && state.Items[1].Content == "Changed after archive",
                 "Choosing the backup version updates only the preview plan through the real dropdown");
+            check(UiProbe.Find<TextBlock>(choice, t => t.Text == "Use backup").IsVisible,
+                "The closed restore selector displays its user-facing label instead of record implementation details");
             UiProbe.Click(include); UiProbe.Click(include);
             check(UiProbe.Find<ComboBox>(comparisons, _ => true).SelectedIndex == 1,
                 "Filtering identical clips preserves the current preview choices");

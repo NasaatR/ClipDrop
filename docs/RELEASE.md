@@ -1,10 +1,11 @@
-ClipDrop 1.3 Preview — smooth interruptible icon motion and restore-choice preview.
+ClipDrop 1.4 Preview — smooth interruptible icon motion and restore-choice preview.
 
 - Whole-card Downloads feedback stays immediate. Icon scale/lift uses a critically damped response with a gentle start, fast visible movement and a soft settling tail within320ms. Scale is bounded at12% with a1-DIP lift. Retargeting samples the currently painted WPF clock position AND velocity, avoiding restart jumps and abrupt speed resets during rapid reversals.
 - One native matrix animation clock replaces three independent transform clocks. No application render-loop handler, UI timer, layout/native-window animation or dependency added. Unload, disabled/reduced motion, latest-target completion guards and lazy state allocation remain.
+- Restore-choice selectors show clean labels in both their open list and closed selection, without exposing record/property implementation text. Native checks cover the selected label as well as the plan counters.
 - Inspect backup now offers session-only per-clip choice previews: Add/Skip new clips, Keep current/Use backup for metadata conflicts, Leave in Trash/Restore for archived identities in live Trash. Conflicts default to keeping current data; identical entries cannot acquire an overwrite action. Counters show the proposed changes. Filtering retains choices; a new operation clears them. Row models are projected once per inspection instead of on each filter change.
 - This stage previews choices only. There is no Restore/Apply execution, extraction or live-state mutation. Safe archive/state revalidation and recoverable restore/merge are the next separate stage.
 
-Quit through the tray and install over the current version. Native1.3.0/display1.3 Preview/tagv1.3; installer/data/Chrome identities and schema7 stay unchanged. No added permission. Historical and recent1.2 upgrades remain in the distribution gate.
+Quit through the tray and install over the current version. Native1.4.0/display1.4 Preview/tagv1.4; installer/data/Chrome identities and schema7 stay unchanged. No added permission. Historical and recent1.3 upgrades remain in the distribution gate.
 
 Checks cover analytic response/settling/bounds/momentum continuity, sampled real WPF frames and mid-animation interruptions, fast pointer switching, scrolling/recycling/reduced motion, read-only choice defaults and updates, themed dropdown interaction, filtering and stale-choice reset. Existing Windows/OLE, real Chrome, startup, packaging and upgrade checks remain required before publication. CI frame sampling does not guarantee a particular frame rate on every machine.

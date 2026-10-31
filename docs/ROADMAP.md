@@ -886,3 +886,14 @@ Next5a2b2b2: revalidate archive and current snapshot, prepare owned assets with
 rebased references, and commit a recoverable restore/merge transaction. Keep
 originals, preserve current settings unless explicitly chosen, reject stale drafts,
 and test interruption/recovery before exposing Restore execution. Then content versions.
+
+
+## 1.4 Preview: restore-choice label correction
+
+- [x] Closed choice selectors show the intended label instead of record fields.
+  Keep the working1.3 spring response and session-only draft behavior unchanged.
+- [x] Test the actual selected text in the rendered closed dropdown as well as
+  keyboard selection/counters. Reinspect open and closed native captures.
+- [x] Preserve issued1.3 assets; new native1.4.0/tagv1.4 and recent1.3 upgrade gate.
+
+Next remains5a2b2b2, the archive/state revalidation and recoverable restore transaction.

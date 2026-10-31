@@ -12,7 +12,10 @@ namespace ClipDrop.Windows.Views;
 // retained here; a later restore must revalidate its own archive and live state.
 public partial class BackupComparisonView : UserControl
 {
-    public sealed record ChoiceOption(string Label, BackupChoice Choice);
+    public sealed record ChoiceOption(string Label, BackupChoice Choice)
+    {
+        public override string ToString() => Label;
+    }
     public sealed class Row : INotifyPropertyChanged
     {
         private readonly BackupRestoreDraft _draft;
