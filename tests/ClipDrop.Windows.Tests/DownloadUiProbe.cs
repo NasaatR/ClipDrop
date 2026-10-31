@@ -93,7 +93,8 @@ internal static class DownloadUiProbe
             check(sampleFolder.IsVisible && samplePoint.X >= 0 && samplePoint.X < preview.Files.ActualWidth && samplePoint.Y >= 0 && samplePoint.Y < preview.Files.ActualHeight,
                 "Native preview input targets a currently visible row after density changes and scrolling");
             UiProbe.Click(sampleFolder);
-            check(launches == 3 && sample.IsPreview && !File.Exists(sample.File.Path) && state.Items.Count == 0,
+            check(launches == 3 && sample.IsPreview && !File.Exists(sample.File.Path) && state.Items.Count == 0 &&
+                UiProbe.Find<TextBlock>(preview, t => t.Text == "Preview only · a real row opens its containing folder").IsVisible,
                 "The synthetic preview button gives feedback without reading sample paths or launching applications");
             UiProbe.CaptureWindow(settings, Path.Combine(output, "downloads-settings-preview-dark.png"));
             settings.Width = 560; settings.Height = 600; state.Settings.Theme = "Light"; state.Settings.DockPalette = "Light";
