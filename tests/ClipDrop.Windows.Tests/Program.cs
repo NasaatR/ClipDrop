@@ -18,7 +18,8 @@ internal static class Program
     private static int _passed;
     private static void Check(bool value, string name) { if (!value) throw new Exception(name); Console.WriteLine("PASS " + name); _passed++; }
     [STAThread]
-    public static int Main(string[] args)
+    public static int Main(string[] args) => ClientAnimationProbe.RunProgram(() => Run(args));
+    private static int Run(string[] args)
     {
         if (args.Length == 2 && args[0] == "--paste-target") return PasteProbe.RunTarget(args[1]);
         using var watchdog = new System.Threading.Timer(_ => { Console.Error.WriteLine("Windows UI/clipboard checks stalled for 180 seconds."); Environment.Exit(2); }, null, TimeSpan.FromSeconds(180), System.Threading.Timeout.InfiniteTimeSpan);

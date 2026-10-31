@@ -1,29 +1,33 @@
 using System;
 using System.ComponentModel;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
-using System.Windows;
 
-// Test host only. Never changes a developer/user profile; CI session state is
-// restored even on assertion failure, with primary/cleanup errors preserved.
+// Test host only. WPF caches this setting, so enable it before creating any WPF
+// controls. CI session state is restored without writing the user profile.
 internal static class ClientAnimationProbe
 {
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool SystemParametersInfo(uint action, uint parameter, IntPtr value, uint flags);
-    public static void Run(Action action, Action<bool, string> check)
+    [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", SetLastError = true)]
+    private static extern bool ReadParameter(uint action, uint parameter, out int value, uint flags);
+    [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", SetLastError = true)]
+    private static extern bool WriteParameter(uint action, uint parameter, IntPtr value, uint flags);
+    private static bool Read()
     {
-        var original = SystemParameters.ClientAreaAnimation;
-        var changed = false;
+        if (!ReadParameter(0x1042, 0, out var value, 0)) throw new Win32Exception(Marshal.GetLastWin32Error(), "Read client animation setting");
+        return value != 0;
+    }
+    public static int RunProgram(Func<int> action)
+    {
+        var original = Read(); var changed = false; var result = 1;
         Exception? failure = null;
         try
         {
             if (!original && Environment.GetEnvironmentVariable("CI") == "true")
             {
-                if (!SystemParametersInfo(0x1043, 0, new IntPtr(1), 2)) throw new Win32Exception(Marshal.GetLastWin32Error(), "Enable temporary CI client animation");
+                if (!WriteParameter(0x1043, 0, new IntPtr(1), 2)) throw new Win32Exception(Marshal.GetLastWin32Error(), "Enable temporary CI client animation");
                 changed = true;
-                if (!UiProbe.Until(() => SystemParameters.ClientAreaAnimation, 1500)) throw new Exception("CI client animation did not become available after WM_SETTINGCHANGE");
+                if (!Read()) throw new Exception("Native CI client animation flag did not enable");
             }
-            action();
+            result = action();
         }
         catch (Exception ex) { failure = ex; }
         finally
@@ -31,12 +35,23 @@ internal static class ClientAnimationProbe
             if (changed)
             {
                 Exception? cleanup = null;
-                if (!SystemParametersInfo(0x1043, 0, IntPtr.Zero, 2)) cleanup = new Win32Exception(Marshal.GetLastWin32Error(), "Restore CI client animation");
-                else if (!UiProbe.Until(() => SystemParameters.ClientAreaAnimation == original, 1500)) cleanup = new Exception("CI client animation preference did not restore");
+                try
+                {
+                    if (!WriteParameter(0x1043, 0, IntPtr.Zero, 2)) cleanup = new Win32Exception(Marshal.GetLastWin32Error(), "Restore CI client animation");
+                    else if (Read() != original) cleanup = new Exception("Native CI client animation preference did not restore");
+                }
+                catch (Exception ex) { cleanup = ex; }
                 if (cleanup is not null) failure = failure is null ? cleanup : new AggregateException(failure, cleanup);
+                else Console.WriteLine("PASS The isolated CI session animation setting is restored without a profile write.");
             }
         }
-        if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
-        check(SystemParameters.ClientAreaAnimation == original, "The temporary CI animation preference is restored without a profile write");
+        if (failure is not null) { Console.Error.WriteLine(failure); return 1; }
+        return result;
+    }
+    public static void Run(Action action, Action<bool, string> check)
+    {
+        action();
+        if (Environment.GetEnvironmentVariable("CI") == "true")
+            check(Read(), "Enabled motion checks preserve the isolated CI session animation setting");
     }
 }
