@@ -109,7 +109,7 @@ internal static class DownloadsProbe
                 var downloadScroll = UiProbe.Find<ScrollViewer>(stack.DownloadList, s => s.ScrollableHeight > 0);
                 var downloadBar = UiProbe.Find<ScrollBar>(stack.DownloadList, s => s.Orientation == Orientation.Vertical && s.IsVisible);
                 var downloadThumb = UiProbe.Find<Thumb>(downloadBar, _ => true);
-                check(downloadBar.ActualWidth <= 8 && downloadThumb.ActualWidth >= 7, "Downloads uses a narrow scrollbar with a wider transparent thumb hit area");
+                check(downloadBar.ActualWidth <= 8 && downloadThumb.ActualWidth >= 7, $"Downloads uses a narrow scrollbar with a wider transparent thumb hit area (bar={downloadBar.ActualWidth:0.##}, thumb={downloadThumb.ActualWidth:0.##})");
                 downloadScroll.ScrollToVerticalOffset(downloadScroll.ScrollableHeight / 2); UiProbe.Pump();
                 var oldScroll = downloadScroll.VerticalOffset;
                 var edge = downloadThumb.PointToScreen(new Point(1, downloadThumb.ActualHeight / 2));

@@ -66,7 +66,7 @@
  <Track.IncreaseRepeatButton><RepeatButton x:Name="After" Command="ScrollBar.PageDownCommand" Opacity="0"/></Track.IncreaseRepeatButton>
  </Track></Grid><ControlTemplate.Triggers><Trigger Property="Orientation" Value="Horizontal"><Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/><Setter TargetName="Before" Property="Command" Value="ScrollBar.PageLeftCommand"/><Setter TargetName="After" Property="Command" Value="ScrollBar.PageRightCommand"/><Setter TargetName="Grip" Property="MinHeight" Value="0"/><Setter TargetName="Grip" Property="MinWidth" Value="24"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter><Style.Triggers><Trigger Property="Orientation" Value="Horizontal"><Setter Property="Width" Value="Auto"/><Setter Property="Height" Value="12"/></Trigger></Style.Triggers></Style>
  <Style x:Key="DownloadsScrollBarStyle" TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
-  <Setter Property="Width" Value="8"/>
+  <Setter Property="Width" Value="8"/><Setter Property="MinWidth" Value="8"/><Setter Property="MaxWidth" Value="8"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar"><Grid Background="Transparent">
    <Track x:Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" ViewportSize="{TemplateBinding ViewportSize}" Orientation="Vertical" IsDirectionReversed="True">
     <Track.DecreaseRepeatButton><RepeatButton Focusable="False" Command="ScrollBar.PageUpCommand" Opacity="0"/></Track.DecreaseRepeatButton>
