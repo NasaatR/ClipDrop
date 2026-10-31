@@ -103,11 +103,11 @@ internal static class InteractionProbe
             ClientAnimationProbe.Run(() => {
             state.Settings.AnimationsEnabled = true; state.Settings.MotionDuration = 300; session.Change();
             if (Environment.GetEnvironmentVariable("CI") == "true") check(Motion.Allowed, "CI exercises enabled disclosure motion rather than skipping positive checks");
+            var details = (Border)stack.FindName("Details");
             UiProbe.MoveTo(new Point(area.Left + 5, area.Top + 5));
-            check(UiProbe.Until(() => stack.IsCompact, 1800), "The icon returns to its compact state before the hover reveal");
+            check(UiProbe.Until(() => stack.IsCompact && !details.IsVisible, 1800), "The icon completes conceal before the fresh hover reveal");
             before = WindowPlacement.PixelBounds(stack);
             UiProbe.Hover(stack.StackButton);
-            var details = (Border)stack.FindName("Details");
             check(!stack.IsCompact && WindowPlacement.PixelBounds(stack) == before, "Hover reveal leaves native window geometry and its drag anchor stable");
             if (Motion.Allowed)
             {
@@ -118,8 +118,12 @@ internal static class InteractionProbe
                 check(details.Opacity == 1 && details.RenderTransform is TransformGroup settled && settled.Children.OfType<ScaleTransform>().All(t => t.ScaleX == 1 && t.ScaleY == 1) && settled.Children.OfType<TranslateTransform>().All(t => t.Y == 0),
                     "The spring reveal settles at exact full size and position within its configured duration");
                 state.Settings.MotionStyle = "Soft"; session.Change();
-                UiProbe.MoveTo(new Point(area.Left + 5, area.Top + 5)); UiProbe.Until(() => stack.IsCompact, 1800); UiProbe.Hover(stack.StackButton); UiProbe.Pump(350);
-                UiProbe.MoveTo(new Point(area.Left + 5, area.Top + 5)); UiProbe.Until(() => stack.IsCompact, 1800); UiProbe.Hover(stack.StackButton);
+                UiProbe.MoveTo(new Point(area.Left + 5, area.Top + 5));
+                check(UiProbe.Until(() => stack.IsCompact && !details.IsVisible, 1800), "Soft replay starts only after the first conceal completes");
+                UiProbe.Hover(stack.StackButton); UiProbe.Pump(350);
+                UiProbe.MoveTo(new Point(area.Left + 5, area.Top + 5));
+                check(UiProbe.Until(() => stack.IsCompact && !details.IsVisible, 1800), "Repeated Soft replay waits for completed conceal rather than interrupting it");
+                UiProbe.Hover(stack.StackButton);
                 check(details.Opacity < .999 && details.RenderTransform is TransformGroup repeated && repeated.Children.OfType<ScaleTransform>().Any(t => t.ScaleX < 1),
                     "Soft motion replays after a completed reveal instead of mistaking stopped clocks for an interrupted animation");
             }
