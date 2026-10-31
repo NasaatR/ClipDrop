@@ -8,7 +8,7 @@ using System.Windows.Media.Animation;
 
 namespace ClipDrop.Windows.Services;
 
-public static class Motion
+public static partial class Motion
 {
     private static bool _enabled = true;
     private static readonly List<WeakReference<Button>> Buttons = new();
@@ -21,6 +21,7 @@ public static class Motion
             if (_enabled == value) return;
             _enabled = value;
             if (value) return;
+            StopDisclosures();
             Buttons.RemoveAll(reference => {
                 if (!reference.TryGetTarget(out var button)) return true;
                 if (button.RenderTransform is ScaleTransform scale) { scale.BeginAnimation(ScaleTransform.ScaleXProperty, null); scale.BeginAnimation(ScaleTransform.ScaleYProperty, null); scale.ScaleX = scale.ScaleY = 1; }

@@ -125,6 +125,7 @@ internal static class Program
             settings.Close();
             PanelProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MultiMonitorProbe.Run(window, dock, root, output, Check);
+            InteractionProbe.Run(window, dock, root, output, Check);
             UsageProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             PresenceProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             PanelsProbe.Run(root, output, Check, (element, path) => RenderElement(element, path));

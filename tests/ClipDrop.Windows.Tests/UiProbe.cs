@@ -61,6 +61,7 @@ internal static class UiProbe
         bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
     }
     public static void Escape() { KeyEvent(0x1B, false); Pump(30); KeyEvent(0x1B, true); Pump(); }
+    public static void PressKey(ushort key) { KeyEvent(key, false); Pump(20); KeyEvent(key, true); Pump(); }
     public static void RightClickAt(Point point)
     { MoveTo(point); MouseEvent(8); MouseEvent(16); Pump(); }
     public static void RightClick(FrameworkElement target)
@@ -201,8 +202,13 @@ internal static class UiProbe
         state.AnimationsEnabled = false;
         picker.SelectedIndex = 3;
         check(state.Theme == "Midnight" && !state.AnimationsEnabled, "Preset picker applies Midnight without enabling motion");
-        Find<Slider>(settings, c => AutomationProperties.GetName(c) == "Spacing").Value = 0;
-        Find<Slider>(settings, c => AutomationProperties.GetName(c) == "Opacity").Value = 0;
+        settings.ShowSection("Dock");
+        foreach (var name in new[] { "Spacing", "Opacity" })
+        {
+            var number = Find<NumberField>(settings, c => c.Label == name);
+            number.Input.Text = "0"; number.Commit();
+        }
+        settings.ShowSection("Style");
         Find<TextBox>(settings, c => AutomationProperties.GetName(c) == "Style name").Text = "QA zero spacing";
         Find<Button>(settings, c => c.ToolTip as string == "Save current appearance as a named style").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         check(state.SavedStyles.Count == 1 && state.SavedStyles[0].Style.DockOpacity == 0, "Settings saves current appearance as a named style");

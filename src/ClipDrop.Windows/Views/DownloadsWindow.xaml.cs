@@ -58,7 +58,7 @@ public partial class DownloadsWindow : Window
             IsCompact = compact; Details.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
             HoverBridge.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
             if (compact) { _selection.Clear(); SyncSelection(); }
-            else Motion.Reveal(Details);
+            else Motion.Disclose(Details, new Point(1, 1));
             WatchDismiss();
         }, transient: true);
         PopupDismiss.Attach(ContextMenu, this); ContextMenuOpening += (_, _) => Menu();
@@ -66,7 +66,7 @@ public partial class DownloadsWindow : Window
         _ = new WindowDrag(this, () => { _moving = true; Presence(); }, () => {
             try { GeometryCommitted?.Invoke(); }
             finally { _moving = false; Presence(); MoveCompleted?.Invoke(); }
-        });
+        }, _ => true);
         MouseEnter += (_, _) => _feed.RequestRefresh();
         IsVisibleChanged += (_, _) => WatchDismiss();
         LostMouseCapture += (_, _) => { if (!_busy && _origin.HasValue && _source?.IsMouseCaptured != true) ClearGesture(); };
@@ -91,7 +91,14 @@ public partial class DownloadsWindow : Window
     {
         if (_disposing) return;
         Appearance.Apply(_session.State.Settings, this, true);
-        Topmost = _session.State.Settings.AlwaysOnTop; _presence.Refresh();
+        var size = SurfaceSizing.Downloads(_session.State.Settings);
+        Resources["DownloadsRowHeight"] = size.RowHeight;
+        Resources["DownloadsIconSize"] = size.IconSize;
+        Resources["DownloadsCapsuleHeight"] = new GridLength(size.CapsuleHeight);
+        Resources["DownloadsPreviewSize"] = Math.Min(30, size.RowHeight - 10);
+        Resources["DownloadsPreviewSlot"] = new GridLength(Math.Min(30, size.RowHeight - 10) + 7);
+        Resources["DownloadsGlyphSize"] = Math.Round(size.IconSize * .52);
+        Topmost = _session.State.Settings.AlwaysOnTop; _presence.Refresh(); FitDetails();
     }
     private void Presence() => _presence.Busy(_busy || _moving || _origin.HasValue);
     public void ShowStack() { Show(); WindowState = WindowState.Normal; _presence.Reveal(); _feed.RequestRefresh(); }
@@ -143,7 +150,8 @@ public partial class DownloadsWindow : Window
     private void FitDetails()
     {
         var notice = Notice.Visibility == Visibility.Visible ? (SourceButton.Visibility == Visibility.Visible ? 86 : 44) : 0;
-        Details.Height = Math.Max(80, Math.Min(46 + Math.Max(1, Math.Min(12, _rows.Count)) * 34 + notice, Math.Max(80, Height - 75)));
+        var size = SurfaceSizing.Downloads(_session.State.Settings);
+        Details.Height = Math.Max(80, Math.Min(58 + Math.Max(1, Math.Min(size.Rows, _rows.Count)) * size.RowHeight + notice, Math.Max(80, Height - size.IconSize - 33)));
     }
     private void OnSelection(object sender, SelectionChangedEventArgs e)
     {

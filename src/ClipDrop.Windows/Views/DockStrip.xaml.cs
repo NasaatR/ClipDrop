@@ -37,9 +37,9 @@ public partial class DockStrip : UserControl
         if (width <= 0) return;
         var previous = Surface.ActualWidth;
         Surface.BeginAnimation(WidthProperty, null); Surface.Width = width; Surface.Height = Body.ActualHeight;
-        if (animate && IsCompact && Motion.Allowed && previous > width + 1)
-            Surface.BeginAnimation(WidthProperty, new DoubleAnimation(previous, width, TimeSpan.FromMilliseconds(140)) {
-                FillBehavior = FillBehavior.Stop, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        if (animate && Motion.Allowed && Math.Abs(previous - width) > 1)
+            Surface.BeginAnimation(WidthProperty, new DoubleAnimation(previous, width, TimeSpan.FromMilliseconds(Motion.DurationMs)) {
+                FillBehavior = FillBehavior.Stop, EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut }
             });
     }
     public void SetCompact(bool compact)
@@ -51,7 +51,7 @@ public partial class DockStrip : UserControl
         Details.Visibility = compact ? Visibility.Hidden : Visibility.Visible;
         Stage.Background = compact ? null : new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
         SurfaceSize(true);
-        if (!compact) Motion.Reveal(Details);
+        if (!compact) Motion.Disclose(Details, new Point(0, .5));
     }
     public void Apply(ShelfSettings settings)
     {
@@ -61,11 +61,11 @@ public partial class DockStrip : UserControl
             ((SolidColorBrush)FindResource("Surface")).Color, ((SolidColorBrush)FindResource("Ink")).Color);
         if (_surfaceSignature == signature) return;
         _surfaceSignature = signature;
-        Resources["DockSize"] = Appearance.Bound(settings.DockButtonSize, 30, 48, 36);
-        _slot = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
+        Resources["DockSize"] = Appearance.Bound(settings.DockButtonSize, 24, 72, 36);
+        _slot = (double)Resources["DockSize"] + Appearance.Bound(settings.DockSpacing, 0, 24, 4);
         Resources["DockSlot"] = _slot;
-        Resources["DockGap"] = new Thickness(Appearance.Bound(settings.DockSpacing, 0, 12, 4) / 2);
-        Resources["DockRadius"] = new CornerRadius(Appearance.Bound(settings.DockRadius, 0, 24, 11));
+        Resources["DockGap"] = new Thickness(Appearance.Bound(settings.DockSpacing, 0, 24, 4) / 2);
+        Resources["DockRadius"] = new CornerRadius(Appearance.Bound(settings.DockRadius, 0, 36, 11));
         var bg = ((SolidColorBrush)FindResource("Surface")).Color;
         bg.A = (byte)Math.Round(255 * Appearance.Bound(settings.DockOpacity, 0, 100, 100) / 100);
         var background = new SolidColorBrush(bg); background.Freeze(); Resources["DockBackground"] = background;
@@ -170,8 +170,8 @@ public partial class DockStrip : UserControl
     private void OnLibrary(object sender, RoutedEventArgs e) => LibraryRequested?.Invoke(sender, e);
     public void SetPanelName(string name, bool independent = false)
     {
-        Body.ToolTip = name + " · double-click free space for Library · right-click for options · drag free space to move";
-        SaveButton.ToolTip = "Save to " + name + " · right-click for Library and options";
+        Body.ToolTip = name + " · double-click free space for Library · right-click for options · drag free space or Save to move";
+        SaveButton.ToolTip = "Save to " + name + " · click to save · drag to move · right-click for options";
         PanelTitle.Text = name; PanelTitle.ToolTip = name;
         PanelTitle.Visibility = independent ? Visibility.Visible : Visibility.Collapsed;
     }

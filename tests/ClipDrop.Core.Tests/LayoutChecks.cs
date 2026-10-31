@@ -11,6 +11,27 @@ internal static class LayoutChecks
         var a = new DisplayArea("monitor-a", "Main", 0, 0, 1920, 1040, true);
         var b = new DisplayArea("monitor-b", "Left", -2560, -200, 2560, 1400);
         var settings = new ShelfSettings();
+        check(settings.DownloadsWidth == 272,
+            "Downloads starts with a compact configurable 272-DIP width");
+        var compact = SurfaceSizing.Downloads(settings);
+        check(compact.Width == 272 && compact.Rows == 10 && compact.RowHeight == 34 && compact.IconSize == 44 && compact.Height == 474,
+            "Default Downloads geometry uses one 44-DIP icon and a ten-row compact list");
+        var customLayout = new ShelfState(); customLayout.Settings.DownloadsWidth = 240; customLayout.Settings.DownloadsRows = 6;
+        customLayout.Settings.DownloadsRowHeight = 28; customLayout.Settings.DownloadsIconSize = 32;
+        customLayout.Settings.MotionDuration = 350; customLayout.Settings.MotionStyle = "Soft";
+        customLayout.Settings.DockMaxWidth = 480;
+        var customCopy = StateStore.ReadSnapshot(JsonSerializer.SerializeToUtf8Bytes(customLayout));
+        var savedSize = SurfaceSizing.Downloads(customCopy.Settings);
+        check(savedSize.Width == 240 && savedSize.Rows == 6 && savedSize.RowHeight == 28 && savedSize.IconSize == 32 &&
+            customCopy.Settings.MotionDuration == 350 && customCopy.Settings.MotionStyle == "Soft" && customCopy.Settings.DockMaxWidth == 480,
+            "Downloads density, icon size and motion preferences survive metadata roundtrip");
+        AppearanceStyle.BuiltIns[0].Style.CopyTo(customCopy.Settings);
+        check(SurfaceSizing.Downloads(customCopy.Settings) == savedSize && customCopy.Settings.MotionStyle == "Soft" && customCopy.Settings.DockMaxWidth == 480,
+            "Appearance presets preserve custom Downloads geometry and motion choices");
+        var unusual = new ShelfSettings { DownloadsWidth = double.NaN, DownloadsRows = 999, DownloadsRowHeight = -1, DownloadsIconSize = double.PositiveInfinity };
+        var boundedSize = SurfaceSizing.Downloads(unusual);
+        check(boundedSize.Width == 272 && boundedSize.Rows == 20 && boundedSize.RowHeight == 28 && boundedSize.IconSize == 44,
+            "Nonfinite and out-of-range layout values produce bounded finite geometry");
         check(settings.MirrorDownloads,
             "Downloads defaults to linked copies on every attached display");
         var initial = DockPlanning.Plan(settings, new[] { a, b });
@@ -94,6 +115,12 @@ internal static class LayoutChecks
         check(upgraded.Settings.MirrorDownloads && upgraded.Settings.DownloadsLayouts.Count == 0 &&
             upgraded.Settings.DownloadsLayout.DisplayId == b.Id && upgraded.Settings.DownloadsLayout.OffsetX == 0,
             "An actual older schema-7 snapshot gains Downloads mirroring while retaining its original anchor");
+        foreach (var field in new[] { "DownloadsWidth", "DownloadsRows", "DownloadsRowHeight", "DownloadsIconSize", "MotionDuration", "MotionStyle", "DockMaxWidth" })
+            legacyJson["Settings"]!.AsObject().Remove(field);
+        var compactUpgrade = StateStore.ReadSnapshot(System.Text.Encoding.UTF8.GetBytes(legacyJson.ToJsonString()));
+        check(SurfaceSizing.Downloads(compactUpgrade.Settings).Width == 272 && compactUpgrade.Settings.MotionDuration == 240 &&
+            compactUpgrade.Settings.MotionStyle == "Spring" && compactUpgrade.Settings.DockMaxWidth == 640 && compactUpgrade.Settings.DownloadsLayout.DisplayId == b.Id,
+            "Older schema-7 snapshots gain compact motion/layout defaults without replacing existing display anchors");
         foreach (var bad in new[] { "null", "[{\"DisplayId\":\"x\"},{\"DisplayId\":\"X\"}]", "[{\"DisplayId\":\"x\",\"OffsetX\":100001}]" })
         {
             legacyJson["Settings"]!["DownloadsLayouts"] = System.Text.Json.Nodes.JsonNode.Parse(bad);

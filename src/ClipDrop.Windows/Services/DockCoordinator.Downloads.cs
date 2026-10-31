@@ -15,7 +15,7 @@ public sealed partial class DockCoordinator
     private string DownloadsSignature()
     {
         var s = _session.State.Settings; var l = s.DownloadsLayout;
-        return $"|downloads:{s.DownloadsEnabled}:{s.MirrorDownloads}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}|" +
+        return $"|downloads:{s.DownloadsEnabled}:{s.MirrorDownloads}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{s.DownloadsWidth}:{s.DownloadsRows}:{s.DownloadsRowHeight}:{s.DownloadsIconSize}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}|" +
             string.Join(";", s.DownloadsLayouts.Select(d => $"{d.DisplayId}:{d.Visible}:{d.OffsetX}:{d.OffsetY}"));
     }
     public void OpenDownloads()
@@ -33,11 +33,12 @@ public sealed partial class DockCoordinator
         foreach (var window in DownloadsViews) window.DisposeView();
         _downloadsViews.Clear();
     }
-    private static void FitDownloads(DownloadsWindow window, DisplayArea display)
+    private void FitDownloads(DownloadsWindow window, DisplayArea display)
     {
         var scale = WindowPlacement.Scale(window);
-        window.Height = Math.Max(1, Math.Min(508, display.Height / scale));
-        window.Width = Math.Max(1, Math.Min(344, display.Width / scale));
+        var size = SurfaceSizing.Downloads(_session.State.Settings);
+        window.Height = Math.Max(1, Math.Min(size.Height, display.Height / scale));
+        window.Width = Math.Max(1, Math.Min(size.Width, display.Width / scale));
         window.UpdateLayout();
     }
     private void ReconcileDownloads()

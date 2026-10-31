@@ -45,7 +45,7 @@ internal static class MultiMonitorProbe
             var start = free.PointToScreen(new Point(5, 5));
             // UiProbe.DragTo uses the element center: this tiny transparent background
             // hit target uses an explicit point without touching Save/the clip.
-            UiProbe.DragFrom(start, new Point(b.Left + 90, b.Top + 110));
+            UiProbe.DragTo(dock.QuickSave, new Point(b.Left + 90, b.Top + 110));
             check(state.Settings.HomeDisplayId == b.Id && ReferenceEquals(dock, coordinator.Views.Single()) &&
                 dock.Assignment!.Display.Id == b.Id && WindowPlacement.PixelBounds(dock).Left >= b.Left,
                 "Dragging the single main dock across a display boundary retargets the same HWND instead of snapping back");
@@ -177,7 +177,7 @@ internal static class MultiMonitorProbe
             check(coordinator.Views.Count == 1 && coordinator.DownloadsViews.Count == 1,
                 "Both surfaces can independently use one movable window");
             var settingsWindow = new SettingsWindow(state.Settings, () => session.Change(), session.TrySave, session.Report, session.Root, coordinator);
-            settingsWindow.Show(); UiProbe.Pump();
+            settingsWindow.ShowSection("Screens"); settingsWindow.Show(); UiProbe.Pump();
             var screens = UiProbe.Find<MonitorSettings>(settingsWindow, _ => true); screens.BringIntoView(); UiProbe.Pump();
             var mode = UiProbe.Find<ComboBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Clip panel mode");
             mode.SelectedIndex = 1; UiProbe.Pump();

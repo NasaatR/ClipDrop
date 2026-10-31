@@ -110,7 +110,7 @@ internal static class PanelProbe
             check(coordinator.Views.Count == 1 && coordinator.Views.Single().Assignment!.Display.Id == b.Id && !coordinator.Views.Single().Assignment!.Temporary,
                 "Repeated reconnect restores the enabled home dock without duplicate HWNDs");
             var screenSettings = new SettingsWindow(settings, () => session.Change(), session.TrySave, session.Report, session.Root, coordinator);
-            screenSettings.Show(); UiProbe.Pump();
+            screenSettings.ShowSection("Screens"); screenSettings.Show(); UiProbe.Pump();
             var screens = UiProbe.Find<MonitorSettings>(screenSettings, _ => true); screens.BringIntoView(); UiProbe.Pump();
             var homePicker = UiProbe.Find<ComboBox>(screens, c => System.Windows.Automation.AutomationProperties.GetName(c) == "Main dock display");
             check(homePicker.SelectedItem?.ToString() == "Test B", "Monitor picker displays a readable screen label without internal record fields");

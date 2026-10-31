@@ -72,7 +72,7 @@ public partial class DockWindow : Window
                 else { Session.State.Settings.DockLeft = Left; Session.State.Settings.DockTop = Top; Session.Change(false); }
             }
             finally { _moving = false; UpdatePresence(); MoveCompleted?.Invoke(); }
-        });
+        }, button => button.DataContext is not ItemRow);
         PreviewMouseLeftButtonDown += (_, e) => {
             if (e.ClickCount != 2 || !WindowDrag.CanStart(e.OriginalSource as DependencyObject)) return;
             e.Handled = true; _library();
@@ -130,10 +130,11 @@ public partial class DockWindow : Window
         var name = Session.PanelName(PanelId); Strip.SetPanelName(name, PanelId is not null);
         Title = PanelId is null ? "ClipDrop Dock" : "ClipDrop · " + name;
         Topmost = settings.AlwaysOnTop;
-        FontSize = Appearance.Bound(settings.FontSize, 11, 18, 13);
+        FontSize = Appearance.Bound(settings.FontSize, 10, 24, 13);
         var pins = Session.DockTiles(PanelId);
         var available = Assignment is { } a ? a.Display.Width / WindowPlacement.Scale(this) : IsLoaded ? WindowPlacement.WorkArea(this).Width : SystemParameters.WorkArea.Width;
-        var size = Appearance.Bound(settings.DockButtonSize, 30, 48, 36) + Appearance.Bound(settings.DockSpacing, 0, 12, 4);
+        available = Math.Min(available, Appearance.Bound(settings.DockMaxWidth, 240, 1200, 640));
+        var size = Appearance.Bound(settings.DockButtonSize, 24, 72, 36) + Appearance.Bound(settings.DockSpacing, 0, 24, 4);
         _selection.Trim(pins.Select(i => i.Key));
         var fixedWidth = 64 + size + (PanelId is not null ? 100 : 0) + (_selection.Ids.Count > 0 ? 125 : _selectMode ? 50 : 0);
         var slots = Math.Max(1, (int)((available - fixedWidth) / size));

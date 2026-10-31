@@ -11,6 +11,7 @@ public static class Appearance
     public static double Bound(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
     public static void Apply(ShelfSettings settings)
     {
+        Motion.Configure(settings);
         Motion.Enabled = settings.AnimationsEnabled;
         ApplyTo(Application.Current.Resources, settings, settings.Theme, "");
         foreach (var role in Views.AppIcon.Roles)
@@ -65,6 +66,6 @@ public static class Appearance
         {
             var brush = new SolidColorBrush(pair.Value); brush.Freeze(); resources[pair.Key] = brush;
         }
-        resources["ItemRadius"] = new CornerRadius(Bound(settings.CornerRadius, 0, 16, 8));
+        resources["ItemRadius"] = new CornerRadius(Bound(settings.CornerRadius, 0, 24, 8));
     }
 }

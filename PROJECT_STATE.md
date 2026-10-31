@@ -1,0 +1,11 @@
+# ClipDrop project state
+
+- Source: NasaatR/ClipDrop, main. Observed base: 9ccb4eaf11e4f47d9230721c054dd11a10faac92 (released0.16.0). Established version sequence retained; next delivered build0.17.0. Directory.Build.props is the release authority; Chrome manifest representation matches it.
+- Current goal: drag Save/Downloads icon as window movement with no accidental click; compact one-icon Downloads, configurable geometry, precise Settings sections and smooth hover. Details: final0.17 section of [ROADMAP](docs/ROADMAP.md).
+- Implemented source: conditional native Button gesture, SurfaceSizing preferences, one icon/narrow list, main width cap, NumberField entry/steps, selected Settings sections, reduced-motion-aware disclosure and surface morph.
+- Constraints: [AGENTS](AGENTS.md); preserve original files, STA clipboard/OLE, recoverable Trash, one session/feed, installer identity/schema7 and existing display offsets. English UI; Made by Nasaat. Move clip/file content remains OLE.
+- Defaults: Downloads272w/10rows/34row/44icon, max clip width640; motion240ms Spring. Layout/motion preferences survive appearance reset. Existing per-screen mirror choices remain separate.
+- Evidence: local Core174 and Node7 checks, XAML XML parsing and whitespace checks; independent source review addressed replayed-animation clock lifetime and numeric draft stepping. Native gesture/render/package/install/Chrome results are tied to the delivered commit in [Actions](https://github.com/NasaatR/ClipDrop/actions/workflows/windows.yml); release assets publish only after that gate passes. This host cannot execute WPF.
+- Release boundary: inspect exact-commit Windows CI and UI captures before claiming the installer ready. If the0.17 release is present, that gated publication completed; do not poll a terminal run again. If absent, finish only the failed/pending step. No test-only broken main checkpoints.
+- Later: stage5a2 backup restore preview/conflict-safe import, then content versions. Physical mixed-DPI/sleep and external Photoshop/Figma gestures remain hardware/manual acceptance; simulated work areas do not prove them.
+- Resume: read actual HEAD/working diff plus this record; use established GitHub tree/commit/expected-ref route if shell Git push has no auth. Build commands and distribution are in AGENTS/README; no user-local agent/token setup.

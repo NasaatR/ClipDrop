@@ -27,8 +27,20 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.16.0
+## Features in 0.17.0
 
+- Drag the dock by Save as well as free space; drag Downloads by its icon or
+  header actions. A short release clicks normally; a drag cancels the action.
+  Clip cards and download rows continue to transfer content to other applications.
+- One Downloads icon surface, a narrower 272-DIP default list, adjustable width,
+  visible rows, density and icon size. Main-panel width is capped at 640 DIP by
+  default with configurable overflow; it remains movable between screens.
+- Settings shows one selected section at a time, with exact numeric entry,
+  minus/plus and keyboard control instead of sliders. Enter applies, Escape
+  restores; invalid drafts do not overwrite saved values. Larger useful ranges.
+- Soft or Spring hover reveal with configurable 100–600 ms duration, subtle rise,
+  scale/settle and smooth expansion of the dock surface; disabled/system reduced
+  motion remains respected. Window geometry stays stable while revealing.
 - Freely move one clip panel between screens; Settings → Screens independently
   chooses clip copies and Downloads copies. Downloads defaults to every display.
 - Stable drag geometry through size changes, deferred display refresh, separate
@@ -72,7 +84,7 @@ from Trash, including after restarting.
   restore. Ctrl+Alt+Space keeps its per-display behavior.
 - Compact non-activating dock plus resizable Library, shared state and tray access.
 - Click-paste into the validated previous app; safe copy-only fallback when focus/input is unavailable.
-- Drag either surface by any empty background; buttons, cards, editors and resizing keep their gestures.
+- Drag the dock by free space or Save; short clicks retain their action. Clip cards, Library editors and resize grips keep their gestures.
 - Library opens next to the dock and follows it. Drag Library to detach; its link button reattaches.
 - Four appearance presets, named saved styles, independent dock/Library palettes,
   custom RGB backgrounds/accent and live preview. Existing visual values are kept on update.
@@ -203,7 +215,7 @@ can separate it from its stack; moving the whole stack keeps its structure.
 ## Downloads stack
 
 Right-click Save/free dock space → **Downloads**, or use the tray's **Downloads**
-command. A capsule appears near the bottom-right of every attached display by
+command. One icon appears near the bottom-right of every attached display by
 default. **Settings → Screens → Downloads on every display** turns duplication
 off for one freely movable window. Clip-panel duplication is a separate choice.
 Copies share the catalog but keep separate selection, position and visibility.
@@ -212,9 +224,13 @@ open. The list closes promptly when the pointer leaves, immediately on an outsid
 click, **Close**, or after a transfer/action. Menus, an actual drag and window
 movement hold it open. Downloads has its own transient behavior even if main-dock
 collapse is disabled. Its capsule remains available; blank space passes clicks
-through. Drag the free edge/header to move it.
+through. Drag the icon itself, a header action, or free background to move it;
+a drag never also clicks. Files retain their normal outgoing drag. The list
+defaults to **272 DIP** wide and ten visible rows. **Settings → Downloads**
+changes width (220–480), rows (4–20), row height (28–52) and icon size (32–64),
+with a layout-only reset. Every copy updates live and fits its own work area.
 
-Rows are **34 DIP**, with a 24-DIP preview, filename and short completion time.
+Default rows are **34 DIP**, with a 24-DIP preview, filename and short completion time.
 The normal-sized window fits at least ten rows; scroll to older files. Full path,
 size and timestamp are in the tooltip. There is no checkbox column or permanent
 bottom action bar. The list reuses unchanged rows and the shared thumbnail cache.

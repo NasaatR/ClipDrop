@@ -66,9 +66,16 @@ public sealed class ShelfSettings : AppearanceStyle
     public double? DockTop { get; set; }
     public bool LibraryFollowsDock { get; set; } = true;
     public bool AnimationsEnabled { get; set; } = true;
+    public double MotionDuration { get; set; } = 240;
+    public double DockMaxWidth { get; set; } = 640;
+    public string MotionStyle { get; set; } = "Spring";
     public bool CollapseWhenIdle { get; set; } = true;
     public bool FetchDroppedImages { get; set; } = true;
     public bool DownloadsEnabled { get; set; }
+    public double DownloadsWidth { get; set; } = 272;
+    public double DownloadsRows { get; set; } = 10;
+    public double DownloadsRowHeight { get; set; } = 34;
+    public double DownloadsIconSize { get; set; } = 44;
     public string DownloadsFolder { get; set; } = "";
     public string DownloadsSource { get; set; } = "Auto";
     [System.Text.Json.Serialization.JsonIgnore]

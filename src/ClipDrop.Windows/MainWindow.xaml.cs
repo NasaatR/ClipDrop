@@ -139,8 +139,8 @@ public partial class MainWindow : Window
         Appearance.Apply(settings, this);
         UpdateAttachment(); PositionNearDock();
         Topmost = settings.AlwaysOnTop; TopOption.IsChecked = Topmost;
-        FontSize = Bound(settings.FontSize, 11, 18, 13);
-        var spacing = Bound(settings.RowSpacing, 0, 12, 4);
+        FontSize = Bound(settings.FontSize, 10, 24, 13);
+        var spacing = Bound(settings.RowSpacing, 0, 24, 4);
         if (_rowSpacing != spacing)
         {
             _rowSpacing = spacing;

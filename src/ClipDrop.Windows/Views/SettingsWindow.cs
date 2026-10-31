@@ -26,14 +26,17 @@ public sealed class SettingsWindow : Window
     private bool _previewIdle;
     private bool _previewCompact;
     private StackPanel _section = null!;
+    private readonly Dictionary<string, (Border Frame, Button Button)> _sections = new();
+    private readonly ScrollViewer _scroll;
+    public string SelectedSection { get; private set; } = "";
     private WrapPanel? _fields;
     private readonly List<FrameworkElement> _fieldBoxes = new();
     public DockStrip Preview { get; } = new();
 
     public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot, DockCoordinator? docks = null, Func<byte[]>? captureBackup = null)
     {
-        _settings = settings; _changed = () => { changed(); Preview.Apply(settings); UpdatePreviewOpacity(); }; _section = _panel;
-        Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
+        _settings = settings; _changed = () => { changed(); Topmost = settings.AlwaysOnTop; Preview.Apply(settings); UpdatePreviewOpacity(); }; _section = _panel;
+        Topmost = settings.AlwaysOnTop; Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Ink");
         var buttons = new Style(typeof(Button), (Style)Application.Current.FindResource(typeof(Button)));
@@ -51,7 +54,7 @@ public sealed class SettingsWindow : Window
         heading.Children.Add(new TextBlock { Text = "ClipDrop " + Diagnostics.Version, FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 10) });
         _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); heading.Children.Add(_notice);
         var nav = new WrapPanel(); heading.Children.Add(nav);
-        var scroll = new ScrollViewer { Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var scroll = _scroll = new ScrollViewer { Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         var footer = new TextBlock { Text = "Made by Nasaat", FontSize = 11, Margin = new Thickness(18, 8, 18, 12) };
         footer.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer);
         layout.Children.Add(scroll);
@@ -66,7 +69,11 @@ public sealed class SettingsWindow : Window
             _section.Children.Add(title);
             var jump = new Button { Content = name, Padding = new Thickness(9, 5, 9, 5), MinHeight = 28 };
             jump.Background = Brushes.Transparent; jump.BorderThickness = new Thickness(0);
-            jump.Click += (_, _) => block.BringIntoView(); nav.Children.Add(jump); return title;
+            System.Windows.Automation.AutomationProperties.SetName(jump, "Settings: " + name);
+            jump.Click += (_, _) => ShowSection(name); nav.Children.Add(jump);
+            _sections.Add(name, (block, jump));
+            block.RequestBringIntoView += (_, _) => { if (SelectedSection != name) ShowSection(name); };
+            return title;
         }
         Section("Style");
         var previewStage = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
@@ -116,6 +123,8 @@ public sealed class SettingsWindow : Window
         Choice("App theme", () => settings.Theme, new[] { "Dark", "Light", "Midnight" }, new[] { "Graphite", "Paper", "Midnight" }, value => settings.Theme = value);
         ColorField("Accent", () => settings.AccentColor, value => settings.AccentColor = value);
         Check("Animations", () => settings.AnimationsEnabled, value => settings.AnimationsEnabled = value, false);
+        Choice("Motion", () => settings.MotionStyle, new[] { "Soft", "Spring" }, new[] { "Soft · calm easing", "Spring · gentle settle" }, value => settings.MotionStyle = value, false);
+        Range("Animation duration", () => settings.MotionDuration, 100, 600, value => settings.MotionDuration = value, false, 10, "ms");
         Hint("Windows animation preferences are respected. Colors and changes preview live.");
         Section("Icons");
         Hint("Emoji by default. Replace any role with your own PNG; image/video thumbnails remain real previews.");
@@ -141,11 +150,12 @@ public sealed class SettingsWindow : Window
         resetIcon.Click += (_, _) => { settings.PngIcons.Remove(Role()); Change(); SyncIcon(); };
         Hint("PNG limits: 5 MB, 2048 × 2048. Saved styles include icon choices. Reset appearance returns to emoji.");
         Section("Dock");
+        Range("Maximum panel width", () => settings.DockMaxWidth, 240, 1200, value => settings.DockMaxWidth = value, false, 20, "px");
         Choice("Palette", () => settings.DockPalette, new[] { "Shared", "Dark", "Light", "Midnight" }, new[] { "App theme", "Graphite", "Paper", "Midnight" }, value => settings.DockPalette = value);
         ColorField("Background", () => settings.DockColor, value => settings.DockColor = value);
-        Range("Button size", () => settings.DockButtonSize, 30, 48, value => settings.DockButtonSize = value);
-        Range("Spacing", () => settings.DockSpacing, 0, 12, value => settings.DockSpacing = value);
-        Range("Corners", () => settings.DockRadius, 0, 24, value => settings.DockRadius = value);
+        Range("Button size", () => settings.DockButtonSize, 24, 72, value => settings.DockButtonSize = value);
+        Range("Spacing", () => settings.DockSpacing, 0, 24, value => settings.DockSpacing = value);
+        Range("Corners", () => settings.DockRadius, 0, 36, value => settings.DockRadius = value);
         Range("Opacity", () => settings.DockOpacity, 0, 100, value => settings.DockOpacity = value);
         Range("Idle visibility", () => settings.IdleDockOpacity, 5, 100, value => settings.IdleDockOpacity = value);
         Check("Collapse when idle", () => settings.CollapseWhenIdle, value => settings.CollapseWhenIdle = value, false);
@@ -158,6 +168,14 @@ public sealed class SettingsWindow : Window
             _section.Children.Add(monitorSettings); Closed += (_, _) => monitorSettings.Dispose();
         }
         Section("Downloads");
+        Range("Downloads width", () => settings.DownloadsWidth, 220, 480, value => settings.DownloadsWidth = value, false, 10, "px");
+        Range("Visible rows", () => settings.DownloadsRows, 4, 20, value => settings.DownloadsRows = value, false);
+        Range("Download row height", () => settings.DownloadsRowHeight, 28, 52, value => settings.DownloadsRowHeight = value, false, 2, "px");
+        Range("Downloads icon size", () => settings.DownloadsIconSize, 32, 64, value => settings.DownloadsIconSize = value, false, 2, "px");
+        var resetDownloads = new Button { Content = "Reset Downloads layout", HorizontalAlignment = HorizontalAlignment.Left };
+        resetDownloads.Click += (_, _) => { settings.DownloadsWidth = 272; settings.DownloadsRows = 10; settings.DownloadsRowHeight = 34; settings.DownloadsIconSize = 44; Change(false); foreach (var sync in _syncControls) sync(); };
+        _section.Children.Add(resetDownloads);
+        Hint("One icon · click to open, drag it to move. Width and density update every copy; small screens still clamp the window. Values are logical pixels.");
         Check("Downloads stack", () => settings.DownloadsEnabled, value => settings.DownloadsEnabled = value, false);
         Hint("Downloads appears on every attached display by default. Change duplication independently in Settings → Screens; turn it off for one movable Downloads window.");
         Hint("Hover the Downloads capsule, then drag any file row directly to another app. Use Ctrl/Shift to select a group; right-click for Copy, Save to Library or Show in Explorer. Original files stay in place.");
@@ -199,9 +217,9 @@ public sealed class SettingsWindow : Window
         Hint("Move Library to detach it. More → Follow dock attaches it again.");
         Choice("Palette", () => settings.LibraryPalette, new[] { "Shared", "Dark", "Light", "Midnight" }, new[] { "App theme", "Graphite", "Paper", "Midnight" }, value => settings.LibraryPalette = value);
         ColorField("Background", () => settings.LibraryColor, value => settings.LibraryColor = value);
-        Range("Text size", () => settings.FontSize, 11, 18, value => settings.FontSize = value);
-        Range("Row spacing", () => settings.RowSpacing, 0, 12, value => settings.RowSpacing = value);
-        Range("Row corners", () => settings.CornerRadius, 0, 16, value => settings.CornerRadius = value);
+        Range("Text size", () => settings.FontSize, 10, 24, value => settings.FontSize = value);
+        Range("Row spacing", () => settings.RowSpacing, 0, 24, value => settings.RowSpacing = value);
+        Range("Row corners", () => settings.CornerRadius, 0, 24, value => settings.CornerRadius = value);
         var reset = new Button { Content = "Reset appearance", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 10, 0, 0) };
         reset.Click += (_, _) => { ApplyStyle(new AppearanceStyle()); RebuildPresets(); _notice.Text = "Appearance reset · saved styles kept"; }; _section.Children.Add(reset);
         if (captureBackup is not null)
@@ -224,7 +242,7 @@ public sealed class SettingsWindow : Window
         var folder = new Button { Content = "Data folder" };
         folder.Click += (_, _) => { try { Process.Start(new ProcessStartInfo(dataRoot) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "ClipDrop"); } }; actions.Children.Add(folder);
         Hint("Assets and exports remain on disk for reliable transfers.\nNo clipboard monitoring or accounts. Public image URLs can be fetched after an explicit drop; turn this off in Dock.");
-        RebuildPresets();
+        RebuildPresets(); ShowSection("Style");
         void FitFields()
         {
             var width = Math.Max(210, (scroll.ActualWidth - 36 - 28 - 24 - 10) / 2);
@@ -289,14 +307,23 @@ public sealed class SettingsWindow : Window
         combo.SelectionChanged += (_, _) => { if (!_sync && combo.SelectedIndex >= 0) { write(values[combo.SelectedIndex]); Change(appearance); } };
         Row(label, combo); _syncControls.Add(() => combo.SelectedIndex = Math.Max(0, Array.IndexOf(values, read())));
     }
-    private void Range(string name, Func<double> read, double min, double max, Action<double> write)
+    public void ShowSection(string name)
     {
-        var panel = new DockPanel(); var number = new TextBlock { Width = 30, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-        DockPanel.SetDock(number, Dock.Right); panel.Children.Add(number);
-        var slider = new Slider { Minimum = min, Maximum = max, IsSnapToTickEnabled = true, TickFrequency = 1, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
-        void Sync() { slider.Value = Appearance.Bound(read(), min, max, min); number.Text = slider.Value.ToString("0"); }
-        Sync(); slider.ValueChanged += (_, _) => { number.Text = slider.Value.ToString("0"); if (!_sync) { write(slider.Value); Change(); } };
-        System.Windows.Automation.AutomationProperties.SetName(slider, name); panel.Children.Add(slider); Row(name, panel); _syncControls.Add(Sync);
+        if (!_sections.ContainsKey(name)) return;
+        SelectedSection = name;
+        foreach (var pair in _sections)
+        {
+            var active = pair.Key == name;
+            pair.Value.Frame.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+            if (active) pair.Value.Button.SetResourceReference(Control.BackgroundProperty, "Selected");
+            else pair.Value.Button.Background = Brushes.Transparent;
+        }
+        _scroll.ScrollToTop();
+    }
+    private void Range(string name, Func<double> read, double min, double max, Action<double> write, bool appearance = true, double step = 1, string unit = "")
+    {
+        var field = new NumberField(name, read, min, max, value => { write(value); Change(appearance); }, step, unit);
+        Row(name + (unit.Length > 0 ? " · " + unit : ""), field); _syncControls.Add(field.Sync);
     }
     private void ColorField(string name, Func<string> read, Action<string> write)
     {

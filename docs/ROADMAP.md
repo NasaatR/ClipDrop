@@ -695,3 +695,37 @@ before initiating the same real download; no assertions or permissions are remov
 The expanded native suite took almost 120 seconds, so its existing bounded test-only
 watchdog is 180 seconds. The final release still requires the full Chrome, startup
 and installer gate to pass.
+
+
+## 0.17: button dragging, compact surfaces and precise settings
+
+User priority replaces background-only movement. Save and Downloads/icon/action
+buttons keep native Button input/capture until the drag threshold, then the window
+takes capture and cancels Click. Actual clip cards and downloaded file rows retain
+content/OLE transfer. Keyboard invocation and right-click menus remain unchanged.
+
+Implementation/acceptance:
+- WindowDrag accepts an explicit per-window movable-button predicate; Library
+  editors/resize grips remain excluded. Commit geometry once at release, preserving
+  the 0.16 monitor/rekey/gesture guards.
+- SurfaceSizing owns bounded Downloads geometry: default272w, ten34-DIP rows,
+  icon44. Limits width220–480, rows4–20, density28–52, icon32–64; shared mirrored
+  feed and per-screen fitting remain. Single icon template, no nested visual box.
+- DockMaxWidth default640 (240–1200) caps long hover-expanded shelves using existing
+  virtualization/overflow. Layout/motion preferences persist separately from style
+  presets; old schema7 gains defaults without losing clips or explicit old values.
+- NumberField replaces sliders: local invalid drafts, Enter/focus commit, Escape,
+  keyboard arrows and plus/minus, bounded write frequency. Selected Settings section
+  alone is visible; controls/drafts survive navigation, dynamic theme stays shared.
+- Motion duration100–600ms defaults240, Soft/Spring selection, slight rise and scale
+  settle, smooth background expansion both ways. No per-frame HWND resize, native
+  hit regions/coordinates stay stable, and disabling motion cancels active clocks.
+- Core checks cover geometry/defaults/style separation/persistence/nonfinite bounds.
+  InteractionProbe covers native button drag/click/jitter, exact field entry and
+  invalid drafts, live density/layout reset and motion interruption. Existing monitor,
+  clipboard/OLE, Trash, backup and Chrome checks remain release gates. Capture the
+  actual narrow light/dark settings and compact/expanded Downloads for visual review.
+
+Scope: this finishes the requested interaction/design increment. Backup restore
+preview/conflict-safe import remains next; clipboard history and Send to Figma stay
+separate. No source/assets copied and no new dependency.
