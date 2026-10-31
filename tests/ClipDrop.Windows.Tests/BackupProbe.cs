@@ -38,7 +38,8 @@ internal static class BackupProbe
             check(UiProbe.Until(() => inspectResponsive) && UiProbe.Until(() => inspect.IsCompleted, 10000) && inspect.GetAwaiter().GetResult() is { Clips: 2 } && section.StatusText.Contains("library unchanged"),
                 "Inspect backup verifies integrity and previews counts off-thread without replacing the live library");
             check(!File.Exists(Path.Combine(store.Root, "shelf.json")) && state.Items.Count == 2, "Backup inspection never creates live metadata or changes clips");
-            host.Height = 280; UiProbe.CaptureWindow(host, Path.Combine(output, "backup-inspected-screen.png"));
+            check(section.ComparisonText.Contains("0 new · 2 identical · 0 changed metadata · 0 already in Trash"), "Backup UI shows the verified comparison against a captured current-state snapshot");
+            host.Height = 350; UiProbe.CaptureWindow(host, Path.Combine(output, "backup-inspected-screen.png"));
             var bad = Path.Combine(root, "invalid-preview.clipdrop.zip"); File.WriteAllText(bad, "invalid archive");
             var invalid = section.InspectFrom(bad);
             check(UiProbe.Until(() => invalid.IsCompleted, 10000) && invalid.GetAwaiter().GetResult() is null && section.StatusText.Contains("failed"),

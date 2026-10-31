@@ -824,3 +824,25 @@ compatibility or stability. Preserve all historical tags/assets and app/data IDs
 
 This user priority precedes stage5a2b restore/import; no additional unrelated
 feature in the same release. Next: recovery conflict preview and safe merge.
+
+
+## 1.1 Preview: responsive hover and first restore comparison slice
+
+User priority: stronger hover without pointer lag or trailing old rows.
+
+- [x] Replace slow sine-in/out156ms with independently timed90ms ease-out entry
+  and55ms exit, bounded1.16scale/1DIP lift and an accent cue. Keep compositor-only
+  properties, lazy hover states, interruption guards and reduced-motion cleanup.
+- [x] Recycling keeps the current pointer effect instead of restarting from neutral;
+  keyboard focus does not retain a second icon hover while the pointer is in another
+  row. Retain the separate keyboard-focus border and folder action behavior.
+- [x] Coalesce concurrent thumbnail stat/decode work; retain same-path previews
+  during revalidation and guard late/recycled results. No stale TTL for file changes.
+- [x] Add native timing samples, rapid row sweep/scroll, return/capture/recycle,
+  min-size clipping and thumbnail freshness/concurrency checks. Keep full gate.
+- [x] Stage5a2b1: verified read-only archive comparison against a captured live-state
+  snapshot: new active clip IDs, identical metadata, changed metadata and IDs already
+  in Trash. State/time boundaries visible; no extraction or import/overwrite.
+
+Next5a2b2: detailed conflict choice and recoverable restore transaction; preserve
+existing safe export/verification, original files and the unchanged data schema.

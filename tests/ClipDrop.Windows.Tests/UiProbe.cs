@@ -47,7 +47,7 @@ internal static class UiProbe
         }
         return Search(node) ?? throw new Exception("UI control not found: " + typeof(T).Name);
     }
-    public static void MoveTo(Point point) { SetCursorPos((int)point.X, (int)point.Y); Pump(); }
+    public static void MoveTo(Point point, int settleMs = 80) { SetCursorPos((int)point.X, (int)point.Y); Pump(settleMs); }
     public static void ClickAt(Point point) { MoveTo(point); MouseEvent(2); Pump(30); MouseEvent(4); Pump(); }
     public static void DoubleClickAt(Point point)
     { MoveTo(point); MouseEvent(2); MouseEvent(4); Pump(35); MouseEvent(2); MouseEvent(4); Pump(); }

@@ -15,6 +15,7 @@ public static partial class Motion
         public readonly ScaleTransform Scale = new(1, 1);
         public readonly TranslateTransform Move = new();
         public bool Active;
+        public bool? Animated;
         public int Revision;
         public HoverState(FrameworkElement icon, FrameworkElement wash)
         {
@@ -23,7 +24,7 @@ public static partial class Motion
         }
         public void Reset()
         {
-            Revision++; Active = false;
+            Revision++; Active = false; Animated = null;
             Set(Scale, ScaleTransform.ScaleXProperty, 1); Set(Scale, ScaleTransform.ScaleYProperty, 1);
             Set(Move, TranslateTransform.YProperty, 0); Wash.Opacity = 0; Wash.BeginAnimation(UIElement.OpacityProperty, null);
         }
@@ -39,22 +40,25 @@ public static partial class Motion
     public static void RowHover(FrameworkElement icon, FrameworkElement wash, bool active)
     {
         if (!HoverStates.TryGetValue(icon, out var state))
-        { state = new(icon, wash); HoverStates.Add(icon, state); Hovers.Add(new(state)); if (Hovers.Count > 512) Hovers.RemoveAll(r => !r.TryGetTarget(out _)); }
-        if (state.Active == active && Allowed) return;
-        state.Active = active; var revision = ++state.Revision;
-        var duration = TimeSpan.FromMilliseconds(Math.Clamp(DurationMs * .65, 100, 220));
+        { if (!active) return; state = new(icon, wash); HoverStates.Add(icon, state); Hovers.Add(new(state)); if (Hovers.Count > 512) Hovers.RemoveAll(r => !r.TryGetTarget(out _)); }
+        var allowed = Allowed;
+        if (state.Active == active && state.Animated == allowed) return;
+        state.Active = active; state.Animated = allowed; var revision = ++state.Revision;
+        // Pointer feedback is independent of the slower panel disclosure duration.
+        // Ease-out responds on the first frame; fast exit prevents trailing rows.
+        var duration = TimeSpan.FromMilliseconds(active ? 90 : 55);
         void Paint(DependencyObject target, DependencyProperty property, double value)
         {
             var from = (double)target.GetValue(property);
             void Base() { target.SetValue(property, value); if (target is Animatable a) a.BeginAnimation(property, null); else ((FrameworkElement)target).BeginAnimation(property, null); }
-            if (!Allowed || Math.Abs(from - value) < .0001) { Base(); return; }
-            var animation = new DoubleAnimation(from, value, duration) { FillBehavior = FillBehavior.HoldEnd, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } };
+            if (!allowed || Math.Abs(from - value) < .0001) { Base(); return; }
+            var animation = new DoubleAnimation(from, value, duration) { FillBehavior = FillBehavior.HoldEnd, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
             animation.Completed += (_, _) => { if (state.Revision == revision) Base(); };
             if (target is Animatable animatable) animatable.BeginAnimation(property, animation); else ((FrameworkElement)target).BeginAnimation(property, animation);
         }
-        Paint(state.Scale, ScaleTransform.ScaleXProperty, active && Allowed ? 1.08 : 1);
-        Paint(state.Scale, ScaleTransform.ScaleYProperty, active && Allowed ? 1.08 : 1);
-        Paint(state.Move, TranslateTransform.YProperty, active && Allowed ? -.5 : 0);
-        Paint(wash, UIElement.OpacityProperty, active ? .65 : 0);
+        Paint(state.Scale, ScaleTransform.ScaleXProperty, active && allowed ? 1.16 : 1);
+        Paint(state.Scale, ScaleTransform.ScaleYProperty, active && allowed ? 1.16 : 1);
+        Paint(state.Move, TranslateTransform.YProperty, active && allowed ? -1 : 0);
+        Paint(wash, UIElement.OpacityProperty, active ? .8 : 0);
     }
 }

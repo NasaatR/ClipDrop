@@ -47,6 +47,19 @@ internal static class BackupChecks
         }
         check(BackupArchive.Verify(output) == result && !File.Exists(Path.Combine(store.Root, "shelf.json")),
             "A verified backup does not silently save or rewrite source shelf metadata");
+        var exact = BackupArchive.Preview(output, snapshot);
+        check(exact.IdenticalClips == 3 && exact.NewClips == 0 && exact.ChangedClips == 0 && exact.TrashedClips == 0,
+            "Verified archive comparison recognizes identical active clip metadata without extracting or changing state");
+        var comparison = StateStore.ReadSnapshot(snapshot);
+        comparison.Items.RemoveAll(i => i.Id == external.Id);
+        LibraryOperations.Remove(comparison, new[] { image.Id });
+        comparison.Items.Single(i => i.Id == text.Id).Content = "Changed after backup";
+        var comparisonBytes = store.CaptureSnapshot(comparison);
+        var compared = BackupArchive.Preview(output, comparisonBytes);
+        check(compared.NewClips == 1 && compared.ChangedClips == 1 && compared.TrashedClips == 1 && compared.IdenticalClips == 0 && compared.Summary == result,
+            "Restore preview distinguishes new IDs, changed metadata and active backup clips already in live Trash");
+        check(comparisonBytes.SequenceEqual(store.CaptureSnapshot(comparison)) && !File.Exists(Path.Combine(store.Root, "shelf.json")),
+            "Comparison keeps captured live state and source shelf metadata untouched");
         var before = File.ReadAllBytes(output); var cancelled = false;
         var zip64Path = Path.Combine(root, "zip64-preview.clipdrop.zip");
         using (var file = File.Create(zip64Path))

@@ -35,7 +35,7 @@ public static partial class Motion
     {
         var duration = (int)Appearance.Bound(settings.MotionDuration, 100, 600, 240);
         var spring = settings.MotionStyle != "Soft";
-        if (DurationMs != duration || _spring != spring) { StopDisclosures(); StopRowHovers(); }
+        if (DurationMs != duration || _spring != spring) { StopDisclosures(); }
         DurationMs = duration; _spring = spring;
     }
     private static void StopDisclosures()

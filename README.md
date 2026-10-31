@@ -27,10 +27,21 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 1.0 Preview
+## Features in 1.1 Preview
 
-- Understandable releases: **1.0 Preview**, then 1.1,…,1.9,2.0. Native package
-  version 1.0.0, display 1.0 Preview, tag v1.0 and assets ClipDrop_v1.0 are derived
+- Stronger, faster row hover:16% icon emphasis, a1-DIP lift and accent cue,90ms
+  ease-out entry and 55ms return. It stays fast independently of panel reveal speed.
+  Recycling no longer restarts the effect; pointer movement clears a formerly
+  focused row while its keyboard-focus border remains available.
+- Inactive rows allocate no hover transforms. Same-path image revalidation keeps
+  the visible preview; concurrent requests share file stats and image decoding.
+  Changed/deleted files still get immediate fresh validation, with no stale TTL.
+- Inspect backup now compares active clip IDs with a captured library snapshot:
+  new IDs, identical metadata, changed metadata and IDs already in Trash. The
+  comparison is read-only; conflict selection and restore remain the next step.
+
+- Understandable releases: **1.1 Preview**, then 1.2,…,1.9,2.0. Native package
+  version 1.1.0, display 1.1 Preview, tag v1.1 and assets ClipDrop_v1.1 are derived
   from one authority; old 0.x releases and app/data identity remain intact.
 - Downloads anchors its **icon center**, independently of panel size. Move it near
   the top to open downward, or near the bottom to open upward. Newest files always
@@ -342,8 +353,9 @@ Completion is reported only after the finished archive passes path, membership,
 length and SHA256 checks and is published. A failure keeps source data untouched.
 
 **Inspect backup** verifies an existing archive in the background and shows clip,
-Trash, panel and managed-asset counts. It does not extract files or change the
-library. Cancel or closing Settings stops the check.
+Trash, panel and managed-asset counts. It also compares active clip IDs with the
+library snapshot captured at check start: new, identical recorded metadata, changed
+metadata or already in Trash. It does not extract files or change the library. Cancel or closing Settings stops the check.
 
 This stage provides export and read-only inspection. Conflict-safe restore and
 import/merge are the next separate increment. Format 1 supports up to 512 MiB per

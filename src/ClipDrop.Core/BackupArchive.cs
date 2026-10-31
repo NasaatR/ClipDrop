@@ -13,6 +13,7 @@ namespace ClipDrop.Core;
 
 public sealed record BackupProgress(string Stage, int Files, int TotalFiles, long Bytes);
 public sealed record BackupSummary(int Clips, int Trashed, int Panels, int Assets, long Bytes);
+public sealed record BackupPreview(BackupSummary Summary, int NewClips, int IdenticalClips, int ChangedClips, int TrashedClips);
 
 // Export/verify only. No extraction, live-library replacement or external-file
 // copying. The explicit archive is a first increment toward previewed recovery.
@@ -157,7 +158,29 @@ public static partial class BackupArchive
         if (input.ReadByte() != -1) throw new InvalidDataException("Backup metadata has an invalid length.");
         return bytes;
     }
-    public static BackupSummary Verify(string path, CancellationToken cancellation = default)
+    public static BackupSummary Verify(string path, CancellationToken cancellation = default) => VerifyContents(path, cancellation).Summary;
+    public static BackupPreview Preview(string path, byte[] currentSnapshot, CancellationToken cancellation = default)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var current = StateStore.ReadSnapshot(currentSnapshot);
+        var verified = VerifyContents(path, cancellation);
+        var active = current.Items.ToDictionary(i => i.Id, StringComparer.Ordinal);
+        var trash = current.Trash.Select(t => t.Item.Id).ToHashSet(StringComparer.Ordinal);
+        var fresh = 0; var identical = 0; var changed = 0; var trashed = 0;
+        foreach (var item in verified.State.Items)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            if (active.TryGetValue(item.Id, out var existing))
+            {
+                if (JsonSerializer.SerializeToUtf8Bytes(item, Json).AsSpan().SequenceEqual(JsonSerializer.SerializeToUtf8Bytes(existing, Json))) identical++;
+                else changed++;
+            }
+            else if (trash.Contains(item.Id)) trashed++;
+            else fresh++;
+        }
+        return new(verified.Summary, fresh, identical, changed, trashed);
+    }
+    private static (BackupSummary Summary, ShelfState State) VerifyContents(string path, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -192,6 +215,6 @@ public static partial class BackupArchive
             using var input = entry.Open(); var hash = CopyHash(input, null, item.Length, cancellation);
             if (!hash.Equals(item.Sha256, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("A backup payload failed its checksum.");
         }
-        return new(state.Items.Count, state.Trash.Count, state.Panels.Count, names.Count - 1, manifest.Entries.Sum(e => e.Length));
+        return (new(state.Items.Count, state.Trash.Count, state.Panels.Count, names.Count - 1, manifest.Entries.Sum(e => e.Length)), state);
     }
 }

@@ -127,6 +127,7 @@ public sealed class SettingsWindow : Window
         Check("Animations", () => settings.AnimationsEnabled, value => settings.AnimationsEnabled = value, false);
         Choice("Motion", () => settings.MotionStyle, new[] { "Soft", "Spring" }, new[] { "Soft · calm easing", "Spring · gentle settle" }, value => settings.MotionStyle = value, false);
         Range("Animation duration", () => settings.MotionDuration, 100, 600, value => settings.MotionDuration = value, false, 10, "ms");
+        Hint("This duration controls panel reveal and fade. Row hover feedback stays fast.");
         Hint("Windows animation preferences are respected. Colors and changes preview live.");
         Section("Icons");
         Hint("Emoji by default. Replace any role with your own PNG; image/video thumbnails remain real previews.");

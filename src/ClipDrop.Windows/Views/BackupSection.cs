@@ -20,6 +20,7 @@ public sealed class BackupSection : StackPanel, IDisposable
     private bool _disposed;
     public bool IsExporting => _stop is not null;
     public string StatusText => _status.Text;
+    public string ComparisonText => _details.Text;
     public BackupSection(string root, Func<byte[]> snapshot)
     {
         _root = root; _snapshot = snapshot;
@@ -90,11 +91,14 @@ public sealed class BackupSection : StackPanel, IDisposable
     {
         try
         {
-            var summary = await Task.Run(() => BackupArchive.Verify(path, stop.Token), stop.Token);
+            stop.Token.ThrowIfCancellationRequested();
+            var current = _snapshot();
+            var preview = await Task.Run(() => BackupArchive.Preview(path, current, stop.Token), stop.Token);
+            var summary = preview.Summary;
             if (!_disposed)
             {
                 _status.Text = "Backup verified · library unchanged";
-                _details.Text = $"{summary.Clips} clips · {summary.Trashed} in Trash · {summary.Panels} saved panels\n{summary.Assets} managed assets · {summary.Bytes / 1048576d:0.##} MB verified\nExternal files remain path references. Restore and merge are the next stage.";
+                _details.Text = $"{summary.Clips} clips · {summary.Trashed} in Trash · {summary.Panels} saved panels\n{summary.Assets} managed assets · {summary.Bytes / 1048576d:0.##} MB verified\nActive clip IDs compared at check start:\n{preview.NewClips} new · {preview.IdenticalClips} identical · {preview.ChangedClips} changed metadata · {preview.TrashedClips} already in Trash\nExternal files remain references. No restore or overwrite performed.";
                 _details.Visibility = Visibility.Visible;
             }
             return summary;
