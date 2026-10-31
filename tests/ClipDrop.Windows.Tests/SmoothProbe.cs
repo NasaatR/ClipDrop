@@ -88,7 +88,7 @@ internal static class SmoothProbe
                 "Rapid rail changes coalesce expensive previews and retain the newest value");
             UiProbe.CaptureWindow(settings, Path.Combine(output, "settings-dock-smooth-sliders.png"));
             settings.ShowSection("Downloads"); settings.Width = 560; settings.Height = 540; state.Settings.Theme = "Light"; session.ChangeSettings(); UiProbe.Pump();
-            var scroll = UiProbe.Find<ScrollViewer>(settings, s => s.Content is StackPanel && s.ScrollableHeight > 0);
+            var scroll = UiProbe.Find<ScrollViewer>(settings, s => s.Name == "SettingsControls" && s.ScrollableHeight > 0);
             var bar = UiProbe.Find<ScrollBar>(scroll, s => s.Orientation == Orientation.Vertical && s.IsVisible);
             var thumb = UiProbe.Find<Thumb>(bar, _ => true);
             var oldOffset = scroll.VerticalOffset;

@@ -14,13 +14,12 @@ public sealed class DownloadsPreview : Border
 {
     private readonly Border _surface = new() { CornerRadius = new CornerRadius(12), Padding = new Thickness(8), BorderThickness = new Thickness(1) };
     private readonly ListBox _files = new() { IsTabStop = false, SelectionMode = SelectionMode.Extended, BorderThickness = new Thickness(0), Background = Brushes.Transparent };
-    private readonly Border _icon = new() { CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0) };
+    private readonly Border _icon = new() { Name = "PreviewDownloadsIcon", CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0) };
     private readonly AppIcon _glyph = new() { Kind = "Downloads" };
     private readonly TextBlock _summary = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 5) };
     private readonly TextBlock _feedback = new() { Text = "Sample files · folder button previews the action", FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
-    private readonly ScrollViewer _viewport = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 260 };
+    private readonly ScrollViewer _viewport = new() { Name = "DownloadsSampleViewport", HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 260 };
     private DownloadsSize _size;
-    private int _sampleRows = 3;
     public ListBox Files => _files;
     public string Summary => _summary.Text;
     public DownloadsPreview()
@@ -46,16 +45,22 @@ public sealed class DownloadsPreview : Border
     }
     public void Fit(double settingsHeight)
     {
-        _sampleRows = settingsHeight < 650 ? 2 : 3;
-        _viewport.MaxHeight = Math.Clamp(settingsHeight - 400, 80, 260);
-        if (_size.RowStride > 0) _files.Height = _sampleRows * _size.RowStride;
+        _viewport.MaxHeight = Math.Clamp(settingsHeight - 400, 80, 260); FitSample();
+    }
+    private void FitSample()
+    {
+        if (_size.RowStride <= 0) return;
+        // Keep the icon visible beside the sample journey whenever one row fits;
+        // only the smallest extreme needs vertical preview scrolling.
+        var rows = Math.Clamp((int)Math.Floor((_viewport.MaxHeight - _size.IconSize - 45) / _size.RowStride), 1, 3);
+        _files.Height = rows * _size.RowStride;
     }
     public void Apply(ShelfSettings settings)
     {
         Appearance.Apply(settings, this, true);
         var size = _size = DownloadsPresentation.Apply(this, settings);
         _surface.Width = size.Width - 20; // Floating Details has 10-DIP side margins.
-        _files.Height = _sampleRows * size.RowStride;
+        FitSample();
         _icon.Width = _icon.Height = size.IconSize; _glyph.Width = _glyph.Height = Math.Round(size.IconSize * .52);
         _summary.Text = $"Live Downloads preview · 1:1 sample · up to {size.Rows} rows · {size.Width:0} × {size.Height:0} px";
     }

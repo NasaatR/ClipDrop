@@ -56,7 +56,7 @@ public sealed class SettingsWindow : Window
         _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); heading.Children.Add(_notice);
         var nav = new WrapPanel(); heading.Children.Add(nav);
         DownloadPreview.Apply(settings); DockPanel.SetDock(DownloadPreview, Dock.Top); layout.Children.Add(DownloadPreview);
-        var scroll = _scroll = new ScrollViewer { Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var scroll = _scroll = new ScrollViewer { Name = "SettingsControls", Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         var footer = new TextBlock { Text = "Made by Nasaat", FontSize = 11, Margin = new Thickness(18, 8, 18, 12) };
         footer.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer);
         layout.Children.Add(scroll);

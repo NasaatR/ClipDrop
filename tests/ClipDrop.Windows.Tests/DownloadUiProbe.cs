@@ -77,7 +77,7 @@ internal static class DownloadUiProbe
             time.BringIntoView(); UiProbe.Pump(); UiProbe.Click(time);
             check(!state.Settings.DownloadsShowTime && UiProbe.Find<TextBlock>(preview, t => t.Name == "Timestamp").Visibility == Visibility.Collapsed,
                 "Timestamp visibility updates the preview directly from the saved setting");
-            var rootScroll = UiProbe.Find<ScrollViewer>(settings, s => s.Content is StackPanel && s.ScrollableHeight > 0);
+            var rootScroll = UiProbe.Find<ScrollViewer>(settings, s => s.Name == "SettingsControls" && s.ScrollableHeight > 0);
             var position = preview.PointToScreen(new Point()); rootScroll.ScrollToEnd(); UiProbe.Pump();
             UiProbe.Hover(UiProbe.Find<Button>(settings, b => b.Content as string == "App")); UiProbe.Pump(450);
             check(preview.IsVisible && preview.PointToScreen(new Point()) == position && !stack.IsVisible,
@@ -91,8 +91,8 @@ internal static class DownloadUiProbe
             state.Settings.DownloadsWidth = 480; state.Settings.DownloadsRowHeight = 52; state.Settings.DownloadsIconSize = 64;
             state.Settings.DownloadsAlwaysShowFolder = true; session.ChangeSettings(); preview.Apply(state.Settings); UiProbe.Pump();
             UiProbe.CaptureWindow(settings, Path.Combine(output, "downloads-settings-preview-narrow-light.png"));
-            check(preview.IsVisible && preview.Files.ActualHeight == 128 && UiProbe.Find<Button>(previewRow, b => b.Name == "FolderButton").ActualHeight == 28,
-                "The narrow extreme preview fits two correctly spaced rows and a usable folder action without clipping");
+            check(preview.IsVisible && preview.Files.ActualHeight == 64 && UiProbe.Find<ScrollViewer>(preview, s => s.Name == "DownloadsSampleViewport").ScrollableHeight == 0 && UiProbe.Find<Button>(previewRow, b => b.Name == "FolderButton").ActualHeight == 28,
+                "The narrow extreme preview fits a complete row, capsule and usable folder action without clipping");
             settings.Height = 480; UiProbe.Pump();
             check(rootScroll.ViewportHeight >= 100 && preview.IsVisible,
                 "At minimum Settings height and maximum row sizes the pinned preview still leaves a usable control viewport");

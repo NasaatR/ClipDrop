@@ -242,7 +242,7 @@ changes width (220–480), rows (4–20), row height (28–52) and icon size (32
 plus spacing (0–12), completion-time visibility and an always-visible folder action.
 The layout reset preserves source, display modes and file-manager preference. Every
 copy updates live and fits its own work area. A pinned synthetic sample stays
-visible while controls scroll or the floating panel is hidden. It shows 2–3 rows
+visible while controls scroll or the floating panel is hidden. It shows 1–3 rows
 at actual size plus the configured full geometry/row limit, without reading your
 files or launching applications.
 
