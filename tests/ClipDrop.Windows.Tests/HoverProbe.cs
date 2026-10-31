@@ -63,7 +63,8 @@ internal static class HoverProbe
                 {
                     var sweep = UiProbe.Find<ListBoxItem>(list, r => list.ItemContainerGenerator.IndexFromContainer(r) == index);
                     UiProbe.MoveTo(sweep.PointToScreen(new Point(sweep.ActualWidth / 2, sweep.ActualHeight / 2)), 1);
-                    check(sweep.IsMouseOver && ReferenceEquals(((Border)sweep.Template.FindName("Row", sweep)).Background, sweep.FindResource("Hover")) &&
+                    check(UiProbe.Until(() => sweep.IsMouseOver, 500), "Windows delivers the next pointer position before its row feedback is sampled");
+                    check(ReferenceEquals(((Border)sweep.Template.FindName("Row", sweep)).Background, sweep.FindResource("Hover")) &&
                         !ReferenceEquals(((Border)previous.Template.FindName("Row", previous)).Background, previous.FindResource("Hover")),
                         "A direct row switch transfers full-card feedback without waiting for icon animation");
                     previous = sweep;
