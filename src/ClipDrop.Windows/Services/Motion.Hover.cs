@@ -49,7 +49,7 @@ public static partial class Motion
         var next = state.Transition.Retarget(state.Clock?.CurrentTime?.TotalSeconds ?? 0, target);
         if (Math.Abs(next.Position - target) < .00001 && Math.Abs(next.Velocity) < .0001) { state.Settle(target); return; }
         var animation = new HoverMatrixAnimation { Transition = next, Duration = TimeSpan.FromSeconds(HoverTransition.DurationSeconds), FillBehavior = FillBehavior.HoldEnd };
-        var clock = animation.CreateClock(true);
+        var clock = (AnimationClock)animation.CreateClock(true);
         clock.Completed += (_, _) => { if (state.Revision == revision && ReferenceEquals(state.Clock, clock)) state.Settle(target); };
         var previous = state.Clock;
         state.Transition = next; state.Clock = clock;
