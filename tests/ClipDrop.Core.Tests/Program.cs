@@ -61,16 +61,25 @@ try
     Check(legacy.Theme == "Light" && legacy.DockOpacity == 0 && legacy.DockSpacing == 0 && legacy.LibraryFollowsDock && legacy.AnimationsEnabled && legacy.SavedStyles.Count == 0,
         "Legacy appearance keeps explicit zero values and gains safe defaults");
     var styled = new ShelfSettings { Left = 321, DockTop = 456, LibraryFollowsDock = false, AnimationsEnabled = false, StartHidden = true, DockColor = "#224466", DockSpacing = 0, DockOpacity = 0 };
+    styled.SharedBackgroundColor = "#102030"; styled.AccentColor = "#E11D48";
+    Check(legacy.SharedBackgroundColor == "" && legacy.BackgroundFor(true) == "", "Legacy settings inherit the theme without a new background override");
+    Check(styled.BackgroundFor(true) == "#224466" && styled.BackgroundFor(false) == "#102030", "Explicit surface colors override the shared background");
+    styled.LibraryPalette = "Light";
+    Check(styled.BackgroundFor(false) == "", "An independent palette does not inherit the shared custom background");
+    styled.UseSharedColors();
+    Check(styled.DockPalette == "Shared" && styled.LibraryPalette == "Shared" && styled.BackgroundFor(true) == "#102030" && styled.BackgroundFor(false) == "#102030" && styled.Left == 321 && !styled.AnimationsEnabled,
+        "Shared colors clear only surface overrides, preserving global colors, layout and behavior");
+    styled.DockColor = "#224466";
     var snapshot = styled.Snapshot();
     AppearanceStyle.BuiltIns[2].Style.CopyTo(styled);
     Check(styled.Theme == "Midnight" && styled.Left == 321 && styled.DockTop == 456 && !styled.LibraryFollowsDock && !styled.AnimationsEnabled && styled.StartHidden,
         "Style presets never reset behavior, animation preference or window placement");
     snapshot.CopyTo(styled);
-    Check(styled.DockSpacing == 0 && styled.DockOpacity == 0 && styled.DockColor == "#224466", "Custom style restores exact appearance including zero values");
+    Check(styled.DockSpacing == 0 && styled.DockOpacity == 0 && styled.DockColor == "#224466" && styled.SharedBackgroundColor == "#102030" && snapshot.EquivalentTo(styled), "Custom style restores exact appearance including zero values");
     styled.SavedStyles.Add(new SavedStyle { Name = "My style", Style = snapshot });
     var stylesStore = new StateStore(Path.Combine(root, "styles")); var stylesState = stylesStore.Load(); stylesState.Settings = styled; stylesStore.Save(stylesState);
     var stylesReloaded = new StateStore(stylesStore.Root).Load().Settings;
-    Check(stylesReloaded.SavedStyles.Single().Style.DockOpacity == 0 && stylesReloaded.SavedStyles.Single().Name == "My style" && !stylesReloaded.LibraryFollowsDock && !stylesReloaded.AnimationsEnabled,
+    Check(stylesReloaded.SharedBackgroundColor == "#102030" && stylesReloaded.SavedStyles.Single().Style.SharedBackgroundColor == "#102030" && stylesReloaded.SavedStyles.Single().Style.DockOpacity == 0 && stylesReloaded.SavedStyles.Single().Name == "My style" && !stylesReloaded.LibraryFollowsDock && !stylesReloaded.AnimationsEnabled,
         "Named styles and detached/motion preferences survive restart");
     Check(AppearanceStyle.TryColor(" #ab09fF ", out var color) && color == "#AB09FF" && AppearanceStyle.TryColor("", out _) && !AppearanceStyle.TryColor("#GG0000", out _) && !AppearanceStyle.TryColor("red", out _),
         "Custom colors accept normalized RGB or automatic, reject invalid input");

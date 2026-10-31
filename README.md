@@ -27,7 +27,14 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 1.5 Preview
+## Features in 1.6 Preview
+
+Settings now groups shared theme/background/accent colors with quick swatches,
+HEX and the Windows picker. Dock/Library previews stay visible while scrolling;
+narrow windows keep sliders in one wide column. Explicit surface colors are kept
+until **Use shared colors everywhere** is selected. Long help is expandable.
+Restore-plan checks also inventory unique owned assets/bytes without extracting.
+
 
 - Delete is the final clip action, including after More expands. Dock clip menus
   anchor above the click point on their card when space permits; WPF fits them at constrained edges.
@@ -52,8 +59,8 @@ from Trash, including after restarting.
   an option to include identical clips. Per-clip restore choices now preview the
   planned adds/replacements/Trash restores; actual restore execution remains next.
 
-- Understandable releases: **1.5 Preview**, then 1.6,…,1.9,2.0. Native package
-  version 1.5.0, display 1.5 Preview, tag v1.5 and assets ClipDrop_v1.5 are derived
+- Understandable releases: **1.6 Preview**, then 1.7,…,1.9,2.0. Native package
+  version 1.6.0, display 1.6 Preview, tag v1.6 and assets ClipDrop_v1.6 are derived
   from one authority; old 0.x releases and app/data identity remain intact.
 - Downloads anchors its **icon center**, independently of panel size. Move it near
   the top to open downward, or near the bottom to open upward. Newest files always

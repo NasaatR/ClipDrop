@@ -81,6 +81,14 @@ internal static class BackupChecks
         var verifiedPlan = BackupArchive.ValidatePlan(output, comparisonBytes, compared, proposed);
         check(verifiedPlan is { Add: 0, Replace: 1, Restore: 1, Keep: 1 } && comparisonBytes.SequenceEqual(store.CaptureSnapshot(comparison)),
             "Restore preflight revalidates archive bytes and current snapshot without changing the library");
+        check(verifiedPlan.AssetsToStage == 2 && verifiedPlan.BytesToStage == 3 + raw.Length,
+            "Selected restore inventory counts owned image and clipboard bytes once, excluding unchosen clips and style icons");
+        var keepPlan = new BackupRestoreDraft(compared); keepPlan.Choose(external.Id, BackupChoice.KeepCurrent);
+        var kept = BackupArchive.ValidatePlan(output, comparisonBytes, compared, keepPlan.Preview());
+        check(kept.AssetsToStage == 0 && kept.BytesToStage == 0, "Keeping all clips prepares no assets");
+        var deduplicated = BackupArchive.ValidatePlan(output, comparisonBytes, compared, proposed with { AssetsToStage = 999, BytesToStage = 999 });
+        check(deduplicated.AssetsToStage == 2 && deduplicated.BytesToStage == 3 + raw.Length,
+            "Preflight recomputes asset inventory instead of trusting caller totals");
         var staleRejected = false;
         try { BackupArchive.ValidatePlan(output, snapshot, compared, proposed); } catch (InvalidOperationException) { staleRejected = true; }
         check(staleRejected, "A plan inspected against another live revision is rejected before restore readiness");

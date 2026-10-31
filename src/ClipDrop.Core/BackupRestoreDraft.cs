@@ -8,7 +8,11 @@ public enum BackupChoice { KeepCurrent, UseBackup }
 public enum BackupPlannedAction { Keep, Add, Replace, RestoreFromTrash }
 public sealed record BackupPlannedClip(string Id, BackupPlannedAction Action);
 public readonly record struct BackupActionCounts(int Add, int Replace, int Restore, int Keep);
-public sealed record BackupActionPreview(IReadOnlyList<BackupPlannedClip> Clips, int Add, int Replace, int Restore, int Keep);
+public sealed record BackupActionPreview(IReadOnlyList<BackupPlannedClip> Clips, int Add, int Replace, int Restore, int Keep)
+{
+    public int AssetsToStage { get; init; }
+    public long BytesToStage { get; init; }
+}
 
 // Session-only choices over an inspected snapshot. This draft performs no IO
 // and is never sufficient authority for a future restore: revalidate first.

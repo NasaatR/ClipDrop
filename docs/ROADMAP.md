@@ -916,3 +916,23 @@ Next5a2b2b2b: owned-asset destination validation/rebasing and cancellable stagin
 Then5a2b2b2c: recoverable atomic state commit, stale-draft refusal at the actual
 write boundary, interruption/rollback tests and Restore execution UI. Keep current
 settings/panels unless explicitly included in a later policy. Then content versions.
+
+
+## 1.6 Preview: compact settings and shared colors
+
+- [x] Inline parameter rows, responsive one/two-column layout and compact tabs;
+  keep long instructions in per-section Help & details.
+- [x] Shared theme/background/accent group with swatches, exact HEX, native Windows
+  picker and automatic readable text. Preserve explicit Dock/Library overrides;
+  offer an explicit Use shared colors everywhere action.
+- [x] Persistent dock/library appearance preview, including idle/compact states,
+  as controls scroll. Retain independent sticky Downloads layout preview.
+- [x] Saved styles/reset/restart include shared background, with old settings
+  inheriting their existing theme. Reuse frozen swatch brushes when unchanged.
+- [x] Stage5a2b2b2b1: derive required owned payload count/bytes from freshly
+  verified selected actions, deduplicate clipboard blobs and exclude settings
+  icons/external originals. Read-only inventory; no extraction or restoration.
+
+Next5a2b2b2b2: validate destinations, rebase owned references and cancellable
+staging. Then5a2b2b2c: recoverable state commit, stale-draft refusal at the write
+boundary and interruption/rollback tests before exposing Restore. Then content versions.

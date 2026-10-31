@@ -14,6 +14,17 @@ public class AppearanceStyle
     public string DockColor { get; set; } = "";
     public string LibraryColor { get; set; } = "";
     public string AccentColor { get; set; } = "";
+    public string SharedBackgroundColor { get; set; } = "";
+
+    public string BackgroundFor(bool? dock = null)
+    {
+        if (dock is null) return SharedBackgroundColor;
+        var local = dock.Value ? DockColor : LibraryColor;
+        var palette = dock.Value ? DockPalette : LibraryPalette;
+        return !string.IsNullOrWhiteSpace(local) ? local : palette == "Shared" ? SharedBackgroundColor : "";
+    }
+    public void UseSharedColors()
+    { DockPalette = LibraryPalette = "Shared"; DockColor = LibraryColor = ""; }
     public double FontSize { get; set; } = 13;
     public double RowSpacing { get; set; } = 4;
     public double CornerRadius { get; set; } = 8;
@@ -32,14 +43,15 @@ public class AppearanceStyle
         target.PngIcons = new Dictionary<string, string>(PngIcons);
         target.Theme = Theme; target.DockPalette = DockPalette; target.LibraryPalette = LibraryPalette;
         target.DockColor = DockColor; target.LibraryColor = LibraryColor; target.AccentColor = AccentColor;
+        target.SharedBackgroundColor = SharedBackgroundColor;
         target.FontSize = FontSize; target.RowSpacing = RowSpacing; target.CornerRadius = CornerRadius;
         target.DockButtonSize = DockButtonSize; target.DockSpacing = DockSpacing;
         target.DockRadius = DockRadius; target.DockOpacity = DockOpacity; target.IdleDockOpacity = IdleDockOpacity;
     }
     public bool EquivalentTo(AppearanceStyle other) =>
         PngIcons.Count == other.PngIcons.Count && PngIcons.All(p => other.PngIcons.TryGetValue(p.Key, out var hash) && hash == p.Value) &&
-        (Theme, DockPalette, LibraryPalette, DockColor, LibraryColor, AccentColor, FontSize, RowSpacing, CornerRadius, DockButtonSize, DockSpacing, DockRadius, DockOpacity, IdleDockOpacity) ==
-        (other.Theme, other.DockPalette, other.LibraryPalette, other.DockColor, other.LibraryColor, other.AccentColor, other.FontSize, other.RowSpacing, other.CornerRadius, other.DockButtonSize, other.DockSpacing, other.DockRadius, other.DockOpacity, other.IdleDockOpacity);
+        (Theme, DockPalette, LibraryPalette, DockColor, LibraryColor, AccentColor, SharedBackgroundColor, FontSize, RowSpacing, CornerRadius, DockButtonSize, DockSpacing, DockRadius, DockOpacity, IdleDockOpacity) ==
+        (other.Theme, other.DockPalette, other.LibraryPalette, other.DockColor, other.LibraryColor, other.AccentColor, other.SharedBackgroundColor, other.FontSize, other.RowSpacing, other.CornerRadius, other.DockButtonSize, other.DockSpacing, other.DockRadius, other.DockOpacity, other.IdleDockOpacity);
     public static bool TryColor(string? input, out string color)
     {
         color = (input ?? "").Trim().ToUpperInvariant();

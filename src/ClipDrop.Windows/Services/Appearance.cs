@@ -13,7 +13,7 @@ public static class Appearance
     {
         Motion.Configure(settings);
         Motion.Enabled = settings.AnimationsEnabled;
-        ApplyTo(Application.Current.Resources, settings, settings.Theme, "");
+        ApplyTo(Application.Current.Resources, settings, settings.Theme, settings.BackgroundFor());
         foreach (var role in Views.AppIcon.Roles)
         {
             settings.PngIcons.TryGetValue(role.Key, out var hash);
@@ -25,7 +25,7 @@ public static class Appearance
     {
         Apply(settings);
         var palette = dock ? settings.DockPalette : settings.LibraryPalette;
-        ApplyTo(surface.Resources, settings, palette == "Shared" ? settings.Theme : palette, dock ? settings.DockColor : settings.LibraryColor);
+        ApplyTo(surface.Resources, settings, palette == "Shared" ? settings.Theme : palette, settings.BackgroundFor(dock));
     }
     public static Color Mix(Color a, Color b, double weight) => Color.FromRgb(
         (byte)Math.Round(a.R * (1 - weight) + b.R * weight), (byte)Math.Round(a.G * (1 - weight) + b.G * weight), (byte)Math.Round(a.B * (1 - weight) + b.B * weight));

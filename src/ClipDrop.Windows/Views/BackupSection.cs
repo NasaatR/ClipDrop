@@ -146,7 +146,7 @@ public sealed class BackupSection : StackPanel, IDisposable
             if (version != _comparison.Version) { _status.Text = "Choices changed during check · check the plan again"; return null; }
             if (Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(_snapshot())) != inspected.CurrentIdentity)
             { _status.Text = "Library changed during check · inspect the backup again"; return null; }
-            _status.Text = $"Plan checked · {verified.Add} add · {verified.Replace} replace · {verified.Restore} restore · nothing applied";
+            _status.Text = $"Plan checked · {verified.Add} add · {verified.Replace} replace · {verified.Restore} restore · {verified.AssetsToStage} assets ({verified.BytesToStage / 1048576d:0.##} MB) to prepare · nothing applied";
             return verified;
         }
         catch (OperationCanceledException) { if (!_disposed) _status.Text = "Plan check cancelled · library unchanged"; return null; }

@@ -17,7 +17,7 @@ public sealed class SettingsWindow : Window
     private readonly ShelfSettings _settings;
     private readonly Action _changed;
     private readonly List<Action> _syncControls = new();
-    private readonly StackPanel _panel = new() { Margin = new Thickness(18, 0, 18, 20) };
+    private readonly StackPanel _panel = new() { Margin = new Thickness(12, 0, 12, 12) };
     private readonly ComboBox _presets = new();
     private readonly TextBox _presetName = new() { MaxLength = 40, ToolTip = "Name for your saved style" };
     private readonly Button _deleteStyle = new() { Content = "Delete", ToolTip = "Delete the selected saved style" };
@@ -30,14 +30,20 @@ public sealed class SettingsWindow : Window
     private readonly ScrollViewer _scroll;
     public string SelectedSection { get; private set; } = "";
     private WrapPanel? _fields;
+    private readonly List<ColorFieldControl> _colors = new();
+    private readonly Dictionary<StackPanel, StackPanel> _help = new();
+    private readonly Border _appearancePreview = new();
+    private readonly Border _librarySample = new();
+    private readonly TextBlock _libraryText = new();
+    private readonly Border _libraryCard = new();
     private readonly List<FrameworkElement> _fieldBoxes = new();
     public DockStrip Preview { get; } = new();
     public DownloadsPreview DownloadPreview { get; } = new() { Visibility = Visibility.Collapsed };
 
     public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot, DockCoordinator? docks = null, Func<byte[]>? captureBackup = null)
     {
-        _settings = settings; _changed = () => { changed(); Topmost = settings.AlwaysOnTop; Preview.Apply(settings); DownloadPreview.Apply(settings); UpdatePreviewOpacity(); }; _section = _panel;
-        Topmost = settings.AlwaysOnTop; Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
+        _settings = settings; _changed = () => { changed(); Topmost = settings.AlwaysOnTop; Preview.Apply(settings); DownloadPreview.Apply(settings); UpdateLibraryPreview(); foreach (var color in _colors) color.Sync(); UpdatePreviewOpacity(); }; _section = _panel;
+        Topmost = settings.AlwaysOnTop; Title = "ClipDrop settings"; Width = 760; Height = 700; MinWidth = 500; MinHeight = 460;
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Ink");
         var buttons = new Style(typeof(Button), (Style)Application.Current.FindResource(typeof(Button)));
@@ -50,26 +56,31 @@ public sealed class SettingsWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         var layout = new DockPanel(); Content = layout;
         layout.SetResourceReference(Panel.BackgroundProperty, "Surface");
-        var heading = new StackPanel { Margin = new Thickness(18, 14, 18, 12) };
+        var heading = new StackPanel { Margin = new Thickness(12, 10, 12, 8) };
         DockPanel.SetDock(heading, Dock.Top); layout.Children.Add(heading);
-        heading.Children.Add(new TextBlock { Text = "ClipDrop " + Diagnostics.Version, FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 10) });
-        _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); heading.Children.Add(_notice);
+        var titleLine = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
+        titleLine.Children.Add(new TextBlock { Text = "ClipDrop " + Diagnostics.Version, FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 14, 0) });
+        _notice.Margin = new Thickness(0); _notice.VerticalAlignment = VerticalAlignment.Center;
+        _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); titleLine.Children.Add(_notice); heading.Children.Add(titleLine);
         var nav = new WrapPanel(); heading.Children.Add(nav);
         DownloadPreview.Apply(settings); DockPanel.SetDock(DownloadPreview, Dock.Top); layout.Children.Add(DownloadPreview);
+        DockPanel.SetDock(_appearancePreview, Dock.Top); layout.Children.Add(_appearancePreview);
         var scroll = _scroll = new ScrollViewer { Name = "SettingsControls", Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         var footer = new TextBlock { Text = "Made by Nasaat", FontSize = 11, Margin = new Thickness(18, 8, 18, 12) };
         footer.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer);
         layout.Children.Add(scroll);
         TextBlock Section(string name)
         {
+            if (_help.TryGetValue(_section, out var previousHelp) && previousHelp.Parent is Expander previousDetails)
+            { _section.Children.Remove(previousDetails); _section.Children.Add(previousDetails); }
             _section = new StackPanel(); _fields = null;
-            var block = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(14), Margin = new Thickness(0, 0, 0, 10), Child = _section };
+            var block = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 8), Child = _section };
             block.SetResourceReference(Border.BackgroundProperty, "Raised");
             block.SetResourceReference(Border.BorderBrushProperty, "Stroke"); block.BorderThickness = new Thickness(1);
             _panel.Children.Add(block);
-            var title = new TextBlock { Text = name, FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 9) };
+            var title = new TextBlock { Text = name, FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 9) };
             _section.Children.Add(title);
-            var jump = new Button { Content = name, Padding = new Thickness(9, 5, 9, 5), MinHeight = 28 };
+            var jump = new Button { Content = name, Padding = new Thickness(9, 3, 9, 3), MinHeight = 26 };
             jump.Background = Brushes.Transparent; jump.BorderThickness = new Thickness(0);
             System.Windows.Automation.AutomationProperties.SetName(jump, "Settings: " + name);
             jump.Click += (_, _) => ShowSection(name); nav.Children.Add(jump);
@@ -78,10 +89,11 @@ public sealed class SettingsWindow : Window
             return title;
         }
         Section("Style");
-        var previewStage = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
+        var previewStage = _appearancePreview;
+        previewStage.CornerRadius = new CornerRadius(9); previewStage.Padding = new Thickness(10, 6, 10, 6); previewStage.Margin = new Thickness(12, 0, 12, 8);
         previewStage.SetResourceReference(Border.BackgroundProperty, "Surface");
         var previewLayout = new StackPanel(); previewStage.Child = previewLayout;
-        var previewLabel = new TextBlock { Text = "Your dock · updates instantly", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right };
+        var previewLabel = new TextBlock { Text = "Live preview · dock & library", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right };
         previewLabel.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); previewLayout.Children.Add(previewLabel);
         var idlePreview = new CheckBox { Content = "Preview idle visibility", Margin = new Thickness(0, 4, 0, 0) };
         idlePreview.Checked += (_, _) => { _previewIdle = true; UpdatePreviewOpacity(); };
@@ -89,11 +101,32 @@ public sealed class SettingsWindow : Window
         var compactPreview = new CheckBox { Content = "Preview compact state", Margin = new Thickness(0, 2, 0, 0) };
         compactPreview.Checked += (_, _) => { _previewCompact = true; UpdatePreviewOpacity(); };
         compactPreview.Unchecked += (_, _) => { _previewCompact = false; UpdatePreviewOpacity(); };
-        previewLayout.Children.Add(new Viewbox { Child = Preview, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Center, MaxHeight = 110 });
-        previewLayout.Children.Add(idlePreview);
-        previewLayout.Children.Add(compactPreview);
+        var samples = new Grid(); samples.ColumnDefinitions.Add(new ColumnDefinition()); samples.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(126) });
+        samples.Children.Add(new Viewbox { Child = Preview, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Center, MaxHeight = 64 });
+        var libraryText = _libraryText; libraryText.Text = "Saved clip"; libraryText.TextWrapping = TextWrapping.Wrap; libraryText.VerticalAlignment = VerticalAlignment.Center; libraryText.Margin = new Thickness(8);
+        libraryText.SetResourceReference(TextBlock.ForegroundProperty, "Ink");
+        var libraryCard = _libraryCard; libraryCard.Child = libraryText; libraryCard.Margin = new Thickness(6); libraryCard.SetResourceReference(Border.BackgroundProperty, "Raised");
+        _librarySample.Child = libraryCard; _librarySample.CornerRadius = new CornerRadius(8); _librarySample.Margin = new Thickness(8, 4, 0, 4);
+        _librarySample.SetResourceReference(Border.BackgroundProperty, "Surface"); UpdateLibraryPreview();
+        Grid.SetColumn(_librarySample, 1); samples.Children.Add(_librarySample); previewLayout.Children.Add(samples);
+        var previewModes = new WrapPanel(); idlePreview.Margin = new Thickness(0, 2, 16, 0); compactPreview.Margin = new Thickness(0, 2, 0, 0);
+        previewModes.Children.Add(idlePreview); previewModes.Children.Add(compactPreview); previewLayout.Children.Add(previewModes);
         Preview.Apply(settings); Preview.SetPins(new[] { ShelfItem.FromText("Saved note"), ShelfItem.FromText("https://example.com") }, 2);
-        _section.Children.Add(previewStage);
+
+        Group("Theme & colors");
+        Choice("App theme", () => settings.Theme, new[] { "Dark", "Light", "Midnight" }, new[] { "Graphite", "Paper", "Midnight" }, value => {
+            settings.Theme = value; settings.SharedBackgroundColor = "";
+            foreach (var color in _colors) color.Sync(true);
+        });
+        ColorField("Shared background", () => settings.SharedBackgroundColor, value => settings.SharedBackgroundColor = value);
+        ColorField("Accent", () => settings.AccentColor, value => settings.AccentColor = value);
+        var colorActions = new WrapPanel(); _section.Children.Add(colorActions);
+        var shareColors = new Button { Content = "Use shared colors everywhere", ToolTip = "Make Dock and Library inherit the app theme and background. Layout and saved styles stay unchanged." }; colorActions.Children.Add(shareColors);
+        shareColors.Click += (_, _) => { settings.UseSharedColors(); Change(); SyncFields(); _notice.Text = "Dock and Library now follow shared colors"; };
+        var resetColors = new Button { Content = "Reset shared colors", ToolTip = "Clear the shared background and accent. Keep the chosen theme and layout." }; colorActions.Children.Add(resetColors);
+        resetColors.Click += (_, _) => { settings.SharedBackgroundColor = settings.AccentColor = ""; Change(); SyncFields(); };
+        Hint("Choose a swatch for quick colors, More colors for the Windows picker, or enter HEX. Auto inherits the selected theme. Changing App theme clears its custom background. Text contrast adjusts automatically. Dock and Library may keep their own overrides; Use shared colors everywhere removes those overrides.");
+        Group("Saved styles");
         _presets.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, "Style preset");
         _presets.SelectionChanged += (_, _) => {
             _deleteStyle.IsEnabled = (_presets.SelectedItem as Preset)?.SavedId is not null;
@@ -122,13 +155,14 @@ public sealed class SettingsWindow : Window
             settings.SavedStyles.RemoveAll(s => s.Id == id); RebuildPresets(); _notice.Text = "Style deleted · current appearance kept"; _changed();
         };
 
-        Choice("App theme", () => settings.Theme, new[] { "Dark", "Light", "Midnight" }, new[] { "Graphite", "Paper", "Midnight" }, value => settings.Theme = value);
-        ColorField("Accent", () => settings.AccentColor, value => settings.AccentColor = value);
+        Group("Motion");
         Check("Animations", () => settings.AnimationsEnabled, value => settings.AnimationsEnabled = value, false);
         Choice("Motion", () => settings.MotionStyle, new[] { "Soft", "Spring" }, new[] { "Soft · calm easing", "Spring · gentle settle" }, value => settings.MotionStyle = value, false);
         Range("Animation duration", () => settings.MotionDuration, 100, 600, value => settings.MotionDuration = value, false, 10, "ms");
         Hint("This duration controls panel reveal and fade. Row hover feedback stays fast.");
         Hint("Windows animation preferences are respected. Colors and changes preview live.");
+        var reset = new Button { Content = "Reset appearance", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 10, 0, 0) };
+        reset.Click += (_, _) => { ApplyStyle(new AppearanceStyle()); RebuildPresets(); _notice.Text = "Appearance reset · saved styles kept"; }; _section.Children.Add(reset);
         Section("Icons");
         Hint("Emoji by default. Replace any role with your own PNG; image/video thumbnails remain real previews.");
         var iconRole = new ComboBox { ItemsSource = AppIcon.Roles.Select(r => r.Label).ToArray(), SelectedIndex = 0 };
@@ -155,7 +189,7 @@ public sealed class SettingsWindow : Window
         Section("Dock");
         Range("Maximum panel width", () => settings.DockMaxWidth, 240, 1200, value => settings.DockMaxWidth = value, false, 20, "px");
         Choice("Palette", () => settings.DockPalette, new[] { "Shared", "Dark", "Light", "Midnight" }, new[] { "App theme", "Graphite", "Paper", "Midnight" }, value => settings.DockPalette = value);
-        ColorField("Background", () => settings.DockColor, value => settings.DockColor = value);
+        ColorField("Background", () => settings.DockColor, value => settings.DockColor = value, Preview);
         Range("Button size", () => settings.DockButtonSize, 24, 72, value => settings.DockButtonSize = value);
         Range("Spacing", () => settings.DockSpacing, 0, 24, value => settings.DockSpacing = value);
         Range("Corners", () => settings.DockRadius, 0, 36, value => settings.DockRadius = value);
@@ -226,12 +260,10 @@ public sealed class SettingsWindow : Window
         Check("Follow dock", () => settings.LibraryFollowsDock, value => settings.LibraryFollowsDock = value, false);
         Hint("Move Library to detach it. More → Follow dock attaches it again.");
         Choice("Palette", () => settings.LibraryPalette, new[] { "Shared", "Dark", "Light", "Midnight" }, new[] { "App theme", "Graphite", "Paper", "Midnight" }, value => settings.LibraryPalette = value);
-        ColorField("Background", () => settings.LibraryColor, value => settings.LibraryColor = value);
+        ColorField("Background", () => settings.LibraryColor, value => settings.LibraryColor = value, _librarySample);
         Range("Text size", () => settings.FontSize, 10, 24, value => settings.FontSize = value);
         Range("Row spacing", () => settings.RowSpacing, 0, 24, value => settings.RowSpacing = value);
         Range("Row corners", () => settings.CornerRadius, 0, 24, value => settings.CornerRadius = value);
-        var reset = new Button { Content = "Reset appearance", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 10, 0, 0) };
-        reset.Click += (_, _) => { ApplyStyle(new AppearanceStyle()); RebuildPresets(); _notice.Text = "Appearance reset · saved styles kept"; }; _section.Children.Add(reset);
         if (captureBackup is not null)
         {
             Section("Backups"); var backups = new BackupSection(dataRoot, captureBackup); _section.Children.Add(backups);
@@ -252,10 +284,14 @@ public sealed class SettingsWindow : Window
         var folder = new Button { Content = "Data folder" };
         folder.Click += (_, _) => { try { Process.Start(new ProcessStartInfo(dataRoot) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "ClipDrop"); } }; actions.Children.Add(folder);
         Hint("Assets and exports remain on disk for reliable transfers.\nNo clipboard monitoring or accounts. Public image URLs can be fetched after an explicit drop; turn this off in Dock.");
+        if (_help.TryGetValue(_section, out var lastHelp) && lastHelp.Parent is Expander lastDetails)
+        { _section.Children.Remove(lastDetails); _section.Children.Add(lastDetails); }
         RebuildPresets(); ShowSection("Style");
         void FitFields()
         {
-            var width = Math.Max(210, (scroll.ActualWidth - 36 - 28 - 24 - 10) / 2);
+            var available = Math.Max(300, scroll.ActualWidth - 24 - 22 - 18);
+            var columns = available >= 640 ? 2 : 1;
+            var width = available / columns - 8;
             foreach (var field in _fieldBoxes) field.Width = width;
         }
         SizeChanged += (_, _) => { FitFields(); DownloadPreview.Fit(ActualHeight); }; Loaded += (_, _) => {
@@ -263,6 +299,13 @@ public sealed class SettingsWindow : Window
             Width = Math.Max(MinWidth, Math.Min(Width, area.Width)); Height = Math.Max(MinHeight, Math.Min(Height, area.Height));
             WindowPlacement.Clamp(this); FitFields();
         };
+    }
+    private void UpdateLibraryPreview()
+    {
+        Appearance.Apply(_settings, _librarySample, false);
+        _libraryText.FontSize = Appearance.Bound(_settings.FontSize, 10, 24, 13);
+        _libraryCard.CornerRadius = new CornerRadius(Appearance.Bound(_settings.CornerRadius, 0, 24, 8));
+        _libraryCard.Padding = new Thickness(0, Appearance.Bound(_settings.RowSpacing, 0, 24, 4) / 2, 0, Appearance.Bound(_settings.RowSpacing, 0, 24, 4) / 2);
     }
     private void UpdatePreviewOpacity()
     {
@@ -291,23 +334,45 @@ public sealed class SettingsWindow : Window
         _presets.ItemsSource = choices; _presets.SelectedItem = choices.FirstOrDefault(p => p.SavedId == selected && selected is not null) ?? choices.Skip(1).Reverse().FirstOrDefault(p => p.Style?.EquivalentTo(_settings) == true) ?? choices[0];
         _deleteStyle.IsEnabled = selected is not null; _sync = false;
     }
+    private void SyncFields()
+    {
+        _sync = true;
+        try { foreach (var sync in _syncControls) sync(); } finally { _sync = false; }
+    }
+    private void Group(string title)
+    {
+        _section.Children.Add(new TextBlock { Text = title, FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(4, 9, 4, 3) });
+    }
     private void Row(string label, FrameworkElement control)
     {
-        if (_fields is null) { _fields = new WrapPanel { Margin = new Thickness(-6, 0, -6, 0) }; _section.Children.Add(_fields); }
-        var field = new StackPanel { Margin = new Thickness(6, 4, 6, 7), Width = 325 };
-        field.Children.Add(new TextBlock { Text = label, FontSize = 12, FontWeight = FontWeights.Medium, Margin = new Thickness(0, 0, 0, 5) });
-        control.MinHeight = 32; field.Children.Add(control); _fields.Children.Add(field); _fieldBoxes.Add(field);
+        // Start a new row group after headings/actions so visual order follows construction order.
+        if (_fields is null || _section.Children.Count == 0 || _section.Children[_section.Children.Count - 1] != _fields)
+        { _fields = new WrapPanel(); _section.Children.Add(_fields); }
+        var field = new Grid { Margin = new Thickness(4, 3, 4, 3), Width = 330, MinHeight = 28 };
+        if (label.Length > 0)
+        {
+            field.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(108) }); field.ColumnDefinitions.Add(new ColumnDefinition());
+            field.Children.Add(new TextBlock { Text = label, FontSize = 12, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+            Grid.SetColumn(control, 1);
+        }
+        control.MinHeight = 28; field.Children.Add(control); _fields.Children.Add(field); _fieldBoxes.Add(field);
     }
-
     private void Hint(string text)
     {
-        var hint = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 5, 0, 5) };
-        hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); _section.Children.Add(hint);
+        if (!_help.TryGetValue(_section, out var help))
+        {
+            help = new StackPanel(); _help.Add(_section, help);
+            // Section creation moves this footer to the end once its controls are complete.
+            var details = new Expander { Header = "Help & details", Content = help, Margin = new Thickness(4, 8, 4, 2), FontSize = 11 };
+            _section.Children.Add(details);
+        }
+        var hint = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 4, 0, 4) };
+        hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); help.Children.Add(hint);
     }
     private void Check(string label, Func<bool> read, Action<bool> write, bool appearance)
     {
         var check = new CheckBox { Content = label, IsChecked = read(), Margin = new Thickness(0, 5, 0, 5) };
-        check.Click += (_, _) => { write(check.IsChecked == true); Change(appearance); }; _section.Children.Add(check);
+        check.Click += (_, _) => { write(check.IsChecked == true); Change(appearance); }; Row("", check);
         _syncControls.Add(() => check.IsChecked = read());
     }
     private void Choice(string label, Func<string> read, string[] values, string[] labels, Action<string> write, bool appearance = true)
@@ -322,6 +387,7 @@ public sealed class SettingsWindow : Window
         if (!_sections.ContainsKey(name)) return;
         SelectedSection = name;
         DownloadPreview.Visibility = name == "Downloads" ? Visibility.Visible : Visibility.Collapsed;
+        _appearancePreview.Visibility = name is "Style" or "Dock" or "Icons" or "Library" ? Visibility.Visible : Visibility.Collapsed;
         foreach (var pair in _sections)
         {
             var active = pair.Key == name;
@@ -336,22 +402,10 @@ public sealed class SettingsWindow : Window
         var field = new NumberField(name, read, min, max, value => { write(value); Change(appearance); }, step, unit);
         Row(name + (unit.Length > 0 ? " · " + unit : ""), field); _syncControls.Add(field.Sync);
     }
-    private void ColorField(string name, Func<string> read, Action<string> write)
+    private void ColorField(string name, Func<string> read, Action<string> write, FrameworkElement? surface = null)
     {
-        var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var text = new TextBox { Text = read(), ToolTip = "#RRGGBB · leave empty for automatic", MaxLength = 12 };
-        System.Windows.Automation.AutomationProperties.SetName(text, name + " color"); grid.Children.Add(text);
-        var clear = new Button { Content = "Auto", ToolTip = "Use palette color", Padding = new Thickness(8, 4, 8, 4) }; Grid.SetColumn(clear, 1); grid.Children.Add(clear);
-        void Commit()
-        {
-            if (_sync) return;
-            if (!AppearanceStyle.TryColor(text.Text, out var color)) { text.BorderBrush = Brushes.IndianRed; text.ToolTip = "Enter #RRGGBB, or clear for automatic."; return; }
-            text.SetResourceReference(BorderBrushProperty, "Stroke"); text.ToolTip = "#RRGGBB · leave empty for automatic";
-            text.Text = color; if (read() == color) return; write(color); Change();
-        }
-        text.LostKeyboardFocus += (_, _) => Commit();
-        text.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) { Commit(); e.Handled = true; } };
-        clear.Click += (_, _) => { text.Clear(); Commit(); };
-        _syncControls.Add(() => { text.Text = read(); text.SetResourceReference(BorderBrushProperty, "Stroke"); }); Row(name, grid);
+        var field = new ColorFieldControl(name, read, value => { if (!_sync) { write(value); Change(); } },
+            () => ((surface?.TryFindResource(name == "Accent" ? "Accent" : "Surface") ?? TryFindResource(name == "Accent" ? "Accent" : "Surface")) as SolidColorBrush)?.Color ?? Colors.Gray);
+        _colors.Add(field); _syncControls.Add(() => field.Sync(true)); Row(name, field);
     }
 }

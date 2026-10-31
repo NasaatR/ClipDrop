@@ -199,7 +199,8 @@ public static partial class BackupArchive
         }
         return new(summary, fresh, identical, changed, trashed) { Clips = clips.AsReadOnly(), ArchiveIdentity = archiveIdentity, CurrentIdentity = currentIdentity };
     }
-    private static (BackupSummary Summary, ShelfState State, string Identity) VerifyContents(string path, CancellationToken cancellation)
+    private sealed record VerifiedBackup(BackupSummary Summary, ShelfState State, string Identity, string SourceRoot, IReadOnlyDictionary<string, Entry> Entries);
+    private static VerifiedBackup VerifyContents(string path, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -237,6 +238,6 @@ public static partial class BackupArchive
         }
         // The verified manifest commits to shelf.json and every payload hash.
         // Fingerprint those bytes, not ZIP timestamps/compression or a path.
-        return (new(state.Items.Count, state.Trash.Count, state.Panels.Count, names.Count - 1, manifest.Entries.Sum(e => e.Length)), state, SnapshotIdentity(headerBytes));
+        return new(new(state.Items.Count, state.Trash.Count, state.Panels.Count, names.Count - 1, manifest.Entries.Sum(e => e.Length)), state, SnapshotIdentity(headerBytes), manifest.SourceRoot, manifest.Entries.ToDictionary(e => e.Name, StringComparer.OrdinalIgnoreCase));
     }
 }

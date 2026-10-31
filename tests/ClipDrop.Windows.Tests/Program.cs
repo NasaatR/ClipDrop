@@ -124,6 +124,7 @@ internal static class Program
             RenderElement((FrameworkElement)popup.Child, Path.Combine(output, "settings-preset-menu.png"));
             stylePicker.IsDropDownOpen = false;
             settings.Close();
+            ColorSettingsProbe.Run(window, output, Check);
             PanelProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MultiMonitorProbe.Run(window, dock, root, output, Check);
             InteractionProbe.Run(window, dock, root, output, Check);

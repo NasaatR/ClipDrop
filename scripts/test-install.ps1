@@ -36,17 +36,17 @@ if ($kept.Items[0].Content -ne 'Привет — upgrade preserved' -or $kept.Se
 if ($kept.SchemaVersion -ne 7 -or !(Test-Path (Join-Path $data 'shelf.json.schema-1-before-v7.bak'))) { throw 'Schema migration backup was not preserved' }
 if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json.schema-1-before-v7.bak')) -ne $fixture) { throw 'Migration backup changed the original legacy data' }
 # Also exercise the most recent issued installer without changing its bytes.
-$recent = Join-Path $env:RUNNER_TEMP 'ClipDrop-1.4-setup.exe'
-Invoke-WebRequest 'https://github.com/NasaatR/ClipDrop/releases/download/v1.4/ClipDrop_v1.4_windows-x64_setup.exe' -OutFile $recent
+$recent = Join-Path $env:RUNNER_TEMP 'ClipDrop-1.5-setup.exe'
+Invoke-WebRequest 'https://github.com/NasaatR/ClipDrop/releases/download/v1.5/ClipDrop_v1.5_windows-x64_setup.exe' -OutFile $recent
 $recentData = [IO.File]::ReadAllText((Join-Path $data 'shelf.json'))
 $process = Start-Process $recent -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
-if ($process.ExitCode -ne 0 -or !(Get-Item "$target/ClipDrop.exe").VersionInfo.FileVersion.StartsWith('1.4.0')) { throw 'Recent-version upgrade fixture was not installed in the same directory' }
+if ($process.ExitCode -ne 0 -or !(Get-Item "$target/ClipDrop.exe").VersionInfo.FileVersion.StartsWith('1.5.0')) { throw 'Recent-version upgrade fixture was not installed in the same directory' }
 $process = Start-Process $installer -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
-if ($process.ExitCode -ne 0 -or !(Get-Item "$target/ClipDrop.exe").VersionInfo.FileVersion.StartsWith($expected)) { throw '1.4 to current version upgrade failed' }
+if ($process.ExitCode -ne 0 -or !(Get-Item "$target/ClipDrop.exe").VersionInfo.FileVersion.StartsWith($expected)) { throw '1.5 to current version upgrade failed' }
 if ([IO.File]::ReadAllText((Join-Path $data 'shelf.json')) -ne $recentData) { throw 'Recent upgrade changed user data' }
 $registrations = @(Get-ChildItem 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall' | Get-ItemProperty | Where-Object { $_.PSChildName -eq '{657DCFD1-3CCB-46E7-9BB1-534F69B57C36}_is1' })
 if ($registrations.Count -ne 1) { throw 'Recent upgrade created a duplicate app' }
-Write-Output 'PASS Recent1.4 → current1.x upgrade retains one installation, data and the previous install path.'
+Write-Output 'PASS Recent1.5 → current1.x upgrade retains one installation, data and the previous install path.'
 $process = Start-Process "$target/unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
 if ($process.ExitCode -ne 0 -or (Test-Path "$target/ClipDrop.exe")) { throw 'Uninstallation failed' }
 if (!(Test-Path (Join-Path $data 'shelf.json'))) { throw 'Uninstaller removed user data' }

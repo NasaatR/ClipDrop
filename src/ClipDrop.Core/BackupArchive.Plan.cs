@@ -42,6 +42,16 @@ public static partial class BackupArchive
         if (add != plan.Add || replace != plan.Replace || restore != plan.Restore || keep != plan.Keep)
             throw new InvalidDataException("Restore action counts do not match the selected clips.");
         cancellation.ThrowIfCancellationRequested();
-        return new(Array.AsReadOnly(actions), add, replace, restore, keep);
+        var selected = actions.Where(a => a.Action != BackupPlannedAction.Keep).Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
+        // Inventory only chosen clip payloads, never current settings icons or external originals.
+        var subset = new ShelfState { Items = verified.State.Items.Where(i => selected.Contains(i.Id)).ToList() };
+        var references = References(verified.SourceRoot, subset).ToArray();
+        long bytes = 0;
+        foreach (var reference in references)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            bytes = checked(bytes + verified.Entries[reference.Name].Length);
+        }
+        return new(Array.AsReadOnly(actions), add, replace, restore, keep) { AssetsToStage = references.Length, BytesToStage = bytes };
     }
 }
