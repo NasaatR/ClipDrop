@@ -106,6 +106,15 @@ internal static class DownloadsProbe
                 UiProbe.Hover(stack.StackButton); stack.UpdateLayout();
                 check(stack.DownloadList.ActualHeight >= 340 && !HasSelector(stack.DownloadList), "The normal Downloads window fits at least ten compact rows without scrolling");
                 UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-dense-screen.png"));
+                var downloadScroll = UiProbe.Find<ScrollViewer>(stack.DownloadList, s => s.ScrollableHeight > 0);
+                var downloadBar = UiProbe.Find<ScrollBar>(stack.DownloadList, s => s.Orientation == Orientation.Vertical && s.IsVisible);
+                var downloadThumb = UiProbe.Find<Thumb>(downloadBar, _ => true);
+                check(downloadBar.ActualWidth <= 8 && downloadThumb.ActualWidth >= 7, "Downloads uses a narrow scrollbar with a wider transparent thumb hit area");
+                downloadScroll.ScrollToVerticalOffset(downloadScroll.ScrollableHeight / 2); UiProbe.Pump();
+                var oldScroll = downloadScroll.VerticalOffset;
+                var edge = downloadThumb.PointToScreen(new Point(1, downloadThumb.ActualHeight / 2));
+                UiProbe.DragFrom(edge, edge + new Vector(0, 25), steps: 6, frameDelayMs: 10);
+                check(downloadScroll.VerticalOffset > oldScroll + 5, "Dragging the transparent edge of the thin Downloads thumb scrolls the real list");
                 state.Settings.Theme = "Light"; state.Settings.DockPalette = "Light"; session.Change(); UiProbe.Hover(stack.StackButton);
                 UiProbe.CaptureWindow(stack, Path.Combine(output, "downloads-light-screen.png"));
                 for (var i = 0; i < 18; i++) File.Delete(Path.Combine(folder, $"Reference-{i:D2}.txt"));

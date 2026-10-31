@@ -53,15 +53,31 @@ internal static class PresenceProbe
             check(dock.Opacity == 1, "A real pointer hover restores the entire dock to full visibility");
             ScreenShot(dock, Path.Combine(output, "dock-hover-screen.png"));
             var button = UiProbe.Find<Button>(dock.Pins, b => b.Tag as string != "Keep" && b.DataContext is ItemRow);
+            dock.Top += (bounds.Bottom - 24 - WindowPlacement.PixelBounds(dock).Bottom) / WindowPlacement.Scale(dock); UiProbe.Pump();
             UiProbe.RightClick(button); var menu = button.ContextMenu!;
             check(menu.IsOpen && menu.ActualHeight < 140 && menu.Items.OfType<MenuItem>().Count() == 4, "The opened clip menu is compact and omits disabled secondary actions");
+            check(menu.Items.OfType<MenuItem>().Last().Tag as string == "Trash", "Delete is the final compact clip action");
+            var menuAnchor = button.PointToScreen(new Point(button.ActualWidth / 2, button.ActualHeight / 2));
+            check(Math.Abs(menu.PointToScreen(new Point(0, menu.ActualHeight)).Y - menuAnchor.Y) <= 2,
+                "With space above the dock, the compact menu's Delete edge sits directly above the original click point");
             render(menu, Path.Combine(output, "clip-menu-compact.png"));
             var more = menu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "More");
             UiProbe.Click(more); check(menu.IsOpen && menu.Items.OfType<MenuItem>().Any(i => i.Tag as string == "Preview"), "More expands secondary clip actions without closing the menu");
+            check(menu.Items.OfType<MenuItem>().Last().Tag as string == "Trash", "Expanding More keeps Delete at the bottom instead of pushing actions below it");
+            check(Math.Abs(menu.PointToScreen(new Point(0, menu.ActualHeight)).Y - menuAnchor.Y) <= 2,
+                "Expanding More preserves the Delete edge at the original click point instead of moving it away");
+            render(menu, Path.Combine(output, "clip-menu-expanded-delete-bottom.png"));
             UiProbe.MoveTo(new Point(bounds.Right - 5, bounds.Bottom - 5)); UiProbe.Pump(350);
             check(dock.Opacity == 1, "An open menu holds the dock visible after pointer leave");
             UiProbe.ClickAt(new Point(bounds.Right - 5, bounds.Bottom - 5)); UiProbe.Pump(300);
             check(!menu.IsOpen && !PopupDismiss.HasObserver && Math.Abs(dock.Opacity - .2) < .001, "Outside click dismisses the expanded menu and resumes idle fading");
+            dock.Top += (bounds.Top + 4 - WindowPlacement.PixelBounds(dock).Top) / WindowPlacement.Scale(dock); UiProbe.Pump();
+            UiProbe.RightClick(button); var constrained = button.ContextMenu!;
+            check(constrained.IsOpen && constrained.PointToScreen(new Point()).Y >= bounds.Top - 2 &&
+                constrained.PointToScreen(new Point(0, constrained.ActualHeight)).Y <= bounds.Bottom + 2 && constrained.Items.OfType<MenuItem>().Last().Tag as string == "Trash",
+                "Near the top screen edge, WPF fits the complete menu while retaining Delete as its last action");
+            UiProbe.Escape();
+            UiProbe.MoveTo(new Point(bounds.Right - 5, bounds.Bottom - 5)); UiProbe.Pump(350);
             state.Settings.IdleDockOpacity = 35; session.Change();
             check(Math.Abs(dock.Opacity - .35) < .001 && !dock.HasAnimatedProperties, "Idle setting updates live without animations when motion is disabled");
             var settings = new SettingsWindow(state.Settings, () => session.Change(), session.TrySave, session.Report, store.Root);

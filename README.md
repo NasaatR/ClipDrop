@@ -27,7 +27,17 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 1.4 Preview
+## Features in 1.5 Preview
+
+- Delete is the final clip action, including after More expands. Dock clip menus
+  anchor above the click point on their card when space permits; WPF fits them at constrained edges.
+- Downloads reserves8DIP for its vertical scrollbar instead of12. The3DIP thumb
+  face expands to5 on hover/drag inside a transparent8DIP grab area. The Settings
+  file preview shares it; other scrollbars retain their normal sizes.
+- Check restore plan re-verifies payload checksums, content identity, the current
+  library snapshot and legal complete choices. A changed archive/library or a
+  choice edit during IO cannot leave an obsolete successful result. Read-only
+  preflight only; asset staging and recoverable restore execution remain next.
 
 - Immediate whole-card Downloads feedback with a softly settling, critically
   damped icon response. Mid-flight reversals preserve position and velocity;
@@ -42,8 +52,8 @@ from Trash, including after restarting.
   an option to include identical clips. Per-clip restore choices now preview the
   planned adds/replacements/Trash restores; actual restore execution remains next.
 
-- Understandable releases: **1.4 Preview**, then 1.5,…,1.9,2.0. Native package
-  version 1.4.0, display 1.4 Preview, tag v1.4 and assets ClipDrop_v1.4 are derived
+- Understandable releases: **1.5 Preview**, then 1.6,…,1.9,2.0. Native package
+  version 1.5.0, display 1.5 Preview, tag v1.5 and assets ClipDrop_v1.5 are derived
   from one authority; old 0.x releases and app/data identity remain intact.
 - Downloads anchors its **icon center**, independently of panel size. Move it near
   the top to open downward, or near the bottom to open upward. Newest files always
@@ -362,6 +372,10 @@ fields; **Include identical** reveals matching entries. Session-only choices
 preview Add/Skip, Keep current/Use backup and Leave in Trash/Restore actions.
 Conflicts default to keeping current data. Changing filters preserves choices;
 reinspection resets them. This is a preview only, with no Apply/Restore execution.
+**Check restore plan** repeats archive verification against the captured content
+identity, checks the latest library snapshot and validates every chosen action.
+Changes during checking discard the result; inspect again after archive/library
+changes. This is read-only preflight, not permission for a later unchecked write.
 It does not extract files or change the library. Cancel or closing Settings stops the check.
 
 This stage provides export and read-only inspection. Conflict-safe restore and

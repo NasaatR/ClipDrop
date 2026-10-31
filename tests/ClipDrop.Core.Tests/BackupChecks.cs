@@ -78,6 +78,30 @@ internal static class BackupChecks
         check(invalidChoice, "Restore drafts reject choices for unknown clip identities");
         invalidChoice = false; try { new BackupRestoreDraft(exact).Choose(text.Id, BackupChoice.UseBackup); } catch (ArgumentException) { invalidChoice = true; }
         check(invalidChoice, "Identical clips cannot acquire a meaningless overwrite action");
+        var verifiedPlan = BackupArchive.ValidatePlan(output, comparisonBytes, compared, proposed);
+        check(verifiedPlan is { Add: 0, Replace: 1, Restore: 1, Keep: 1 } && comparisonBytes.SequenceEqual(store.CaptureSnapshot(comparison)),
+            "Restore preflight revalidates archive bytes and current snapshot without changing the library");
+        var staleRejected = false;
+        try { BackupArchive.ValidatePlan(output, snapshot, compared, proposed); } catch (InvalidOperationException) { staleRejected = true; }
+        check(staleRejected, "A plan inspected against another live revision is rejected before restore readiness");
+        var alternate = StateStore.ReadSnapshot(snapshot); alternate.Items[0].Title = "Different verified archive";
+        var alternatePath = Path.Combine(root, "alternate.clipdrop.zip"); BackupArchive.Create(store.Root, store.CaptureSnapshot(alternate), alternatePath);
+        staleRejected = false;
+        try { BackupArchive.ValidatePlan(alternatePath, comparisonBytes, compared, proposed); } catch (InvalidOperationException) { staleRejected = true; }
+        check(staleRejected, "Replacing an archive with another valid archive cannot reuse an earlier restore draft");
+        var malformed = proposed.Clips.ToArray(); malformed[0] = malformed[0] with { Action = BackupPlannedAction.Add };
+        var badPlan = proposed with { Clips = malformed }; var invalidPlan = false;
+        try { BackupArchive.ValidatePlan(output, comparisonBytes, compared, badPlan); } catch (InvalidDataException) { invalidPlan = true; }
+        check(invalidPlan, "Preflight derives legal actions from verified current statuses rather than trusting draft actions");
+        invalidPlan = false;
+        try { BackupArchive.ValidatePlan(output, comparisonBytes, compared, proposed with { Replace = 99 }); } catch (InvalidDataException) { invalidPlan = true; }
+        check(invalidPlan, "Preflight rejects counts that do not match the actual per-clip choices");
+        malformed = proposed.Clips.ToArray(); malformed[1] = malformed[0]; invalidPlan = false;
+        try { BackupArchive.ValidatePlan(output, comparisonBytes, compared, proposed with { Clips = malformed }); } catch (InvalidDataException) { invalidPlan = true; }
+        check(invalidPlan, "Duplicate plan identities cannot hide an omitted clip choice");
+        var planCancelled = false;
+        try { BackupArchive.ValidatePlan("not-opened.zip", comparisonBytes, compared, proposed, new CancellationToken(true)); } catch (OperationCanceledException) { planCancelled = true; }
+        check(planCancelled && !File.Exists(Path.Combine(store.Root, "shelf.json")), "Cancelling plan validation performs no archive access or live metadata write");
         var several = StateStore.ReadSnapshot(snapshot);
         var severalText = several.Items.Single(i => i.Id == text.Id); severalText.Title = "Renamed clip"; severalText.KeepAfterUse = !severalText.KeepAfterUse;
         severalText.Clipboard!.Identity = "changed-format-identity";
@@ -157,6 +181,9 @@ internal static class BackupChecks
         { var entry = archive.GetEntry("assets/clipboard/" + hash + ".bin")!; entry.Delete(); using var stream = archive.CreateEntry("assets/clipboard/" + hash + ".bin").Open(); stream.Write(new byte[raw.Length]); }
         rejected = false; try { BackupArchive.Verify(damaged); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "Backup verification checks actual decompressed payload hashes rather than trusting ZIP metadata");
+        rejected = false;
+        try { BackupArchive.ValidatePlan(damaged, comparisonBytes, compared, proposed); } catch (InvalidDataException) { rejected = true; }
+        check(rejected, "An unchanged manifest fingerprint cannot bypass fresh payload checksum verification during plan recheck");
         using (var archive = ZipFile.Open(damaged, ZipArchiveMode.Update))
         {
             var entry = archive.GetEntry("manifest.json")!; System.Text.Json.Nodes.JsonNode manifest;

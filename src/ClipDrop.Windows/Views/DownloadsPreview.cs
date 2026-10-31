@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using ClipDrop.Core;
 using ClipDrop.Windows.Services;
@@ -41,6 +42,7 @@ public sealed class DownloadsPreview : Border
         // window or extreme width the preview can scroll instead of clipping.
         var body = new StackPanel(); body.Children.Add(new TextBlock { Text = "Downloads", FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(3, 0, 0, 5) });
         _files.SetResourceReference(ItemsControl.ItemContainerStyleProperty, "DownloadRowStyle");
+        _files.Resources[typeof(ScrollBar)] = FindResource("DownloadsScrollBarStyle");
         var template = new DataTemplate(); template.VisualTree = new FrameworkElementFactory(typeof(DownloadRowView)); _files.ItemTemplate = template;
         var names = new[] { "Moodboard — reference.webp", "Project layout.fig", "Product presentation.pdf", "Motion study.mp4", "Source images.zip", "Notes.txt" };
         _examples = names.Select((name, i) => new DownloadFile(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ClipDrop-preview", name), name, 184320 + i * 50000, DateTimeOffset.Now.AddMinutes(-i * 6))).ToArray();

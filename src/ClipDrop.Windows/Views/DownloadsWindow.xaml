@@ -16,6 +16,7 @@
      <Button x:Name="SourceButton" Content="Connect Chrome" Click="OnSource" HorizontalAlignment="Left" FontSize="11" Padding="7,4" MinHeight="26" Margin="0,5,0,0" Visibility="Collapsed"/>
     </StackPanel>
     <ListBox x:Name="Files" Grid.Row="2" SelectionMode="Extended" SelectionChanged="OnSelection" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" AutomationProperties.Name="Recent downloaded files" PreviewMouseLeftButtonDown="OnRowDown" PreviewMouseMove="OnRowMove" PreviewMouseLeftButtonUp="OnRowUp" PreviewMouseRightButtonUp="OnRowMenu">
+     <ListBox.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource DownloadsScrollBarStyle}"/></ListBox.Resources>
      <ListBox.ItemContainerStyle><StaticResource ResourceKey="DownloadRowStyle"/></ListBox.ItemContainerStyle>
      <ListBox.ItemTemplate><DataTemplate><views:DownloadRowView ShowFolderRequested="OnShowFolder"/></DataTemplate></ListBox.ItemTemplate>
     </ListBox>

@@ -18,6 +18,8 @@ public sealed record BackupClipComparison(string Id, string Title, BackupClipSta
 public sealed record BackupPreview(BackupSummary Summary, int NewClips, int IdenticalClips, int ChangedClips, int TrashedClips)
 {
     public IReadOnlyList<BackupClipComparison> Clips { get; init; } = Array.Empty<BackupClipComparison>();
+    public string ArchiveIdentity { get; init; } = "";
+    public string CurrentIdentity { get; init; } = "";
 }
 
 // Export/verify only. No extraction, live-library replacement or external-file
@@ -169,11 +171,16 @@ public static partial class BackupArchive
         cancellation.ThrowIfCancellationRequested();
         var current = StateStore.ReadSnapshot(currentSnapshot);
         var verified = VerifyContents(path, cancellation);
+        return Compare(verified.Summary, verified.State, current, verified.Identity, SnapshotIdentity(currentSnapshot), cancellation);
+    }
+    private static string SnapshotIdentity(byte[] snapshot) => Convert.ToHexString(SHA256.HashData(snapshot));
+    private static BackupPreview Compare(BackupSummary summary, ShelfState archived, ShelfState current, string archiveIdentity, string currentIdentity, CancellationToken cancellation)
+    {
         var active = current.Items.ToDictionary(i => i.Id, StringComparer.Ordinal);
         var trash = current.Trash.Select(t => t.Item.Id).ToHashSet(StringComparer.Ordinal);
         var fresh = 0; var identical = 0; var changed = 0; var trashed = 0;
-        var clips = new List<BackupClipComparison>(verified.State.Items.Count);
-        foreach (var item in verified.State.Items)
+        var clips = new List<BackupClipComparison>(archived.Items.Count);
+        foreach (var item in archived.Items)
         {
             cancellation.ThrowIfCancellationRequested();
             var status = BackupClipStatus.New;
@@ -190,9 +197,9 @@ public static partial class BackupArchive
             else fresh++;
             clips.Add(new(item.Id, item.Title, status, fields));
         }
-        return new(verified.Summary, fresh, identical, changed, trashed) { Clips = clips.AsReadOnly() };
+        return new(summary, fresh, identical, changed, trashed) { Clips = clips.AsReadOnly(), ArchiveIdentity = archiveIdentity, CurrentIdentity = currentIdentity };
     }
-    private static (BackupSummary Summary, ShelfState State) VerifyContents(string path, CancellationToken cancellation)
+    private static (BackupSummary Summary, ShelfState State, string Identity) VerifyContents(string path, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -203,7 +210,8 @@ public static partial class BackupArchive
             archive.Entries.Select(e => e.FullName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != archive.Entries.Count)
             throw new InvalidDataException("Invalid or duplicate backup entry paths.");
         var header = archive.GetEntry("manifest.json") ?? throw new InvalidDataException("Backup manifest is missing.");
-        var manifest = JsonSerializer.Deserialize<Manifest>(ReadEntry(header, MaximumManifest), Json) ?? throw new InvalidDataException("Backup manifest is empty.");
+        var headerBytes = ReadEntry(header, MaximumManifest);
+        var manifest = JsonSerializer.Deserialize<Manifest>(headerBytes, Json) ?? throw new InvalidDataException("Backup manifest is empty.");
         if (manifest.FormatVersion != 1) throw new NotSupportedException("This backup needs a newer ClipDrop.");
         if (manifest.SourceRoot is null || !Path.IsPathFullyQualified(manifest.SourceRoot) || manifest.Entries is null || manifest.Entries.Count is < 1 or > MaximumEntries ||
             manifest.Entries.Any(e => e is null || !SafeName(e.Name) || e.Name == "manifest.json" || e.Length < 0 || e.Length > MaximumAsset || e.Sha256 is null || e.Sha256.Length != 64 || !e.Sha256.All(Uri.IsHexDigit)) ||
@@ -227,6 +235,8 @@ public static partial class BackupArchive
             using var input = entry.Open(); var hash = CopyHash(input, null, item.Length, cancellation);
             if (!hash.Equals(item.Sha256, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("A backup payload failed its checksum.");
         }
-        return (new(state.Items.Count, state.Trash.Count, state.Panels.Count, names.Count - 1, manifest.Entries.Sum(e => e.Length)), state);
+        // The verified manifest commits to shelf.json and every payload hash.
+        // Fingerprint those bytes, not ZIP timestamps/compression or a path.
+        return (new(state.Items.Count, state.Trash.Count, state.Panels.Count, names.Count - 1, manifest.Entries.Sum(e => e.Length)), state, SnapshotIdentity(headerBytes));
     }
 }

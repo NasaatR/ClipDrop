@@ -21,7 +21,11 @@ internal static class BackupProbe
         state.Items.Add(new ShelfItem { Kind = ItemKind.Image, OwnedAsset = true, FilePath = assets.WriteImage(bytes), Title = "Original payload" });
         state.Items.Add(ShelfItem.FromText("Current unsaved UI revision — Пример"));
         var snapshotOnDispatcher = false;
-        var section = new BackupSection(store.Root, () => { snapshotOnDispatcher = library.Dispatcher.CheckAccess(); return store.CaptureSnapshot(state); });
+        Action? afterSnapshot = null;
+        var section = new BackupSection(store.Root, () => {
+            snapshotOnDispatcher = library.Dispatcher.CheckAccess(); var captured = store.CaptureSnapshot(state);
+            var hook = afterSnapshot; afterSnapshot = null; hook?.Invoke(); return captured;
+        });
         var host = new Window { Content = section, Width = 450, Height = 200, ShowInTaskbar = false, Left = 40, Top = 50 };
         host.SetResourceReference(Window.BackgroundProperty, "Surface"); host.SetResourceReference(Window.ForegroundProperty, "Ink"); section.Margin = new Thickness(14);
         host.Closed += (_, _) => section.Dispose();
@@ -68,7 +72,23 @@ internal static class BackupProbe
             UiProbe.Click(include); UiProbe.Click(include);
             check(UiProbe.Find<ComboBox>(comparisons, _ => true).SelectedIndex == 1,
                 "Filtering identical clips preserves the current preview choices");
+            var checkPlanButton = UiProbe.Find<Button>(section, b => b.Content as string == "Check restore plan");
+            UiProbe.Click(checkPlanButton);
+            check(UiProbe.Until(() => !section.IsExporting, 10000) && section.StatusText.Contains("Plan checked") && state.Items[1].Content == "Changed after archive",
+                "The real Check restore plan action verifies choices in the background without changing current content");
             UiProbe.CaptureWindow(host, Path.Combine(output, "backup-inspected-screen.png"));
+            var currentChoice = UiProbe.Find<ComboBox>(comparisons, _ => true);
+            afterSnapshot = () => host.Dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(() => currentChoice.SelectedIndex = 0));
+            var changedChoices = section.CheckPlan();
+            check(UiProbe.Until(() => changedChoices.IsCompleted, 10000) && changedChoices.GetAwaiter().GetResult() is null && section.StatusText.Contains("Choices changed"),
+                "Changing choices during archive IO discards the obsolete successful plan result");
+            afterSnapshot = () => state.Items[1].Content = "Changed during plan validation";
+            var changedLive = section.CheckPlan();
+            check(UiProbe.Until(() => changedLive.IsCompleted, 10000) && changedLive.GetAwaiter().GetResult() is null && section.StatusText.Contains("Library changed") && state.Items[1].Content == "Changed during plan validation",
+                "A live edit after capture cannot leave a stale plan marked checked");
+            var cancelPlan = section.CheckPlan(); section.Cancel();
+            check(UiProbe.Until(() => cancelPlan.IsCompleted, 10000) && cancelPlan.GetAwaiter().GetResult() is null && section.StatusText.Contains("cancelled"),
+                "Plan recheck cancellation releases controls and keeps the library unchanged");
             var bad = Path.Combine(root, "invalid-preview.clipdrop.zip"); File.WriteAllText(bad, "invalid archive");
             var invalid = section.InspectFrom(bad);
             check(UiProbe.Until(() => invalid.IsCompleted, 10000) && invalid.GetAwaiter().GetResult() is null && section.StatusText.Contains("failed"),

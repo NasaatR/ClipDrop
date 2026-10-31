@@ -98,7 +98,7 @@ internal static class PasteProbe
             UiProbe.RightClick(button);
             check(button.ContextMenu?.IsOpen == true && File.ReadAllText(received).Replace("\r\n", "\n") == expected.Replace("\r\n", "\n"), "Right clicking a pin opens actions without triggering another paste");
             var opened = button.ContextMenu!;
-            check(opened.Items.OfType<MenuItem>().Count() == 4 && opened.Items.OfType<MenuItem>().First().Tag as string == "Trash", "Clip actions start with Delete in a compact four-row menu");
+            check(opened.Items.OfType<MenuItem>().Count() == 4 && opened.Items.OfType<MenuItem>().Last().Tag as string == "Trash", "Compact clip actions end with Delete nearest the dock card");
             if (!GetWindowRect(hwnd, out var receiverRect)) throw new Exception("Receiver bounds unavailable");
             UiProbe.ClickAt(new Point(receiverRect.Right - 30, receiverRect.Top + 80));
             check(!opened.IsOpen && !PopupDismiss.HasObserver && GetForegroundWindow() == hwnd, "A real click in the external receiver dismisses the dock menu and releases its observer");

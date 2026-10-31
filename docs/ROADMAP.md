@@ -897,3 +897,22 @@ and test interruption/recovery before exposing Restore execution. Then content v
 - [x] Preserve issued1.3 assets; new native1.4.0/tagv1.4 and recent1.3 upgrade gate.
 
 Next remains5a2b2b2, the archive/state revalidation and recoverable restore transaction.
+
+
+## 1.5 Preview: near-card deletion, slim scrolling, validated restore choices
+
+- [x] Delete last in compact and expanded clip menus, dock popup attached above
+  the click point on the card with screen-edge fallback. Preserve group/Trash semantics and dismissal.
+- [x] Downloads-only8DIP scrollbar allocation,3DIP face/5DIP hover, full-width
+  transparent drag target and28DIP minimum height; share the file-list preview.
+- [x] Stage5a2b2b2a: bind inspection to verified manifest content and live snapshot
+  identities; recheck all payload checksums and freshly derive legal complete
+  actions/counts. Do not trust a path, timestamp or a previous verification alone.
+- [x] UI Check restore plan: snapshot on dispatcher, IO/validation off-thread,
+  final choice-version/live-state check, cancellation/disposal and honest status.
+  This is point-in-time preflight only, with no extraction or restore execution.
+
+Next5a2b2b2b: owned-asset destination validation/rebasing and cancellable staging.
+Then5a2b2b2c: recoverable atomic state commit, stale-draft refusal at the actual
+write boundary, interruption/rollback tests and Restore execution UI. Keep current
+settings/panels unless explicitly included in a later policy. Then content versions.

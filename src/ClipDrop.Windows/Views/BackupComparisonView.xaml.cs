@@ -48,13 +48,22 @@ public partial class BackupComparisonView : UserControl
     }
     private BackupRestoreDraft? _draft;
     private Row[] _rows = Array.Empty<Row>();
+    public int Version { get; private set; }
+    public event Action? ChoicesChanged;
+    public BackupActionPreview CapturePlan() => _draft?.Preview() ?? throw new InvalidOperationException("Inspect a backup before checking restore choices.");
     public BackupComparisonView() { InitializeComponent(); Visibility = Visibility.Collapsed; }
     public void Show(BackupPreview preview)
     {
-        _draft = new(preview); _rows = preview.Clips.Select(c => new Row(c, _draft, UpdatePlan)).ToArray();
+        var draft = _draft = new(preview); Version++;
+        _rows = preview.Clips.Select(c => new Row(c, draft, () => ChoiceUpdated(draft))).ToArray();
         Visibility = Visibility.Visible; ApplyFilter(); UpdatePlan();
     }
-    public void Clear() { _draft = null; _rows = Array.Empty<Row>(); Comparisons.ItemsSource = null; PlanSummary.Text = ""; Visibility = Visibility.Collapsed; }
+    public void Clear() { Version++; _draft = null; _rows = Array.Empty<Row>(); Comparisons.ItemsSource = null; PlanSummary.Text = ""; Visibility = Visibility.Collapsed; }
+    private void ChoiceUpdated(BackupRestoreDraft draft)
+    {
+        if (!ReferenceEquals(draft, _draft)) return;
+        Version++; UpdatePlan(); ChoicesChanged?.Invoke();
+    }
     private void OnFilter(object sender, RoutedEventArgs e) => ApplyFilter();
     private void UpdatePlan()
     {

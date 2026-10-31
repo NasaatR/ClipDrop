@@ -13,19 +13,24 @@ public sealed class BackupSection : StackPanel, IDisposable
     private readonly Func<byte[]> _snapshot;
     private readonly Button _create = new() { Content = "Create backup" };
     private readonly Button _inspect = new() { Content = "Inspect backup" };
+    private readonly Button _checkPlan = new() { Content = "Check restore plan", Visibility = Visibility.Collapsed };
     private readonly BackupComparisonView _comparison = new();
     private readonly TextBlock _details = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 6), Visibility = Visibility.Collapsed };
     private readonly Button _cancel = new() { Content = "Cancel", Visibility = Visibility.Collapsed };
     private readonly TextBlock _status = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 4) };
     private CancellationTokenSource? _stop;
     private bool _disposed;
+    private BackupPreview? _inspected;
+    private string? _inspectedPath;
     public bool IsExporting => _stop is not null;
     public string StatusText => _status.Text;
     public string ComparisonText => _details.Text;
     public BackupSection(string root, Func<byte[]> snapshot)
     {
         _root = root; _snapshot = snapshot;
-        var actions = new WrapPanel(); actions.Children.Add(_create); actions.Children.Add(_inspect); actions.Children.Add(_cancel); Children.Add(actions);
+        var actions = new WrapPanel(); actions.Children.Add(_create); actions.Children.Add(_inspect); actions.Children.Add(_checkPlan); actions.Children.Add(_cancel); Children.Add(actions);
+        _checkPlan.Click += async (_, _) => await CheckPlan();
+        _comparison.ChoicesChanged += () => { if (!_disposed && !IsExporting) _status.Text = "Choices changed · check restore plan again"; };
         _status.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(_status); Children.Add(_details); Children.Add(_comparison);
         var hint = new TextBlock { Text = "Includes clips, Trash, saved panels, clipboard content and styles. External files stay as references and are not copied. Each backup uses a new filename to keep earlier copies.", FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 4) };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(hint);
@@ -45,7 +50,7 @@ public sealed class BackupSection : StackPanel, IDisposable
         Dispatcher.VerifyAccess();
         if (_disposed || IsExporting) return Task.FromResult<BackupSummary?>(null);
         var stop = new CancellationTokenSource(); _stop = stop;
-        _comparison.Clear();
+        ClearInspection();
         _create.IsEnabled = _inspect.IsEnabled = false; _details.Visibility = Visibility.Collapsed; _cancel.Visibility = Visibility.Visible; _status.Text = "Preparing backup…";
         // Enter through the dispatcher even for a direct API call from an STA
         // thread without an ambient SynchronizationContext (including probes).
@@ -85,7 +90,7 @@ public sealed class BackupSection : StackPanel, IDisposable
         Dispatcher.VerifyAccess();
         if (_disposed || IsExporting) return Task.FromResult<BackupSummary?>(null);
         var stop = new CancellationTokenSource(); _stop = stop;
-        _comparison.Clear();
+        ClearInspection();
         _create.IsEnabled = _inspect.IsEnabled = false; _details.Visibility = Visibility.Collapsed;
         _cancel.Visibility = Visibility.Visible; _status.Text = "Checking backup integrity…";
         return Dispatcher.InvokeAsync(() => InspectOnDispatcher(path, stop)).Task.Unwrap();
@@ -103,6 +108,7 @@ public sealed class BackupSection : StackPanel, IDisposable
                 _status.Text = "Backup verified · library unchanged";
                 _details.Text = $"{summary.Clips} clips · {summary.Trashed} in Trash · {summary.Panels} saved panels\n{summary.Assets} managed assets · {summary.Bytes / 1048576d:0.##} MB verified\nActive clip IDs compared at check start:\n{preview.NewClips} new · {preview.IdenticalClips} identical · {preview.ChangedClips} changed metadata · {preview.TrashedClips} already in Trash\nExternal files remain references. No restore or overwrite performed.";
                 _details.Visibility = Visibility.Visible;
+                _inspected = preview; _inspectedPath = path; _checkPlan.Visibility = Visibility.Visible;
                 _comparison.Show(preview);
             }
             return summary;
@@ -116,6 +122,42 @@ public sealed class BackupSection : StackPanel, IDisposable
             stop.Dispose();
         }
     }
+    private void ClearInspection()
+    { _inspected = null; _inspectedPath = null; _checkPlan.Visibility = Visibility.Collapsed; _comparison.Clear(); }
+    public Task<BackupActionPreview?> CheckPlan()
+    {
+        Dispatcher.VerifyAccess();
+        var inspected = _inspected; var path = _inspectedPath;
+        if (_disposed || IsExporting || inspected is null || path is null) return Task.FromResult<BackupActionPreview?>(null);
+        var stop = new CancellationTokenSource(); _stop = stop;
+        _create.IsEnabled = _inspect.IsEnabled = _checkPlan.IsEnabled = false;
+        _cancel.Visibility = Visibility.Visible; _status.Text = "Rechecking archive and restore choices…";
+        return Dispatcher.InvokeAsync(() => CheckPlanOnDispatcher(path, inspected, stop)).Task.Unwrap();
+    }
+    private async Task<BackupActionPreview?> CheckPlanOnDispatcher(string path, BackupPreview inspected, CancellationTokenSource stop)
+    {
+        try
+        {
+            stop.Token.ThrowIfCancellationRequested();
+            var current = _snapshot(); var plan = _comparison.CapturePlan(); var version = _comparison.Version;
+            var verified = await Task.Run(() => BackupArchive.ValidatePlan(path, current, inspected, plan, stop.Token), stop.Token);
+            stop.Token.ThrowIfCancellationRequested();
+            if (_disposed) return null;
+            if (version != _comparison.Version) { _status.Text = "Choices changed during check · check the plan again"; return null; }
+            if (Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(_snapshot())) != inspected.CurrentIdentity)
+            { _status.Text = "Library changed during check · inspect the backup again"; return null; }
+            _status.Text = $"Plan checked · {verified.Add} add · {verified.Replace} replace · {verified.Restore} restore · nothing applied";
+            return verified;
+        }
+        catch (OperationCanceledException) { if (!_disposed) _status.Text = "Plan check cancelled · library unchanged"; return null; }
+        catch (Exception ex) { if (!_disposed) _status.Text = "Plan check failed · " + ex.Message; return null; }
+        finally
+        {
+            if (ReferenceEquals(_stop, stop)) _stop = null;
+            if (!_disposed) { _create.IsEnabled = _inspect.IsEnabled = _checkPlan.IsEnabled = true; _cancel.Visibility = Visibility.Collapsed; }
+            stop.Dispose();
+        }
+    }
     public void Cancel() => _stop?.Cancel();
-    public void Dispose() { if (_disposed) return; _disposed = true; _stop?.Cancel(); _comparison.Clear(); }
+    public void Dispose() { if (_disposed) return; _disposed = true; _stop?.Cancel(); ClearInspection(); }
 }
