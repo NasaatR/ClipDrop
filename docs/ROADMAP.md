@@ -846,3 +846,22 @@ User priority: stronger hover without pointer lag or trailing old rows.
 
 Next5a2b2: detailed conflict choice and recoverable restore transaction; preserve
 existing safe export/verification, original files and the unchanged data schema.
+
+## 1.2 Preview: one hover surface and individual backup differences
+
+- [x] Remove inset hover wash and accent stripe. Highlight the entire Downloads
+  card immediately, including when switching directly between adjacent rows.
+  Selected cards retain their selected fill; keyboard focus remains distinct.
+- [x] Keep icon-only motion independent of panel disclosure: 60ms entry/40ms
+  exit, interruption/recycling guards, no layout animation or added render loop.
+  Eliminate the extra opacity animation and visual layer from each hover.
+- [x] Extend stage5a2b2a with a read-only per-clip difference list: new, identical,
+  changed metadata or already in Trash; list exact changed metadata fields.
+  Default to differences, with optional identical entries in a bounded recycling
+  viewport. Clear old results before another check, failure, cancellation or close.
+- [x] Add direct pointer-switch/native presentation checks and detailed comparison
+  checks; retain full Windows, Chrome, packaging and upgrade gates.
+
+Next5a2b2b: conflict choices and a recoverable restore/merge transaction. Revalidate
+the archive and current library before any future write; the displayed comparison
+is a snapshot, not a restore authorization or a guarantee about external files.

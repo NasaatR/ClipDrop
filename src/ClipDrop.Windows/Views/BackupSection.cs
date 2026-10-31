@@ -13,6 +13,7 @@ public sealed class BackupSection : StackPanel, IDisposable
     private readonly Func<byte[]> _snapshot;
     private readonly Button _create = new() { Content = "Create backup" };
     private readonly Button _inspect = new() { Content = "Inspect backup" };
+    private readonly BackupComparisonView _comparison = new();
     private readonly TextBlock _details = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 6), Visibility = Visibility.Collapsed };
     private readonly Button _cancel = new() { Content = "Cancel", Visibility = Visibility.Collapsed };
     private readonly TextBlock _status = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 4) };
@@ -25,7 +26,7 @@ public sealed class BackupSection : StackPanel, IDisposable
     {
         _root = root; _snapshot = snapshot;
         var actions = new WrapPanel(); actions.Children.Add(_create); actions.Children.Add(_inspect); actions.Children.Add(_cancel); Children.Add(actions);
-        _status.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(_status); Children.Add(_details);
+        _status.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(_status); Children.Add(_details); Children.Add(_comparison);
         var hint = new TextBlock { Text = "Includes clips, Trash, saved panels, clipboard content and styles. External files stay as references and are not copied. Each backup uses a new filename to keep earlier copies.", FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 4) };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); Children.Add(hint);
         _inspect.Click += async (_, _) => {
@@ -44,6 +45,7 @@ public sealed class BackupSection : StackPanel, IDisposable
         Dispatcher.VerifyAccess();
         if (_disposed || IsExporting) return Task.FromResult<BackupSummary?>(null);
         var stop = new CancellationTokenSource(); _stop = stop;
+        _comparison.Clear();
         _create.IsEnabled = _inspect.IsEnabled = false; _details.Visibility = Visibility.Collapsed; _cancel.Visibility = Visibility.Visible; _status.Text = "Preparing backup…";
         // Enter through the dispatcher even for a direct API call from an STA
         // thread without an ambient SynchronizationContext (including probes).
@@ -83,6 +85,7 @@ public sealed class BackupSection : StackPanel, IDisposable
         Dispatcher.VerifyAccess();
         if (_disposed || IsExporting) return Task.FromResult<BackupSummary?>(null);
         var stop = new CancellationTokenSource(); _stop = stop;
+        _comparison.Clear();
         _create.IsEnabled = _inspect.IsEnabled = false; _details.Visibility = Visibility.Collapsed;
         _cancel.Visibility = Visibility.Visible; _status.Text = "Checking backup integrity…";
         return Dispatcher.InvokeAsync(() => InspectOnDispatcher(path, stop)).Task.Unwrap();
@@ -100,6 +103,7 @@ public sealed class BackupSection : StackPanel, IDisposable
                 _status.Text = "Backup verified · library unchanged";
                 _details.Text = $"{summary.Clips} clips · {summary.Trashed} in Trash · {summary.Panels} saved panels\n{summary.Assets} managed assets · {summary.Bytes / 1048576d:0.##} MB verified\nActive clip IDs compared at check start:\n{preview.NewClips} new · {preview.IdenticalClips} identical · {preview.ChangedClips} changed metadata · {preview.TrashedClips} already in Trash\nExternal files remain references. No restore or overwrite performed.";
                 _details.Visibility = Visibility.Visible;
+                _comparison.Show(preview);
             }
             return summary;
         }
@@ -113,5 +117,5 @@ public sealed class BackupSection : StackPanel, IDisposable
         }
     }
     public void Cancel() => _stop?.Cancel();
-    public void Dispose() { if (_disposed) return; _disposed = true; _stop?.Cancel(); }
+    public void Dispose() { if (_disposed) return; _disposed = true; _stop?.Cancel(); _comparison.Clear(); }
 }

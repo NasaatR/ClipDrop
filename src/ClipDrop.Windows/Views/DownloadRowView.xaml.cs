@@ -39,7 +39,7 @@ public partial class DownloadRowView : UserControl
     {
         var active = _hoverParent is { } row && (row.IsMouseOver ||
             row.IsKeyboardFocusWithin && _hoverOwner?.IsMouseOver != true);
-        Motion.RowHover(PreviewGraphic, HoverWash, active);
+        Motion.RowHover(PreviewGraphic, active);
     }
     private void OnFolder(object sender, RoutedEventArgs e)
     { e.Handled = true; RaiseEvent(new RoutedEventArgs(ShowFolderRequestedEvent, this)); }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using ClipDrop.Core;
 using ClipDrop.Windows;
@@ -39,11 +40,28 @@ internal static class BackupProbe
                 "Inspect backup verifies integrity and previews counts off-thread without replacing the live library");
             check(!File.Exists(Path.Combine(store.Root, "shelf.json")) && state.Items.Count == 2, "Backup inspection never creates live metadata or changes clips");
             check(section.ComparisonText.Contains("0 new · 2 identical · 0 changed metadata · 0 already in Trash"), "Backup UI shows the verified comparison against a captured current-state snapshot");
-            host.Height = 350; UiProbe.CaptureWindow(host, Path.Combine(output, "backup-inspected-screen.png"));
+            host.Height = 490; UiProbe.Pump();
+            var comparisons = UiProbe.Find<ListBox>(section, list => list.Name == "Comparisons");
+            var include = UiProbe.Find<CheckBox>(section, box => box.Name == "IncludeIdentical");
+            check(comparisons.Items.Count == 0 && UiProbe.Find<TextBlock>(section, t => t.Name == "Empty").IsVisible,
+                "Identical backups show a compact no-differences state by default");
+            UiProbe.Click(include);
+            check(comparisons.Items.Count == 2 && UiProbe.Find<TextBlock>(comparisons, t => t.Text == "Identical recorded metadata").IsVisible,
+                "Including identical clips reveals real per-clip metadata rows");
+            UiProbe.Click(include); state.Items[1].Content = "Changed after archive";
+            var differences = section.InspectFrom(path);
+            check(UiProbe.Until(() => differences.IsCompleted, 10000) && differences.GetAwaiter().GetResult() is not null && comparisons.Items.Count == 1,
+                "Inspection filters the verified archive to changed clips");
+            UiProbe.Pump();
+            check(UiProbe.Find<TextBlock>(comparisons, t => t.Text == "Changed metadata · Text").IsVisible,
+                "Inspection names the changed clip and exact metadata field without mutating the live text");
+            check(state.Items[1].Content == "Changed after archive", "Read-only conflict details preserve the current edited clip");
+            UiProbe.CaptureWindow(host, Path.Combine(output, "backup-inspected-screen.png"));
             var bad = Path.Combine(root, "invalid-preview.clipdrop.zip"); File.WriteAllText(bad, "invalid archive");
             var invalid = section.InspectFrom(bad);
             check(UiProbe.Until(() => invalid.IsCompleted, 10000) && invalid.GetAwaiter().GetResult() is null && section.StatusText.Contains("failed"),
                 "Invalid backup previews fail visibly without touching library data");
+            check(comparisons.Items.Count == 0 && !comparisons.IsVisible, "A failed inspection cannot leave an old archive's conflict rows visible");
             var cancelledInspect = section.InspectFrom(path); section.Cancel();
             check(UiProbe.Until(() => cancelledInspect.IsCompleted, 10000) && cancelledInspect.GetAwaiter().GetResult() is null && section.StatusText.Contains("cancelled") && state.Items.Count == 2,
                 "Cancelling an inspection restores ready controls without changing the library");

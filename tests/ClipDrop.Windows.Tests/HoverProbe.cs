@@ -38,6 +38,8 @@ internal static class HoverProbe
             var entered = new Stopwatch(); row.MouseEnter += (_, _) => entered.Restart();
             UiProbe.MoveTo(row.PointToScreen(new Point(row.ActualWidth / 2, row.ActualHeight / 2)), 1);
             check(UiProbe.Until(() => row.IsMouseOver, 500), "A real pointer enters the hover response fixture");
+            var surface = (Border)row.Template.FindName("Row", row);
+            check(ReferenceEquals(surface.Background, row.FindResource("Hover")), "The entire download card responds immediately to the pointer");
             if (Motion.Allowed)
             {
                 check(UiProbe.Until(() => Scale(icon) >= 1.06, 200) && entered.ElapsedMilliseconds <= 100,
@@ -56,10 +58,15 @@ internal static class HoverProbe
                 var next = UiProbe.Find<ListBoxItem>(list, r => list.ItemContainerGenerator.IndexFromContainer(r) == 3); UiProbe.Hover(next); UiProbe.Pump(120);
                 check(row.IsKeyboardFocusWithin && Scale(icon) == 1,
                     "Keyboard focus does not hold a second icon hover while the pointer moves through other rows");
+                var previous = next;
                 for (var index = 4; index < 8; index++)
                 {
                     var sweep = UiProbe.Find<ListBoxItem>(list, r => list.ItemContainerGenerator.IndexFromContainer(r) == index);
-                    UiProbe.MoveTo(sweep.PointToScreen(new Point(sweep.ActualWidth / 2, sweep.ActualHeight / 2)), 12);
+                    UiProbe.MoveTo(sweep.PointToScreen(new Point(sweep.ActualWidth / 2, sweep.ActualHeight / 2)), 1);
+                    check(sweep.IsMouseOver && ReferenceEquals(((Border)sweep.Template.FindName("Row", sweep)).Background, sweep.FindResource("Hover")) &&
+                        !ReferenceEquals(((Border)previous.Template.FindName("Row", previous)).Background, previous.FindResource("Hover")),
+                        "A direct row switch transfers full-card feedback without waiting for icon animation");
+                    previous = sweep;
                 }
                 UiProbe.Hover(header); UiProbe.Pump(100);
                 check(Enumerable.Range(0, 8).Select(i => list.ItemContainerGenerator.ContainerFromIndex(i)).OfType<ListBoxItem>().Where(r => !r.IsKeyboardFocusWithin)

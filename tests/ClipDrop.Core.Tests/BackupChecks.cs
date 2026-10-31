@@ -58,8 +58,20 @@ internal static class BackupChecks
         var compared = BackupArchive.Preview(output, comparisonBytes);
         check(compared.NewClips == 1 && compared.ChangedClips == 1 && compared.TrashedClips == 1 && compared.IdenticalClips == 0 && compared.Summary == result,
             "Restore preview distinguishes new IDs, changed metadata and active backup clips already in live Trash");
+        check(exact.Clips.Count == 3 && exact.Clips.All(c => c.Status == BackupClipStatus.Identical && c.ChangedFields.Count == 0),
+            "Identical backup clips retain individual identities without invented metadata conflicts");
+        check(compared.Clips.Single(c => c.Id == text.Id) is { Status: BackupClipStatus.ChangedMetadata } changedClip && changedClip.Title == text.Title &&
+            changedClip.ChangedFields.SequenceEqual(new[] { "Content" }) && compared.Clips.Single(c => c.Id == external.Id).Status == BackupClipStatus.New &&
+            compared.Clips.Single(c => c.Id == image.Id).Status == BackupClipStatus.InTrash,
+            "Per-clip comparison names the exact changed field and separates new and trashed identities");
         check(comparisonBytes.SequenceEqual(store.CaptureSnapshot(comparison)) && !File.Exists(Path.Combine(store.Root, "shelf.json")),
             "Comparison keeps captured live state and source shelf metadata untouched");
+        var several = StateStore.ReadSnapshot(snapshot);
+        var severalText = several.Items.Single(i => i.Id == text.Id); severalText.Title = "Renamed clip"; severalText.KeepAfterUse = !severalText.KeepAfterUse;
+        severalText.Clipboard!.Identity = "changed-format-identity";
+        var severalResult = BackupArchive.Preview(output, store.CaptureSnapshot(several)).Clips.Single(c => c.Id == text.Id);
+        check(severalResult.Status == BackupClipStatus.ChangedMetadata && severalResult.ChangedFields.ToHashSet().SetEquals(new[] { "Title", "KeepAfterUse", "Clipboard" }),
+            "Comparison lists multiple changed metadata fields including protection and opaque clipboard identity");
         var before = File.ReadAllBytes(output); var cancelled = false;
         var zip64Path = Path.Combine(root, "zip64-preview.clipdrop.zip");
         using (var file = File.Create(zip64Path))
