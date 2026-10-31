@@ -27,7 +27,15 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 0.18.0
+## Features in 0.19.0
+
+- A right-side **Show in Explorer** folder button appears on download-row hover or
+  keyboard focus without moving the filename. Both this button and the context
+  menu open the containing folder in the system default file manager; explicit
+  Windows Explorer file selection is available in Settings.
+- Downloads Settings has a persistent 1:1 sample above the scrolling controls,
+  using the same row component as the floating panel. Row spacing (0–12, default4),
+  completion-time visibility and an always-visible folder action update live.
 
 - Drag the dock by Save as well as free space; drag Downloads by its icon or
   header actions. A short release clicks normally; a drag cancels the action.
@@ -231,9 +239,16 @@ through. Drag the icon itself, a header action, or free background to move it;
 a drag never also clicks. Files retain their normal outgoing drag. The list
 defaults to **272 DIP** wide and ten visible rows. **Settings → Downloads**
 changes width (220–480), rows (4–20), row height (28–52) and icon size (32–64),
-with a layout-only reset. Every copy updates live and fits its own work area.
+plus spacing (0–12), completion-time visibility and an always-visible folder action.
+The layout reset preserves source, display modes and file-manager preference. Every
+copy updates live and fits its own work area. A pinned synthetic sample stays
+visible while controls scroll or the floating panel is hidden. It shows 2–3 rows
+at actual size plus the configured full geometry/row limit, without reading your
+files or launching applications.
 
-Default rows are **34 DIP**, with a 24-DIP preview, filename and short completion time.
+Default rows are **34 DIP** with a **4-DIP gap**, a 24-DIP preview, filename and
+optional short completion time. A reserved right-side folder action appears on
+hover/focus, so names do not shift. Its emoji can be replaced in Settings → Icons.
 The normal-sized window fits at least ten rows; scroll to older files. Full path,
 size and timestamp are in the tooltip. There is no checkbox column or permanent
 bottom action bar. The list reuses unchanged rows and the shared thumbnail cache.
@@ -243,6 +258,12 @@ For a group, click then Ctrl/Shift-click other rows and drag a selected row.
 Right-click the capsule → **Select all** also works without selection widgets.
 Dragging an unselected row transfers only that row. Double-click opens a file;
 right-click offers **Copy**, **Save to Library**, **Open** and **Show in Explorer**.
+**Show in Explorer** opens the parent folder through the configured Windows folder
+handler, including File Pilot when registered for folder opening. It does not run
+the downloaded file. Third-party file selection has no generic shell contract;
+choose **Windows Explorer · select file** in Settings → Downloads if needed.
+ClipDrop does not change system associations.
+
 Copy keeps native file clipboard formats, and Save adds Library references without
 pinning. Originals remain in place. Downloads never applies clip-use Trash cleanup.
 

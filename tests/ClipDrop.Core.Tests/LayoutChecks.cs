@@ -14,8 +14,18 @@ internal static class LayoutChecks
         check(settings.DownloadsWidth == 272,
             "Downloads starts with a compact configurable 272-DIP width");
         var compact = SurfaceSizing.Downloads(settings);
-        check(compact.Width == 272 && compact.Rows == 10 && compact.RowHeight == 34 && compact.IconSize == 44 && compact.Height == 474,
+        check(compact.Width == 272 && compact.Rows == 10 && compact.RowHeight == 34 && compact.IconSize == 44 && compact.Height == 514,
             "Default Downloads geometry uses one 44-DIP icon and a ten-row compact list");
+        check(compact.RowSpacing == 4 && compact.RowStride == 38 && settings.DownloadsShowTime && !settings.DownloadsAlwaysShowFolder && settings.DownloadsRevealMode == "Default",
+            "Downloads defaults separate rows and use hover folder actions with the system default manager");
+        var zeroGap = new ShelfSettings { DownloadsRowSpacing = 0, DownloadsShowTime = false, DownloadsAlwaysShowFolder = true, DownloadsRevealMode = "WindowsExplorer" };
+        var gapCopy = StateStore.ReadSnapshot(JsonSerializer.SerializeToUtf8Bytes(new ShelfState { Settings = zeroGap })).Settings;
+        check(SurfaceSizing.Downloads(gapCopy).RowSpacing == 0 && !gapCopy.DownloadsShowTime && gapCopy.DownloadsAlwaysShowFolder && gapCopy.DownloadsRevealMode == "WindowsExplorer",
+            "Explicit zero row spacing, hidden time and file-manager preference survive persistence");
+        AppearanceStyle.BuiltIns[0].Style.CopyTo(gapCopy);
+        check(gapCopy.DownloadsRowSpacing == 0 && !gapCopy.DownloadsShowTime && gapCopy.DownloadsRevealMode == "WindowsExplorer", "Appearance presets preserve Downloads visibility and file-manager choices");
+        check(SurfaceSizing.Downloads(new ShelfSettings { DownloadsRowSpacing = double.NaN }).RowSpacing == 4 && SurfaceSizing.Downloads(new ShelfSettings { DownloadsRowSpacing = 100 }).RowSpacing == 12 && SurfaceSizing.Downloads(new ShelfSettings { DownloadsRowSpacing = -1 }).RowSpacing == 0,
+            "Nonfinite and extreme Downloads row gaps are bounded before calculating geometry");
         var customLayout = new ShelfState(); customLayout.Settings.DownloadsWidth = 240; customLayout.Settings.DownloadsRows = 6;
         customLayout.Settings.DownloadsRowHeight = 28; customLayout.Settings.DownloadsIconSize = 32;
         customLayout.Settings.MotionDuration = 350; customLayout.Settings.MotionStyle = "Soft";
@@ -115,11 +125,11 @@ internal static class LayoutChecks
         check(upgraded.Settings.MirrorDownloads && upgraded.Settings.DownloadsLayouts.Count == 0 &&
             upgraded.Settings.DownloadsLayout.DisplayId == b.Id && upgraded.Settings.DownloadsLayout.OffsetX == 0,
             "An actual older schema-7 snapshot gains Downloads mirroring while retaining its original anchor");
-        foreach (var field in new[] { "DownloadsWidth", "DownloadsRows", "DownloadsRowHeight", "DownloadsIconSize", "MotionDuration", "MotionStyle", "DockMaxWidth" })
+        foreach (var field in new[] { "DownloadsWidth", "DownloadsRows", "DownloadsRowHeight", "DownloadsIconSize", "DownloadsRowSpacing", "DownloadsShowTime", "DownloadsAlwaysShowFolder", "DownloadsRevealMode", "MotionDuration", "MotionStyle", "DockMaxWidth" })
             legacyJson["Settings"]!.AsObject().Remove(field);
         var compactUpgrade = StateStore.ReadSnapshot(System.Text.Encoding.UTF8.GetBytes(legacyJson.ToJsonString()));
         check(SurfaceSizing.Downloads(compactUpgrade.Settings).Width == 272 && compactUpgrade.Settings.MotionDuration == 240 &&
-            compactUpgrade.Settings.MotionStyle == "Spring" && compactUpgrade.Settings.DockMaxWidth == 640 && compactUpgrade.Settings.DownloadsLayout.DisplayId == b.Id,
+            compactUpgrade.Settings.DownloadsRowSpacing == 4 && compactUpgrade.Settings.DownloadsShowTime && !compactUpgrade.Settings.DownloadsAlwaysShowFolder && compactUpgrade.Settings.DownloadsRevealMode == "Default" && compactUpgrade.Settings.MotionStyle == "Spring" && compactUpgrade.Settings.DockMaxWidth == 640 && compactUpgrade.Settings.DownloadsLayout.DisplayId == b.Id,
             "Older schema-7 snapshots gain compact motion/layout defaults without replacing existing display anchors");
         foreach (var bad in new[] { "null", "[{\"DisplayId\":\"x\"},{\"DisplayId\":\"X\"}]", "[{\"DisplayId\":\"x\",\"OffsetX\":100001}]" })
         {

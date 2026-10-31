@@ -20,7 +20,7 @@ public sealed class AppIcon : Grid
         ("Reveal", "Open in app", "↗️"), ("Restore", "Restore", "♻️"), ("Grip", "Move panel", "↔️"),
         ("Hide", "Hide dock", "👁️"), ("Keep", "Keep after use", "📌"), ("Select", "Select clips", "☑️"),
         ("Panels", "Saved panels", "🗃️"),
-        ("Downloads", "Downloads stack", "📂"),
+        ("Downloads", "Downloads stack", "📂"), ("ShowFolder", "Show in Explorer", "📁"),
         ("Play", "Play", "▶️"), ("Pause", "Pause", "⏸️")
     };
     public static readonly DependencyProperty KindProperty = DependencyProperty.Register(nameof(Kind), typeof(string), typeof(AppIcon), new PropertyMetadata("File"));

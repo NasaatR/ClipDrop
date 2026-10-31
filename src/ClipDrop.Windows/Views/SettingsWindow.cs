@@ -32,10 +32,11 @@ public sealed class SettingsWindow : Window
     private WrapPanel? _fields;
     private readonly List<FrameworkElement> _fieldBoxes = new();
     public DockStrip Preview { get; } = new();
+    public DownloadsPreview DownloadPreview { get; } = new() { Visibility = Visibility.Collapsed };
 
     public SettingsWindow(ShelfSettings settings, Action changed, Func<bool> save, Func<string> report, string dataRoot, DockCoordinator? docks = null, Func<byte[]>? captureBackup = null)
     {
-        _settings = settings; _changed = () => { changed(); Topmost = settings.AlwaysOnTop; Preview.Apply(settings); UpdatePreviewOpacity(); }; _section = _panel;
+        _settings = settings; _changed = () => { changed(); Topmost = settings.AlwaysOnTop; Preview.Apply(settings); DownloadPreview.Apply(settings); UpdatePreviewOpacity(); }; _section = _panel;
         Topmost = settings.AlwaysOnTop; Title = "ClipDrop settings"; Width = 820; Height = 780; MinWidth = 560; MinHeight = 480;
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Ink");
@@ -54,6 +55,7 @@ public sealed class SettingsWindow : Window
         heading.Children.Add(new TextBlock { Text = "ClipDrop " + Diagnostics.Version, FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 10) });
         _notice.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); heading.Children.Add(_notice);
         var nav = new WrapPanel(); heading.Children.Add(nav);
+        DownloadPreview.Apply(settings); DockPanel.SetDock(DownloadPreview, Dock.Top); layout.Children.Add(DownloadPreview);
         var scroll = _scroll = new ScrollViewer { Content = _panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         var footer = new TextBlock { Text = "Made by Nasaat", FontSize = 11, Margin = new Thickness(18, 8, 18, 12) };
         footer.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer);
@@ -172,8 +174,13 @@ public sealed class SettingsWindow : Window
         Range("Visible rows", () => settings.DownloadsRows, 4, 20, value => settings.DownloadsRows = value, false);
         Range("Download row height", () => settings.DownloadsRowHeight, 28, 52, value => settings.DownloadsRowHeight = value, false, 2, "px");
         Range("Downloads icon size", () => settings.DownloadsIconSize, 32, 64, value => settings.DownloadsIconSize = value, false, 2, "px");
+        Range("Space between rows", () => settings.DownloadsRowSpacing, 0, 12, value => settings.DownloadsRowSpacing = value, false, 1, "px");
+        Check("Show download time", () => settings.DownloadsShowTime, value => settings.DownloadsShowTime = value, false);
+        Check("Always show folder button", () => settings.DownloadsAlwaysShowFolder, value => settings.DownloadsAlwaysShowFolder = value, false);
+        Choice("Show in Explorer", () => settings.DownloadsRevealMode, new[] { "Default", "WindowsExplorer" }, new[] { "Default file manager", "Windows Explorer · select file" }, value => settings.DownloadsRevealMode = value, false);
+        Hint("Default file manager opens the containing folder using your Windows folder association, including configured File Pilot. Selecting a file is specific to the manager; the Explorer option selects it in Windows Explorer.");
         var resetDownloads = new Button { Content = "Reset Downloads layout", HorizontalAlignment = HorizontalAlignment.Left };
-        resetDownloads.Click += (_, _) => { settings.DownloadsWidth = 272; settings.DownloadsRows = 10; settings.DownloadsRowHeight = 34; settings.DownloadsIconSize = 44; Change(false); foreach (var sync in _syncControls) sync(); };
+        resetDownloads.Click += (_, _) => { settings.DownloadsWidth = 272; settings.DownloadsRows = 10; settings.DownloadsRowHeight = 34; settings.DownloadsIconSize = 44; settings.DownloadsRowSpacing = 4; settings.DownloadsShowTime = true; settings.DownloadsAlwaysShowFolder = false; Change(false); foreach (var sync in _syncControls) sync(); };
         _section.Children.Add(resetDownloads);
         Hint("One icon · click to open, drag it to move. Width and density update every copy; small screens still clamp the window. Values are logical pixels.");
         Check("Downloads stack", () => settings.DownloadsEnabled, value => settings.DownloadsEnabled = value, false);
@@ -248,7 +255,7 @@ public sealed class SettingsWindow : Window
             var width = Math.Max(210, (scroll.ActualWidth - 36 - 28 - 24 - 10) / 2);
             foreach (var field in _fieldBoxes) field.Width = width;
         }
-        SizeChanged += (_, _) => FitFields(); Loaded += (_, _) => {
+        SizeChanged += (_, _) => { FitFields(); DownloadPreview.Fit(ActualHeight); }; Loaded += (_, _) => {
             var area = WindowPlacement.WorkArea(this);
             Width = Math.Max(MinWidth, Math.Min(Width, area.Width)); Height = Math.Max(MinHeight, Math.Min(Height, area.Height));
             WindowPlacement.Clamp(this); FitFields();
@@ -311,6 +318,7 @@ public sealed class SettingsWindow : Window
     {
         if (!_sections.ContainsKey(name)) return;
         SelectedSection = name;
+        DownloadPreview.Visibility = name == "Downloads" ? Visibility.Visible : Visibility.Collapsed;
         foreach (var pair in _sections)
         {
             var active = pair.Key == name;

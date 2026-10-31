@@ -15,7 +15,7 @@ public sealed partial class DockCoordinator
     private string DownloadsSignature()
     {
         var s = _session.State.Settings; var l = s.DownloadsLayout;
-        return $"|downloads:{s.DownloadsEnabled}:{s.MirrorDownloads}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{s.DownloadsWidth}:{s.DownloadsRows}:{s.DownloadsRowHeight}:{s.DownloadsIconSize}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}|" +
+        return $"|downloads:{s.DownloadsEnabled}:{s.MirrorDownloads}:{s.EffectiveDownloadsSource}:{s.DownloadsFolder}:{s.DownloadsWidth}:{s.DownloadsRows}:{s.DownloadsRowHeight}:{s.DownloadsRowSpacing}:{s.DownloadsIconSize}:{l.DisplayId}:{l.Visible}:{l.OffsetX}:{l.OffsetY}|" +
             string.Join(";", s.DownloadsLayouts.Select(d => $"{d.DisplayId}:{d.Visible}:{d.OffsetX}:{d.OffsetY}"));
     }
     public void OpenDownloads()

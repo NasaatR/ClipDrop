@@ -87,13 +87,17 @@ internal static class InteractionProbe
                 var rows = UiProbe.Find<NumberField>(settings, f => f.Label == "Visible rows"); rows.Input.Text = "6"; rows.Commit();
                 var height = UiProbe.Find<NumberField>(settings, f => f.Label == "Download row height"); height.Input.Text = "28"; height.Commit();
                 var icon = UiProbe.Find<NumberField>(settings, f => f.Label == "Downloads icon size"); icon.Input.Text = "36"; icon.Commit(); UiProbe.Pump();
-                check(stack.StackButton.ActualWidth == 36 && UiProbe.Find<ListBoxItem>(stack.DownloadList, _ => true).ActualHeight == 28 && stack.Height == 294,
+                check(stack.StackButton.ActualWidth == 36 && UiProbe.Find<ListBoxItem>(stack.DownloadList, _ => true).ActualHeight == 28 && stack.Height == 318,
                     "Row density, row count and icon size update live with coherent native geometry");
+                var gap = UiProbe.Find<NumberField>(settings, f => f.Label == "Space between rows"); gap.Input.Text = "8"; gap.Commit(); UiProbe.Pump();
+                check(stack.Height == 342 && settings.DownloadPreview.Summary.Contains("342") && UiProbe.Find<ListBoxItem>(stack.DownloadList, _ => true).Margin.Bottom == 8,
+                    "Row spacing updates fitted native geometry and the persistent preview together");
                 UiProbe.CaptureWindow(settings, Path.Combine(output, "settings-downloads-precise.png"));
                 settings.Width = 560; settings.Height = 540; state.Settings.Theme = "Light"; session.Change(); UiProbe.Pump();
                 UiProbe.CaptureWindow(settings, Path.Combine(output, "settings-downloads-narrow-light.png"));
                 check(width.Input.ActualWidth >= 60 && settings.SelectedSection == "Downloads", "Precise settings remain usable in the narrow light-theme window");
-                UiProbe.Click(UiProbe.Find<Button>(settings, b => b.Content as string == "Reset Downloads layout")); UiProbe.Pump();
+                var reset = UiProbe.Find<Button>(settings, b => b.Content as string == "Reset Downloads layout");
+                reset.BringIntoView(); UiProbe.Pump(); UiProbe.Click(reset); UiProbe.Pump();
                 check(stack.Width == 272 && state.Settings.DownloadsRows == 10 && stack.StackButton.ActualWidth == 44,
                     "Reset Downloads restores compact defaults without changing source or duplication mode");
                 settings.ShowSection("Style"); settings.Width = 820; settings.Height = 700; UiProbe.Pump();

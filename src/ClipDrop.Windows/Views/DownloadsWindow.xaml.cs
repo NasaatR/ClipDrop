@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using System.Windows.Input;
 using ClipDrop.Core;
 using ClipDrop.Windows.Services;
@@ -17,12 +19,13 @@ public partial class DownloadsWindow : Window
     public sealed class Row
     {
         public DownloadFile File { get; }
+        public bool IsPreview { get; }
         public ItemRow RowItem { get; }
         public string Time => File.AddedUtc.ToLocalTime().ToString(File.AddedUtc.ToLocalTime().Date == DateTime.Today ? "HH:mm" : "d MMM", CultureInfo.InvariantCulture);
         public string Details => File.Path + "\n" + (File.Length >= 1048576 ? (File.Length / 1048576d).ToString("0.#") + " MB" : File.Length >= 1024 ? (File.Length / 1024d).ToString("0.#") + " KB" : File.Length + " B") + " · " + File.AddedUtc.ToLocalTime().ToString("g");
-        public Row(DownloadFile file)
+        public Row(DownloadFile file, bool preview = false)
         {
-            File = file;
+            File = file; IsPreview = preview;
             RowItem = new(new ShelfItem { Title = file.Name, FilePath = file.Path,
                 Kind = MediaFiles.IsImage(file.Path) ? ItemKind.Image : ItemKind.File });
         }
@@ -30,6 +33,7 @@ public partial class DownloadsWindow : Window
     private readonly ShelfSession _session;
     private readonly DownloadsFeed _feed;
     private readonly Action _settings, _close;
+    private readonly Action<ProcessStartInfo> _reveal;
     private readonly ObservableCollection<Row> _rows = new();
     private readonly ClipSelection _selection = new();
     private readonly DockPresence _presence;
@@ -50,9 +54,10 @@ public partial class DownloadsWindow : Window
     public bool HasDismissObserver => _outside?.IsObserving == true;
     public DockAssignment? Assignment { get; set; }
     public event Action? GeometryCommitted;
-    public DownloadsWindow(ShelfSession session, DownloadsFeed feed, Action settings, Action close)
+    public DownloadsWindow(ShelfSession session, DownloadsFeed feed, Action settings, Action close, Action<ProcessStartInfo>? reveal = null)
     {
         _session = session; _feed = feed; _settings = settings; _close = close;
+        _reveal = reveal ?? (start => Process.Start(start));
         InitializeComponent(); Files.ItemsSource = _rows;
         _presence = new DockPresence(this, () => session.State.Settings, compact => {
             IsCompact = compact; Details.IsHitTestVisible = !compact;
@@ -70,7 +75,7 @@ public partial class DownloadsWindow : Window
         _ = new WindowDrag(this, () => { _moving = true; Presence(); }, () => {
             try { GeometryCommitted?.Invoke(); }
             finally { _moving = false; Presence(); MoveCompleted?.Invoke(); }
-        }, _ => true);
+        }, button => ItemsControl.ContainerFromElement(Files, button) is null);
         MouseEnter += (_, _) => _feed.RequestRefresh();
         IsVisibleChanged += (_, _) => WatchDismiss();
         LostMouseCapture += (_, _) => { if (!_busy && _origin.HasValue && _source?.IsMouseCaptured != true) ClearGesture(); };
@@ -95,13 +100,7 @@ public partial class DownloadsWindow : Window
     {
         if (_disposing) return;
         Appearance.Apply(_session.State.Settings, this, true);
-        var size = SurfaceSizing.Downloads(_session.State.Settings);
-        Resources["DownloadsRowHeight"] = size.RowHeight;
-        Resources["DownloadsIconSize"] = size.IconSize;
-        Resources["DownloadsCapsuleHeight"] = new GridLength(size.CapsuleHeight);
-        Resources["DownloadsPreviewSize"] = Math.Min(30, size.RowHeight - 10);
-        Resources["DownloadsPreviewSlot"] = new GridLength(Math.Min(30, size.RowHeight - 10) + 7);
-        Resources["DownloadsGlyphSize"] = Math.Round(size.IconSize * .52);
+        DownloadsPresentation.Apply(this, _session.State.Settings);
         Topmost = _session.State.Settings.AlwaysOnTop; _presence.Refresh(); FitDetails();
     }
     private void Presence() => _presence.Busy(_busy || _moving || _origin.HasValue);
@@ -157,7 +156,7 @@ public partial class DownloadsWindow : Window
     {
         var notice = Notice.Visibility == Visibility.Visible ? (SourceButton.Visibility == Visibility.Visible ? 86 : 44) : 0;
         var size = SurfaceSizing.Downloads(_session.State.Settings);
-        Details.Height = Math.Max(80, Math.Min(58 + Math.Max(1, Math.Min(size.Rows, _rows.Count)) * size.RowHeight + notice, Math.Max(80, Height - size.IconSize - 33)));
+        Details.Height = Math.Max(80, Math.Min(58 + Math.Max(1, Math.Min(size.Rows, _rows.Count)) * size.RowStride + notice, Math.Max(80, Height - size.IconSize - 33)));
     }
     private void OnSelection(object sender, SelectionChangedEventArgs e)
     {
@@ -192,6 +191,7 @@ public partial class DownloadsWindow : Window
     private void Open(ShelfItem item) => Run(() => { if (!File.Exists(item.FilePath)) throw new FileNotFoundException(); Dismiss(); Process.Start(new ProcessStartInfo(item.FilePath!) { UseShellExecute = true }); });
     private void OnRowDown(object sender, MouseButtonEventArgs e)
     {
+        if (IsRowAction(e.OriginalSource as DependencyObject)) return;
         if (e.OriginalSource is not DependencyObject original || ItemsControl.ContainerFromElement(Files, original) is not ListBoxItem { DataContext: Row row } container) return;
         e.Handled = true;
         _pressModifiers = Keyboard.Modifiers; _pressedRow = row; _pressClicks = e.ClickCount;
@@ -212,6 +212,7 @@ public partial class DownloadsWindow : Window
     }
     private void OnRowUp(object sender, MouseButtonEventArgs e)
     {
+        if (!_origin.HasValue && IsRowAction(e.OriginalSource as DependencyObject)) return;
         var open = _origin.HasValue && _pressClicks == 2 && _pressModifiers == ModifierKeys.None ? _pressedRow?.RowItem.Item : null;
         if (_origin.HasValue && _pressedRow is Row row && _pressModifiers == ModifierKeys.None) { _selection.Single(row.File.Path); SyncSelection(); }
         ClearGesture();
@@ -251,22 +252,32 @@ public partial class DownloadsWindow : Window
         void Add(string label, Action action) { var item = new MenuItem { Header = label, FontSize = 11.5, Padding = new Thickness(6, 3, 6, 3) }; item.Click += (_, _) => { menu.IsOpen = false; action(); }; menu.Items.Add(item); }
         if (clips.Length == 1) Add("Open", () => Open(clips[0]));
         Add(clips.Length > 1 ? $"Copy {clips.Length}" : "Copy", () => Copy(clips)); Add("Save to Library", () => Save(clips));
-        if (clips.Length == 1) Add("Show in Explorer", () => Run(() => { Dismiss(); Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { "/select,", clips[0].FilePath! } }); }));
+        if (clips.Length == 1) Add("Show in Explorer", () => RevealFolder(clips[0].FilePath!));
         Files.ContextMenu = menu; PopupDismiss.Attach(menu, this); menu.PlacementTarget = Files; menu.IsOpen = true;
     }
-    private async void OnThumbnail(object sender, RoutedEventArgs e)
+    private static bool IsRowAction(DependencyObject? source)
     {
-        if (sender is not Image image) return; image.Source = null;
-        if (image.DataContext is not Row row || row.RowItem.ImageVisible != Visibility.Visible) return;
-        var bitmap = await ThumbnailCache.Shared.Get(row.File.Path);
-        if (image.DataContext is Row current && current.File == row.File) image.Source = bitmap;
+        while (source is not null && source is not ListBoxItem)
+        {
+            if (source is ButtonBase) return true;
+            source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
+        }
+        return false;
     }
-    private void OnThumbnailContext(object sender, DependencyPropertyChangedEventArgs e) { if (sender is Image { IsLoaded: true }) OnThumbnail(sender, new()); }
+    private void OnShowFolder(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (e.OriginalSource is DownloadRowView { DataContext: Row { IsPreview: false } row }) RevealFolder(row.File.Path);
+    }
+    private void RevealFolder(string path) => Run(() => {
+        var start = FileNavigation.ContainingFolder(path, _session.State.Settings.DownloadsRevealMode == "WindowsExplorer");
+        Dismiss(); _reveal(start);
+    });
     private void OnKey(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { Dismiss(); e.Handled = true; }
         else if (e.Key == Key.C && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { Copy(Selected()); e.Handled = true; }
-        else if (e.Key == Key.Enter && Selected() is { Length: 1 } items) { Open(items[0]); e.Handled = true; }
+        else if (e.Key == Key.Enter && !IsRowAction(e.OriginalSource as DependencyObject) && Selected() is { Length: 1 } items) { Open(items[0]); e.Handled = true; }
     }
     public void DisposeView()
     {

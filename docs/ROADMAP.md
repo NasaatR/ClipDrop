@@ -761,3 +761,37 @@ User priority: remove opacity steps and restore comfortable sliders. This supers
 Next: 5a2b conflict preview and recoverable restore/merge as its own bounded change,
 then content versions. Keep physical mixed-DPI/sleep acceptance open until actual
 hardware feedback; clipboard history and Send to Figma remain later stages.
+
+
+## 0.19: Downloads row actions and persistent layout preview
+
+User priority: show a containing-folder action on hover/focus, honor the default
+folder application (including configured File Pilot), separate crowded rows and
+make live Downloads settings observable without keeping the floating list hovered.
+
+- [x] Route both row button and context menu through one validated FileNavigation
+  service: shell-open the parent folder by default; explicit Windows Explorer
+  selection is optional. Never execute a downloaded file to reveal it.
+- [x] Share DownloadRowView and row styling/metrics between the real virtualized
+  list and a synthetic Settings preview. Reserve the action slot; hover/focus
+  reveals it without reflow, row selection, OLE or window movement.
+- [x] Add bounded row spacing (default4, 0–12), timestamp visibility, always-show
+  folder action and reveal destination. Include spacing in fitted native geometry.
+  Preserve schema7 defaults/explicit0/false and keep layout reset independent of
+  Chrome/folder sources, monitor modes and file-manager preference.
+- [x] Pin a non-expiring 1:1 Downloads sample above the Settings scroll area while
+  that section is selected. Show full geometry/row-limit summary, sample rows,
+  action feedback and icon; no real file reads, clipboard changes or launches.
+- [x] Add probes for button hover/focus/click versus row drag; space/width extremes, real
+  thumbnail recycling, persistent preview when scrolling/pointer leaves, keyboard
+  navigation, light/dark narrow layouts, save/reopen/reset and full Windows gate.
+
+This is the next usability increment, ahead of stage5a2b restore/import. Restore
+conflict preview/recoverable merge remains next; clipboard history and Send to
+Figma stay separate. File Pilot's public roadmap lists command-line control as
+planned; generic default-folder opening does not promise per-file selection.
+References: [File Pilot integration](https://filepilot.tech/download),
+[Shell folder association](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew).
+
+The exact-commit Windows build/render/transfer/Chrome/startup/upgrade workflow is
+the release gate; verify native screenshots before delivering the installer.

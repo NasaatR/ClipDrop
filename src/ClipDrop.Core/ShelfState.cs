@@ -76,6 +76,10 @@ public sealed class ShelfSettings : AppearanceStyle
     public double DownloadsRows { get; set; } = 10;
     public double DownloadsRowHeight { get; set; } = 34;
     public double DownloadsIconSize { get; set; } = 44;
+    public double DownloadsRowSpacing { get; set; } = 4;
+    public bool DownloadsShowTime { get; set; } = true;
+    public bool DownloadsAlwaysShowFolder { get; set; }
+    public string DownloadsRevealMode { get; set; } = "Default";
     public string DownloadsFolder { get; set; } = "";
     public string DownloadsSource { get; set; } = "Auto";
     [System.Text.Json.Serialization.JsonIgnore]
