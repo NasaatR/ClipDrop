@@ -82,8 +82,17 @@ internal static class DownloadUiProbe
             UiProbe.Hover(UiProbe.Find<Button>(settings, b => b.Content as string == "App")); UiProbe.Pump(450);
             check(preview.IsVisible && preview.PointToScreen(new Point()) == position && !stack.IsVisible,
                 "The Downloads preview stays visible at its pinned position while controls scroll and the floating panel is hidden");
-            var sample = (DownloadsWindow.Row)preview.Files.Items[0]; UiProbe.Hover(previewRow);
-            UiProbe.Click(UiProbe.Find<Button>(previewRow, b => b.Name == "FolderButton"));
+            // Density updates can recycle/move the first realized container out of
+            // the clipped viewport. Reacquire a visible sample before native input.
+            var sample = (DownloadsWindow.Row)preview.Files.Items[preview.Files.Items.Count - 1];
+            preview.Files.ScrollIntoView(sample); preview.Files.UpdateLayout(); UiProbe.Pump();
+            var visibleSample = (ListBoxItem)preview.Files.ItemContainerGenerator.ContainerFromItem(sample);
+            UiProbe.Hover(visibleSample);
+            var sampleFolder = UiProbe.Find<Button>(visibleSample, b => b.Name == "FolderButton");
+            var samplePoint = sampleFolder.TranslatePoint(new Point(sampleFolder.ActualWidth / 2, sampleFolder.ActualHeight / 2), preview.Files);
+            check(sampleFolder.IsVisible && samplePoint.X >= 0 && samplePoint.X < preview.Files.ActualWidth && samplePoint.Y >= 0 && samplePoint.Y < preview.Files.ActualHeight,
+                "Native preview input targets a currently visible row after density changes and scrolling");
+            UiProbe.Click(sampleFolder);
             check(launches == 3 && sample.IsPreview && !File.Exists(sample.File.Path) && state.Items.Count == 0,
                 "The synthetic preview button gives feedback without reading sample paths or launching applications");
             UiProbe.CaptureWindow(settings, Path.Combine(output, "downloads-settings-preview-dark.png"));
