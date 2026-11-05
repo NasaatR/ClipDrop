@@ -170,7 +170,7 @@ internal static class UiProbe
         check(library.Left >= area.Left && library.Top >= area.Top && library.Left + library.ActualWidth <= area.Right + 1 && library.Top + library.ActualHeight <= area.Bottom + 1,
             "Attached Library opens beside the dock within the working area");
         var beforeDock = dock.Left; var beforeLibrary = library.Left;
-        Drag(dock, new Point(3, dock.ActualHeight / 2), 35, -25);
+        Drag(dock, new Point(16, dock.ActualHeight / 2), 35, -25);
         check(Math.Abs(dock.Left - beforeDock) > 20 && Math.Abs(library.Left - beforeLibrary) > 20 && library.Session.State.Settings.LibraryFollowsDock,
             "Dragging dock background moves the attached Library too");
         var before = library.Left;

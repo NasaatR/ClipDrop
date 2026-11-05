@@ -7,10 +7,8 @@ switch applications, then drag it out. Made by Nasaat.
 
 ## Download and start
 
-Current downloadable release: **1.6 Preview**. The History changes on `main`
-target **1.7 Preview** and await a successful Windows build. Its latest run
-[failed at startup before jobs were created](https://github.com/NasaatR/ClipDrop/actions/runs/42068639762);
-no1.7 installer has been published.
+The source on `main` targets **1.7 Preview**. Built Windows installers are
+published in Releases after the required Windows checks pass.
 
 [Windows preview downloads](https://github.com/NasaatR/ClipDrop/releases) · [Version policy](docs/VERSIONING.md)
 
@@ -32,7 +30,7 @@ a group; drag its counted control or any selected row. **Paste** / Enter also us
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features on main for 1.7 Preview (Windows validation pending)
+## Features in 1.7 Preview
 
 **Library → History** keeps saved clips visible after use, including clips now in
 Trash. Search, Ctrl/Shift selection, Delete to remove selected history, drag/copy/

@@ -17,6 +17,8 @@ using Forms = System.Windows.Forms;
 internal static class PasteProbe
 {
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(NativePoint point);
+    [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X, Y; }
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
     [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left, Top, Right, Bottom; }
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
@@ -78,8 +80,19 @@ internal static class PasteProbe
             UiProbe.Pump(15);
             check(GetForegroundWindow() == hwnd, "Showing the non-activating dock preserves receiver focus");
             var beforeDrag = dock.Left;
-            UiProbe.Drag(dock, new Point(3, dock.ActualHeight / 2), 28, -20);
-            check(Math.Abs(dock.Left - beforeDrag) > 15 && GetForegroundWindow() == hwnd, "Dragging dock padding moves it without stealing editor focus");
+            // The outer 10 DIP is the transparent window margin, not the visible
+            // panel padding. At idle opacity its alpha-1 pixels can hit through
+            // to the desktop while the reveal is still starting.
+            var padding = new Point(16, dock.ActualHeight / 2); var screen = dock.PointToScreen(padding);
+            var margin = dock.PointToScreen(new Point(3, dock.ActualHeight / 2));
+            var marginHit = WindowFromPoint(new NativePoint { X = (int)margin.X, Y = (int)margin.Y }) == new System.Windows.Interop.WindowInteropHelper(dock).Handle;
+            Console.WriteLine($"DRAG preflight: opacity={dock.Opacity:0.###}, outerMarginHitsDock={marginHit}");
+            check(WindowFromPoint(new NativePoint { X = (int)screen.X, Y = (int)screen.Y }) == new System.Windows.Interop.WindowInteropHelper(dock).Handle,
+                "The actual visible dock padding receives native input before the drag");
+            UiProbe.Drag(dock, padding, 28, -20);
+            var dragDistance = dock.Left - beforeDrag; var focused = GetForegroundWindow() == hwnd;
+            Console.WriteLine($"DRAG padding: distance={dragDistance:0.##} DIP, receiverFocused={focused}");
+            check(Math.Abs(dragDistance) > 15 && focused, "Dragging dock padding moves it without stealing editor focus");
             var keptClip = dock.Session.State.Items.First(i => i.IsPinned); keptClip.KeepAfterUse = true; dock.Session.Change();
             var items = dock.Pins;
             var container = items.ItemContainerGenerator.ContainerFromIndex(0) ?? throw new Exception("Dock pin was not rendered");

@@ -61,7 +61,7 @@ internal static class CollectProbe
             UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Library"));
             check(library.IsVisible, "Library opens from the actual Save context menu");
             library.Hide();
-            UiProbe.DoubleClickAt(dock.PointToScreen(new Point(3, dock.ActualHeight / 2)));
+            UiProbe.DoubleClickAt(dock.PointToScreen(new Point(16, dock.ActualHeight / 2)));
             check(library.IsVisible, "Double-clicking free dock space opens Library without invoking Save or paste");
             Clipboard.SetText("Direct library clipboard capture");
             UiProbe.Click(UiProbe.Find<Button>(library, b => AutomationProperties.GetName(b) == "Save clipboard"));

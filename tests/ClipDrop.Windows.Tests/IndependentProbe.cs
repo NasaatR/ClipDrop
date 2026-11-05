@@ -71,7 +71,7 @@ internal static class IndependentProbe
             UiProbe.Hover(two.QuickSave);
             UiProbe.CaptureWindow(two, Path.Combine(output, "independent-assets-screen.png"));
             var priorSecond = WindowPlacement.PixelBounds(two);
-            UiProbe.Drag(one, new Point(3, one.ActualHeight / 2), 25, 35);
+            UiProbe.Drag(one, new Point(16, one.ActualHeight / 2), 25, 35);
             check(WindowPlacement.PixelBounds(two) == priorSecond, "Moving one independent window leaves the other window in place");
             var savedX = first.Window.Layout.OffsetX; var savedY = first.Window.Layout.OffsetY;
             coordinator.ShowLibrary(one); UiProbe.Pump();
