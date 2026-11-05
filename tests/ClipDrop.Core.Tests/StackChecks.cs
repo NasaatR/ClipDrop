@@ -68,8 +68,8 @@ internal static class StackChecks
         var oldRoot = Path.Combine(root, "stacks-schema6"); Directory.CreateDirectory(oldRoot);
         var bytes = System.Text.Encoding.UTF8.GetBytes(legacy.ToJsonString()); File.WriteAllBytes(Path.Combine(oldRoot, "shelf.json"), bytes);
         var oldStore = new StateStore(oldRoot); var migrated = oldStore.Load(); oldStore.Save(migrated); oldStore.Save(migrated);
-        check(migrated.SchemaVersion == 7 && migrated.Panels.All(p => p.Stacks.Count == 0) && migrated.ActivePanelId == state.ActivePanelId &&
-            File.ReadAllBytes(Path.Combine(oldRoot, "shelf.json.schema-6-before-v7.bak")).SequenceEqual(bytes),
+        check(migrated.SchemaVersion == ShelfState.CurrentSchema && migrated.Panels.All(p => p.Stacks.Count == 0) && migrated.ActivePanelId == state.ActivePanelId &&
+            File.ReadAllBytes(Path.Combine(oldRoot, "shelf.json.schema-6-before-v" + ShelfState.CurrentSchema + ".bak")).SequenceEqual(bytes),
             "Schema-6 migration preserves existing panels and exact original bytes before introducing stacks");
         var badRoot = Path.Combine(root, "bad-stacks"); Directory.CreateDirectory(badRoot);
         var bad = JsonNode.Parse(JsonSerializer.Serialize(state))!;
