@@ -55,7 +55,7 @@ internal static class CompactProbe
             check(!strip.IsCompact && dock.QuickSave.PointToScreen(new Point(dock.QuickSave.ActualWidth / 2, dock.QuickSave.ActualHeight / 2)) == savePoint,
                 "Hover expands immediately while keeping Save under the pointer");
             UiProbe.CaptureWindow(dock, Path.Combine(output, "dock-expanded-screen.png"));
-            UiProbe.RightClick(dock.QuickSave);
+            UiProbe.RightClick(dock.QuickSave, System.Windows.Input.ModifierKeys.Shift);
             UiProbe.MoveTo(new Point(area.Right - 5, area.Bottom - 5)); UiProbe.Pump(800);
             check(!strip.IsCompact && dock.ContextMenu.IsOpen, "An open menu holds the dock expanded while the pointer is away");
             UiProbe.ClickAt(new Point(area.Right - 5, area.Bottom - 5));

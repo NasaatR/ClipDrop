@@ -19,7 +19,7 @@ internal static class PanelsProbe
         var clips = new[] { ShelfItem.FromText("Panel alpha"), ShelfItem.FromText("Panel beta"), ShelfItem.FromText("Panel gamma") }; session.Add(clips);
         var main = PanelSets.Active(state);
         var library = new MainWindow(session); var dock = new DockWindow(session, library.ShowShelf, library.OpenSettings); dock.ShowDock(); UiProbe.Pump();
-        UiProbe.RightClick(dock.QuickSave); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Panels"));
+        UiProbe.RightClick(dock.QuickSave, System.Windows.Input.ModifierKeys.Shift); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Panels"));
         var manager = Application.Current.Windows.OfType<PanelsWindow>().Single();
         check(manager.IsVisible, "Real dock menu opens a single Saved panels manager");
         Button ActionButton(string name) => UiProbe.Find<Button>(manager, b => b.Content as string == name);

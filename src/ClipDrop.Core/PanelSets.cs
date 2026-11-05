@@ -48,6 +48,7 @@ public static class PanelSets
         var requested = ids.Distinct().ToArray(); var live = state.Items.Select(i => i.Id).ToHashSet();
         if (requested.Any(id => !live.Contains(id))) throw new InvalidOperationException("A clip is no longer in Library.");
         CaptureActive(state);
+        if (add) foreach (var item in state.Items.Where(i => requested.Contains(i.Id))) item.HistoryOnly = false;
         var next = panel.ClipIds.ToList();
         if (add) { var known = next.ToHashSet(); foreach (var id in requested) if (known.Add(id)) next.Add(id); }
         else { var selected = requested.ToHashSet(); next.RemoveAll(selected.Contains); }
@@ -64,6 +65,7 @@ public static class PanelSets
         var selectedIds = ids.Distinct().ToArray();
         var liveIds = state.Items.Select(i => i.Id).ToHashSet();
         if (selectedIds.Any(id => !liveIds.Contains(id))) throw new InvalidOperationException("A clip is no longer in Library.");
+        foreach (var item in state.Items.Where(i => selectedIds.Contains(i.Id))) item.HistoryOnly = false;
         var detached = PanelStacks.DetachPartial(state, panel, selectedIds.ToHashSet());
         if (panelId == state.ActivePanelId)
         {

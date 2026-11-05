@@ -16,6 +16,8 @@ public sealed partial class ShelfSession : IDisposable
     private readonly DispatcherTimer _save;
     private readonly NativeClipboard _clipboard;
     private bool _dirty;
+    private ClipboardHistoryMonitor? _historyMonitor;
+    private uint _ownClipboardSequence;
     private bool _disposed;
     private long _revision, _persistedRevision;
     private Task? _saving;
@@ -46,11 +48,12 @@ public sealed partial class ShelfSession : IDisposable
         _save = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
         _save.Tick += async (_, _) => await AutoSave();
         if (store.RecoveryNotice is not null) Status = store.RecoveryNotice;
+        ConfigureClipboardHistory();
     }
 
     public void Change(bool refresh = true) => MarkChanged(refresh, false);
     // Settings do not change membership/content; keep the item and tile indexes.
-    public void ChangeSettings() => MarkChanged(true, true);
+    public void ChangeSettings() { ConfigureClipboardHistory(); MarkChanged(true, true); }
     private void MarkChanged(bool refresh, bool settingsOnly)
     {
         if (_disposed) return;
@@ -126,7 +129,7 @@ public sealed partial class ShelfSession : IDisposable
             panel.ClipIds.Where(_itemIndex.ContainsKey).Select(key => _itemIndex[key]).ToArray();
     }
     public string PanelName(string? panelId = null) => State.Panels.Single(p => p.Id == (panelId ?? State.ActivePanelId)).Name;
-    public int Add(IEnumerable<ShelfItem> incoming, bool pin = true, string? panelId = null)
+    public int Add(IEnumerable<ShelfItem> incoming, bool pin = true, string? panelId = null, bool historyOnly = false)
     {
         var added = 0; var promoted = false; var full = false;
         var scoped = pin && panelId is not null && panelId != State.ActivePanelId;
@@ -135,44 +138,66 @@ public sealed partial class ShelfSession : IDisposable
         var nextOrder = PinOrdering.Next(State);
         foreach (var item in incoming)
         {
-            var existing = State.Items.FirstOrDefault(i => i.SameContent(item));
+            var existing = State.Items.FirstOrDefault(i => i.SameContent(item)) ?? (historyOnly ? State.Trash.Select(t => t.Item).FirstOrDefault(i => i.SameContent(item)) : null);
             if (existing is not null)
             {
+                ClipHistory.Record(existing, historyOnly); promoted = true;
                 if (scoped) members.Add(existing.Id);
                 else if (pin && !existing.IsPinned) { existing.IsPinned = true; existing.PinOrder = nextOrder++; promoted = true; }
                 continue;
             }
             if (State.Items.Count >= 5000) { full = true; break; }
-            item.IsPinned = pin && !scoped; item.PinOrder = nextOrder++; State.Items.Add(item); added++;
+            item.IsPinned = pin && !scoped; item.PinOrder = nextOrder++; item.HistoryOnly = historyOnly; ClipHistory.Record(item, historyOnly); State.Items.Add(item); added++;
             if (scoped) members.Add(item.Id);
         }
         if (scoped) promoted |= PanelSets.SetMembership(State, panelId!, members, true);
         if (added > 0 || promoted) Change();
-        if (full) Notify("Library limit reached. Some items were not added.");
+        if (full)
+        {
+            if (historyOnly) { State.Settings.AutoSaveClipboard = false; ConfigureClipboardHistory(); ChangeSettings(); Notify("History storage full · auto-save paused. Clear unused history to continue."); }
+            else Notify("Library limit reached. Some items were not added.");
+        }
         return added;
     }
 
     public void SaveClipboard() => SaveClipboard(true);
-    public void SaveClipboard(bool pin, string? panelId = null)
+    public void SaveClipboard(bool pin, string? panelId = null) => CaptureClipboard(pin, panelId, false, false);
+    public void AppendClipboard(string? panelId = null) => CaptureClipboard(true, panelId, true, false);
+    private bool CaptureClipboard(bool pin, string? panelId, bool append, bool automatic)
     {
         try
         {
             var sequence = NativeClipboard.GetClipboardSequenceNumber();
+            if (automatic && (sequence == _ownClipboardSequence || _clipboard.ExcludedFromHistory())) return true;
+            var target = append ? Pins(panelId).LastOrDefault()?.Id : null;
             var data = Clipboard.GetDataObject();
-            if (data is null) { Notify("Clipboard is empty"); return; }
+            if (data is null) { if (!automatic) Notify("Clipboard is empty"); return true; }
             List<ShelfItem> items;
             try { items = Transfer.Import(data); }
             catch (Exception ex) when (ex is NotSupportedException or FileFormatException or InvalidDataException)
             { items = new(); Diagnostics.Record("Clipboard preview", ex); }
             var snapshot = data.GetDataPresent(DataFormats.FileDrop) || data.GetDataPresent("FileGroupDescriptorW", false) || items.Any(i => i.Kind is ItemKind.File or ItemKind.Folder) ? null : _clipboard.Capture();
-            if (NativeClipboard.GetClipboardSequenceNumber() != sequence) { Notify("Clipboard changed · save again"); return; }
+            if (NativeClipboard.GetClipboardSequenceNumber() != sequence) { if (!automatic) Notify("Clipboard changed · save again"); return false; }
             if (items.Count == 0 && snapshot is not null) items.Add(new ShelfItem { Kind = ItemKind.Clipboard, Title = "Clipboard item" });
             if (items.Count == 1) items[0].Clipboard = snapshot;
-            if (items.Count == 0) { Notify("No supported clipboard content"); return; }
-            var count = Add(items, pin, panelId);
-            if (TrySave()) Notify(snapshot?.Partial == true ? "Saved · some app-only formats unavailable" : count > 0 ? (pin ? "Saved to dock" : "Saved to Library") + " · original clipboard formats kept" : "Already in your library");
+            if (items.Count == 0) { if (!automatic) Notify("No supported clipboard content"); return true; }
+            Add(items, pin, panelId, automatic);
+            if (append)
+            {
+                var accepted = items.Select(source => State.Items.FirstOrDefault(i => i.SameContent(source))).OfType<ShelfItem>().ToArray();
+                target ??= accepted.FirstOrDefault()?.Id;
+                if (target is not null && accepted.Length > 0) Stack(accepted, target, panelId);
+            }
+            if (automatic) return true;
+            if (TrySave()) Notify(snapshot?.Partial == true ? "Saved · some app-only formats unavailable" : (append ? "Added to last collection" : pin ? "Saved to dock" : "Saved to Library") + " · original clipboard formats kept");
+            return true;
         }
-        catch (Exception ex) { Error("Save clipboard", ex); }
+        catch (Exception ex)
+        {
+            if (!automatic) Error("Save clipboard", ex);
+            else if (ex is not System.Runtime.InteropServices.ExternalException) Diagnostics.Record("Clipboard history", ex);
+            return false;
+        }
     }
 
     public bool Capture(IDataObject data, bool pin = true, string? panelId = null, int? insertion = null, string? mergeTarget = null)
@@ -225,7 +250,7 @@ public sealed partial class ShelfSession : IDisposable
         {
             var count = LibraryOperations.ArchiveUsed(State, items.Select(i => i.Id));
             if (count > 0) { Change(); if (!TrySave()) return; }
-            Notify(action + (count > 0 ? $" · {count} moved to Trash · undo in Library" : " · clips kept"));
+            Notify(action + (count > 0 ? $" · {count} kept in History · undo in Library" : " · clips kept"));
         }
         catch (InvalidOperationException ex) { Diagnostics.Record("Archive used clips", ex); Notify(action + " · Trash full; clips kept"); }
     }
@@ -267,6 +292,7 @@ public sealed partial class ShelfSession : IDisposable
     {
         if (items.Count == 1 && items[0].Clipboard is { } original) _clipboard.Restore(original);
         else Clipboard.SetDataObject(Transfer.Build(items), true);
+        _ownClipboardSequence = NativeClipboard.GetClipboardSequenceNumber();
     }
 
     public bool Copy(IReadOnlyList<ShelfItem> items, bool plainText = false)
@@ -276,6 +302,7 @@ public sealed partial class ShelfSession : IDisposable
         {
             if (plainText) Clipboard.SetText(string.Join(Environment.NewLine, items.Select(i => i.FilePath ?? i.Content)));
             else WriteClipboard(items);
+            _ownClipboardSequence = NativeClipboard.GetClipboardSequenceNumber();
             Notify(items.Count == 1 && items[0].Clipboard?.Partial == true ? "Copied available formats · some app-only formats unavailable" : "Copied · ready to paste"); return true;
         }
         catch (Exception ex) { Error("Copy", ex); return false; }
@@ -319,6 +346,6 @@ public sealed partial class ShelfSession : IDisposable
     {
         if (_disposed) return;
         _imageStop.Cancel();
-        _save.Stop(); if (_dirty) TrySave(); _disposed = true; _clipboard.Dispose();
+        _historyMonitor?.Dispose(); _save.Stop(); if (_dirty) TrySave(); _disposed = true; _clipboard.Dispose();
     }
 }

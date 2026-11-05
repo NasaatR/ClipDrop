@@ -20,14 +20,37 @@ Only download from this repository.
 
 The compact dock opens first with only **Save** and clips. Click Save to capture the
 clipboard, or drop content onto the dock. Click a clip to request paste into your
-previous app, or drag it out. Right-click Save/free space → **Library**, or double-
+previous app, or drag it out. Shift+right-click Save, or right-click free space → **Library**, or double-
 click free space, to open the searchable collection. Library intake stays in
 Library; new captures are selected for **Drag N**. Checkboxes or Ctrl/Shift choose
 a group; drag its counted control or any selected row. **Paste** / Enter also uses it.
 Transfers copy; originals remain. After a dispatched paste or accepted external drop, unprotected clips move to Trash. Use the corner pin to keep a clip after use. Copy and cancelled/fallback transfers keep clips. **Clear** removes only clips outside all saved panels. **Ctrl+Z** restores removed cards
 from Trash, including after restarting.
 
-## Features in 1.6 Preview
+## Features in 1.7 Preview
+
+**Library → History** keeps saved clips visible after use, including clips now in
+Trash. Search, Ctrl/Shift selection, Delete to remove selected history, drag/copy/
+paste and **To panel** reuse the original payloads. **Clear…** confirms a scoped
+clear; Library/panel/Trash clips remain available. Unused auto-only records are
+removed from metadata; original files and exported payloads stay on disk.
+
+Left-click **Save** creates a normal clip. Right-click appends to the last visible
+clip/stack in that panel; repeated right-clicks extend the same flat collection.
+The target's keep-after-use flag is inherited. Shift+right-click Save or right-
+click free space opens the existing options; double-click free space opens Library.
+
+**Auto-save clipboard** in History is optional and off by default. It captures
+new copies locally while ClipDrop runs, keeps them out of the dock/All Library,
+skips its own Copy/Paste and Windows-marked private content, and can be paused.
+An event-driven listener coalesces rapid updates (180ms); intermediate copies
+can be superseded before they are read. Busy clipboard retries are bounded.
+Duplicate content is one history record with its latest capture time. There is
+no automatic expiration. At the existing 5,000 active-item storage limit auto-save
+pauses with a message; clear unused history to free space, then enable it again.
+History and capture preferences survive restart; schema-7 source bytes are kept
+in an immutable migration backup, and old backup archives still verify.
+
 
 Settings now groups shared theme/background/accent colors with quick swatches,
 HEX and the Windows picker. Dock/Library previews stay visible while scrolling;
@@ -59,8 +82,8 @@ Restore-plan checks also inventory unique owned assets/bytes without extracting.
   an option to include identical clips. Per-clip restore choices now preview the
   planned adds/replacements/Trash restores; actual restore execution remains next.
 
-- Understandable releases: **1.6 Preview**, then 1.7,…,1.9,2.0. Native package
-  version 1.6.0, display 1.6 Preview, tag v1.6 and assets ClipDrop_v1.6 are derived
+- Understandable releases: **1.7 Preview**, then 1.8,…,1.9,2.0. Native package
+  version 1.7.0, display 1.7 Preview, tag v1.7 and assets ClipDrop_v1.7 are derived
   from one authority; old 0.x releases and app/data identity remain intact.
 - Downloads anchors its **icon center**, independently of panel size. Move it near
   the top to open downward, or near the bottom to open upward. Newest files always
@@ -163,7 +186,7 @@ Restore-plan checks also inventory unique owned assets/bytes without extracting.
 - Experimental mouse-shake summon, off by default.
 - Copyable diagnostics: version/environment and bounded sanitized error history,
   without recording item contents.
-- Local storage; no accounts, subscription, telemetry, clipboard monitoring or
+- Local storage; no accounts, subscription, telemetry or
   cloud sync. Only an explicit browser image drop can request an image URL.
 
 ## Saved panels and combining
@@ -274,7 +297,7 @@ has its own **Preview icon at top** toggle. Saved positions migrate from old win
 offsets without changing file data; reset and display selection include anchors.
 
 
-Right-click Save/free dock space → **Downloads**, or use the tray's **Downloads**
+Shift+right-click Save, or right-click free dock space → **Downloads**, or use the tray's **Downloads**
 command. One icon appears near the bottom-right of every attached display by
 default. **Settings → Screens → Downloads on every display** turns duplication
 off for one freely movable window. Clip-panel duplication is a separate choice.
@@ -452,7 +475,7 @@ server in the background; a page-only URL or inaccessible image remains a link.
 Browser cookies are not reused. Bitmap-only sources may already have lost alpha.
 Internal Photoshop layers / Figma nodes are not kept as editable objects.
 Elevated apps, secure desktops and exclusive fullscreen have Windows restrictions.
-Automatic edge docking, clipboard history, content-version editing and backup
+Automatic edge docking, content-version editing and backup
 import UI are not included. Shake can also trigger
 during left-button text selection or window movement.
 
@@ -497,7 +520,7 @@ the content. The request archives one-use clips into recoverable Trash. OLE clea
 uses the target’s Copy acknowledgement; it does not delete source files. It leaves the clipboard ready for manual Ctrl+V and never restores it
 on a short timer. Ctrl+Alt+L provides a keyboard-accessible Library alternative.
 
-Metadata schema 7 migrates schema-1/2/3/4/5/6 libraries and keeps an immutable `shelf.json.schema-<old>-before-v7.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
+Metadata schema 8 migrates schema-1/2/3/4/5/6/7 libraries and keeps an immutable `shelf.json.schema-<old>-before-v8.bak` before the first write. Old releases refuse newer metadata instead of resetting it.
 
 Core owns models/persistence; Windows owns WPF and native adapters. Add transfer
 formats in TransferService, not card UI handlers. Do not delete originals or time-delete exported payloads. Accepted transfers archive

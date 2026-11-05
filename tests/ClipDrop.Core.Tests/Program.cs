@@ -16,6 +16,7 @@ try
     DownloadsGeometryChecks.Run(Check);
     HoverTransitionChecks.Run(Check);
     UsageChecks.Run(root, Check);
+    HistoryChecks.Run(root, Check);
     PanelSetChecks.Run(root, Check);
     IndependentChecks.Run(root, Check);
     DownloadsChecks.Run(root, Check);

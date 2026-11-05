@@ -64,13 +64,14 @@ internal static class UiProbe
     public static void PressKey(ushort key) { KeyEvent(key, false); Pump(20); KeyEvent(key, true); Pump(); }
     public static void RightClickAt(Point point)
     { MoveTo(point); MouseEvent(8); MouseEvent(16); Pump(); }
-    public static void RightClick(FrameworkElement target)
+    public static void RightClick(FrameworkElement target, ModifierKeys modifiers = ModifierKeys.None)
     {
         var point = target.PointToScreen(new Point(target.ActualWidth / 2, target.ActualHeight / 2));
         SetCursorPos((int)point.X, (int)point.Y); Pump(30);
         var clicks = new[] { new Input { Type = 0, Data = new Union { Mouse = new Mouse { Flags = 8 } } }, new Input { Type = 0, Data = new Union { Mouse = new Mouse { Flags = 16 } } } };
-        if (SendInput(2, clicks, Marshal.SizeOf<Input>()) != 2) throw new Exception("Right mouse input blocked");
-        Pump();
+        if (modifiers.HasFlag(ModifierKeys.Shift)) KeyEvent(0x10, false);
+        try { if (SendInput(2, clicks, Marshal.SizeOf<Input>()) != 2) throw new Exception("Right mouse input blocked"); Pump(); }
+        finally { if (modifiers.HasFlag(ModifierKeys.Shift)) KeyEvent(0x10, true); }
     }
     private static void MouseEvent(uint flags)
     {

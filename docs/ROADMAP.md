@@ -26,7 +26,7 @@ in FOUNDATION.md; those sections also document historical releases.
 | 5a2a · Backup inspection | Read-only integrity and archive summary | Delivered in 0.18 |
 | 5a2b · Backup restore | Conflict preview, safe import/merge and recovery boundaries | Next separate increment |
 | 5 · Library depth | Content editing/version restore, backup export/import, explicit cache cleanup | Separate changes with migration/recovery checks |
-| 6 · Clipboard history | Opt-in monitoring, pause, exclusions, deduplication and retention | Separate privacy/storage stage |
+| 6 · Clipboard history | Saved/used History, opt-in capture/pause, Windows private-format exclusions, deduplication, selected/scoped clear | Delivered in1.7; per-app exclusions remain a later extension |
 | 7 · Send to Figma | Optional local image delivery through the existing helper/receiver | Planned; no integration in 0.14 |
 
 ## Stage 1: complete daily actions
@@ -936,3 +936,27 @@ settings/panels unless explicitly included in a later policy. Then content versi
 Next5a2b2b2b2: validate destinations, rebase owned references and cancellable
 staging. Then5a2b2b2c: recoverable state commit, stale-draft refusal at the write
 boundary and interruption/rollback tests before exposing Restore. Then content versions.
+
+
+## 1.7 Preview: persistent saved/clipboard History and right-click collect
+
+- [x] User priority: deliver stage6 now. History references canonical active/Trash
+  clips, including old schema7 records, without copying images or opaque blobs.
+  Saved/used history has no automatic expiry; duplicate captures update recency.
+- [x] Compact Library History view: timestamp, search, multi-select, direct copy/
+  paste/drag, restore to panel, selected removal and scoped clear confirmation.
+  Saved Library/Trash/panel references survive history clear. New copies after
+  confirmation opens are retained, including a newer recapture of the same ID.
+- [x] Opt-in event-driven automatic clipboard capture, default off, pause, bounded
+  busy retries, self-write suppression and Windows private-format exclusions.
+  Auto-only clips stay out of regular Library/dock until explicitly saved/pinned.
+  Existing storage limit pauses capture; no silent oldest-record eviction.
+- [x] Right-click Save appends to the last visible tile/stack of the target panel;
+  target protection is inherited. Left click remains normal Save; Shift-right-
+  click and free-space right click retain options. Left-button dragging unchanged.
+- [x] Schema8 migration with immutable pre-upgrade bytes, strict history fields and
+  old archive schema validation before migration. Preserve formats/originals.
+
+Next: continue5a2b2b2b2 owned-asset destination validation/rebasing and staging,
+then recoverable restore commit. History extensions (per-app exclusion UI, richer
+source/type filters) follow actual feedback. Send to Figma remains planned.

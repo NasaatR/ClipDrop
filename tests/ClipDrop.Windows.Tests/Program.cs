@@ -125,6 +125,7 @@ internal static class Program
             stylePicker.IsDropDownOpen = false;
             settings.Close();
             ColorSettingsProbe.Run(window, output, Check);
+            HistoryProbe.Run(window, dock, root, output, Check);
             PanelProbe.Run(window, dock, root, output, Check, (element, path) => RenderElement(element, path));
             MultiMonitorProbe.Run(window, dock, root, output, Check);
             InteractionProbe.Run(window, dock, root, output, Check);

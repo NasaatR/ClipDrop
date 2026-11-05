@@ -86,12 +86,12 @@ internal static class PresenceProbe
             check(Math.Abs(settings.Preview.Opacity - .35) < .001, "Settings previews the actual dock at its configured idle visibility");
             settings.Close();
             session.Remove(new() { clip });
-            UiProbe.RightClickAt(dock.PointToScreen(new Point(30, dock.ActualHeight / 2)));
+            UiProbe.RightClickAt(dock.PointToScreen(new Point(11, dock.ActualHeight / 2)));
             var background = dock.ContextMenu;
             check(background.IsOpen && background.Items.OfType<MenuItem>().Any(i => i.Tag as string == "Undo") && background.Items.OfType<MenuItem>().Any(i => i.Tag as string == "Library") && background.ActualHeight < 240, "Dock background exposes compact Library, undo and visibility commands");
             UiProbe.Click(background.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Undo"));
             check(state.Items.Contains(clip) && state.Trash.Count == 0, "Undo from the dock restores the last deletion without opening Library");
-            UiProbe.RightClick(dock.QuickSave); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Hide")); check(!dock.IsVisible, "Dock menu hides the panel without a permanent eye button");
+            UiProbe.RightClick(dock.QuickSave, System.Windows.Input.ModifierKeys.Shift); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Hide")); check(!dock.IsVisible, "Dock menu hides the panel without a permanent eye button");
             using (var integration = new DesktopIntegration(dock.Toggle, dock.ShowDock, () => { }, () => { }, () => { }, () => { }, dock.ShowDock, dock.HideDock))
             {
                 TrayMessage(integration, 0x0201); TrayMessage(integration, 0x0202);

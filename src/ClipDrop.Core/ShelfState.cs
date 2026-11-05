@@ -18,6 +18,9 @@ public sealed class ShelfItem
     public bool KeepAfterUse { get; set; }
     public long PinOrder { get; set; }
     public string Group { get; set; } = "";
+    public bool InHistory { get; set; } = true;
+    public bool HistoryOnly { get; set; }
+    public DateTimeOffset? LastSavedUtc { get; set; }
     public ClipboardSnapshot? Clipboard { get; set; }
     public string? SourceUrl { get; set; }
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
@@ -56,6 +59,7 @@ public sealed class ShelfSettings : AppearanceStyle
 {
     public bool AlwaysOnTop { get; set; } = true;
     public bool StartHidden { get; set; }
+    public bool AutoSaveClipboard { get; set; }
     public bool ShakeToShow { get; set; }
     public bool CloseToTray { get; set; } = true;
     public double Width { get; set; } = 376;
@@ -96,7 +100,7 @@ public sealed class ShelfSettings : AppearanceStyle
 
 public sealed class ShelfState
 {
-    public const int CurrentSchema = 7;
+    public const int CurrentSchema = 8;
     public int SchemaVersion { get; set; } = CurrentSchema;
     public List<ShelfItem> Items { get; set; } = new();
     public List<TrashEntry> Trash { get; set; } = new();

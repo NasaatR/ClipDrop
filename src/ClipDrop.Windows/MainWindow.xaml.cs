@@ -46,7 +46,7 @@ public partial class MainWindow : Window
             PopupDismiss.Attach(ContextMenu, this);
             ContextMenu.Opened += (_, _) => {
                 var saved = Session.State.Panels.SelectMany(p => p.ClipIds).ToHashSet();
-                ClearOption.IsEnabled = Session.State.Items.Any(i => !i.IsPinned && !saved.Contains(i.Id));
+                ClearOption.IsEnabled = Session.State.Items.Any(i => !i.HistoryOnly && !i.IsPinned && !saved.Contains(i.Id));
             };
         }
         _ = new WindowDrag(this, () => { Session.State.Settings.LibraryFollowsDock = false; UpdateAttachment(); }, QueueGeometrySave);
@@ -164,16 +164,17 @@ public partial class MainWindow : Window
         group = GroupFilter.SelectedItem as string ?? "All groups";
         var inPanel = Session.Pins(PanelContext).Select(i => i.Id).ToHashSet();
         PinnedFilter.ToolTip = "Clips in " + Session.PanelName(PanelContext);
-        var source = _filter == "Trash" ? Session.State.Trash.OrderByDescending(t => t.DeletedUtc).Select(t => t.Item) : Session.State.Items.AsEnumerable();
+        var history = ClipHistory.Entries(Session.State).ToArray();
+        var source = _filter == "History" ? history.AsEnumerable() : _filter == "Trash" ? Session.State.Trash.OrderByDescending(t => t.DeletedUtc).Select(t => t.Item) : Session.State.Items.Where(i => !i.HistoryOnly);
         var available = Session.State.Items.Concat(Session.State.Trash.Select(t => t.Item)).Select(i => i.Id).ToHashSet();
         foreach (var id in _rowCache.Keys.Where(id => !available.Contains(id)).ToArray()) _rowCache.Remove(id);
         var next = new System.Collections.Generic.List<ItemRow>();
-        foreach (var item in source.Where(i => (_filter != "Pinned" || inPanel.Contains(i.Id)) && (group == "All groups" || i.Group == group)).OrderByDescending(i => inPanel.Contains(i.Id)).ThenByDescending(i => i.CreatedUtc))
+        foreach (var item in source.Where(i => (_filter != "Pinned" || inPanel.Contains(i.Id)) && (group == "All groups" || i.Group == group)).OrderByDescending(i => _filter != "History" && inPanel.Contains(i.Id)).ThenByDescending(i => _filter == "History" ? i.LastSavedUtc ?? i.CreatedUtc : i.CreatedUtc))
             if (query.Length == 0 || item.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Content.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Group.Contains(query, StringComparison.OrdinalIgnoreCase))
             {
                 if (!_rowCache.TryGetValue(item.Id, out var row)) _rowCache[item.Id] = row = new ItemRow(item);
                 else row.Refresh();
-                next.Add(row);
+                row.SetHistoryMode(_filter == "History"); next.Add(row);
             }
         _refreshing = true;
         try
@@ -183,12 +184,16 @@ public partial class MainWindow : Window
         }
         finally { _refreshing = false; }
         EmptyState.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        EmptyTitle.Text = _filter == "Trash" ? "Trash is empty" : query.Length > 0 ? "No matching items" : "Your library is ready";
+        EmptyTitle.Text = _filter == "History" ? (query.Length > 0 ? "No matching history" : "History is empty") : _filter == "Trash" ? "Trash is empty" : query.Length > 0 ? "No matching items" : "Your library is ready";
+        HistoryTools.Visibility = _filter == "History" ? Visibility.Visible : Visibility.Collapsed;
+        HistoryCapture.IsChecked = Session.State.Settings.AutoSaveClipboard; ClearHistoryButton.IsEnabled = history.Length > 0;
+        HistoryFilter.ToolTip = history.Length + " saved clips · used clips stay here";
+        AddHistoryButton.Visibility = _filter == "History" ? Visibility.Visible : Visibility.Collapsed;
         TrashFilter.Content = "Trash " + Session.State.Trash.Count;
-        foreach (var button in new[] { AllFilter, PinnedFilter, TrashFilter }) button.SetResourceReference(BackgroundProperty, (string)button.Tag == _filter ? "Selected" : "Raised");
+        foreach (var button in new[] { AllFilter, PinnedFilter, HistoryFilter, TrashFilter }) button.SetResourceReference(BackgroundProperty, (string)button.Tag == _filter ? "Selected" : "Raised");
         RestoreButton.Visibility = _filter == "Trash" ? Visibility.Visible : Visibility.Collapsed;
         if (_editing is not null && Session.State.Items.All(i => i.Id != _editing.Id)) { EditPanel.Visibility = Visibility.Collapsed; _editing = null; }
-        CountLabel.Text = Session.State.Items.Count.ToString(); UpdateSelection();
+        CountLabel.Text = (_filter == "History" ? history.Length : Session.State.Items.Count(i => !i.HistoryOnly)).ToString(); UpdateSelection();
     }
     private System.Collections.Generic.List<ShelfItem> Selected() => ItemList?.SelectedItems.Cast<ItemRow>().Select(r => r.Item).ToList() ?? new();
     private void UpdateSelection()
@@ -317,7 +322,7 @@ public partial class MainWindow : Window
     {
         var selected = Selected(); if (selected.Count == 0) return;
         Session.Paster?.CaptureTarget();
-        ClipMenu.Show(ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem, PanelContext), (FrameworkElement)sender, true);
+        ClipMenu.Show((_filter == "History" ? HistoryMenu(selected) : ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem, PanelContext)), (FrameworkElement)sender, true);
     }
     public void EditItem(ShelfItem item)
     {
@@ -337,8 +342,44 @@ public partial class MainWindow : Window
         var selected = Selected(); if (selected.Count == 0) return;
         Session.Paster?.CaptureTarget();
         var target = ItemList.ItemContainerGenerator.ContainerFromItem(ItemList.SelectedItem) as FrameworkElement ?? ItemList;
-        ItemList.ContextMenu = ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem, PanelContext);
+        ItemList.ContextMenu = _filter == "History" ? HistoryMenu(selected) : ClipMenu.Create(Session, selected, this, false, _filter == "Trash", EditItem, PanelContext);
         ClipMenu.Show(ItemList.ContextMenu, target, e.CursorLeft < 0);
+    }
+    private ContextMenu HistoryMenu(System.Collections.Generic.IReadOnlyList<ShelfItem> clips)
+    {
+        var selected = clips.ToArray(); var menu = new ContextMenu { FontSize = 11.5, MaxWidth = 260 };
+        Appearance.Apply(Session.State.Settings, menu); PopupDismiss.Attach(menu, this);
+        void Add(string text, string tag, Action action)
+        {
+            var item = new MenuItem { Header = text, Tag = tag, Padding = new Thickness(6, 3, 6, 3) };
+            item.Click += (_, _) => { menu.IsOpen = false; Dispatcher.BeginInvoke(action); }; menu.Items.Add(item);
+        }
+        Add("Copy", "Copy", () => Session.Copy(selected));
+        Add("Paste", "Paste", () => Session.Paste(selected));
+        Add("Add to panel", "HistoryPin", () => Session.AddHistoryToPanel(selected, PanelContext));
+        menu.Items.Add(new Separator());
+        Add(selected.Length > 1 ? $"Remove {selected.Length} from History" : "Remove from History", "ForgetHistory", () => Session.ForgetHistory(selected.Select(i => i.Id)));
+        return menu;
+    }
+    private void OnAddHistory(object sender, RoutedEventArgs e) => Session.AddHistoryToPanel(Selected(), PanelContext);
+    private void OnHistoryCapture(object sender, RoutedEventArgs e)
+    {
+        Session.State.Settings.AutoSaveClipboard = HistoryCapture.IsChecked == true; Session.ChangeSettings();
+        Session.SetStatus(Session.State.Settings.AutoSaveClipboard ? "Auto-save on · new copies stay in History" : "Auto-save paused · saved clips stay in History");
+    }
+    private void OnClearHistory(object sender, RoutedEventArgs e)
+    {
+        var count = ClipHistory.Entries(Session.State).Count(); if (count == 0) return;
+        var menu = new ContextMenu { FontSize = 11.5, MaxWidth = 300 }; Appearance.Apply(Session.State.Settings, menu); PopupDismiss.Attach(menu, this);
+        var action = new MenuItem { Header = $"Clear all {count} history entries", Tag = "ClearHistory", Padding = new Thickness(7, 4, 7, 4), ToolTip = "Saved Library, Trash and panel clips stay available. Unused auto-captures are removed." };
+        // Recompute at the click boundary; capture events between open and confirm
+        // must not silently delete copies the user never saw in this confirmation.
+        var versions = ClipHistory.Entries(Session.State).ToDictionary(i => i.Id, i => i.LastSavedUtc);
+        action.Click += (_, _) => {
+            menu.IsOpen = false;
+            Session.ForgetHistory(ClipHistory.Entries(Session.State).Where(i => versions.TryGetValue(i.Id, out var saved) && saved == i.LastSavedUtc).Select(i => i.Id).ToArray());
+        };
+        menu.Items.Add(action); ClearHistoryButton.ContextMenu = menu; ClipMenu.Show(menu, ClearHistoryButton, true);
     }
     private void OnFilter(object sender, RoutedEventArgs e)
     {
@@ -349,7 +390,7 @@ public partial class MainWindow : Window
     private void OnRestore(object sender, RoutedEventArgs e) => Session.RestoreTrash(Selected());
     private void OnEdit(object sender, RoutedEventArgs e)
     {
-        if (_filter == "Trash" || Selected().Count != 1) return;
+        if (_filter is "Trash" or "History" || Selected().Count != 1) return;
         _editing = Selected()[0]; NameEditor.Text = _editing.Title; GroupEditor.Text = _editing.Group;
         EditPanel.Visibility = Visibility.Visible; NameEditor.Focus(); NameEditor.SelectAll();
     }
@@ -362,11 +403,15 @@ public partial class MainWindow : Window
     private void OnCopy(object sender, RoutedEventArgs e) => Session.Copy(Selected());
     private void OnCopyText(object sender, RoutedEventArgs e) => Session.Copy(Selected(), true);
     private void OnPin(object sender, RoutedEventArgs e) => Session.TogglePin(Selected());
-    private void OnRemove(object sender, RoutedEventArgs e) { if (_filter != "Trash") Session.Remove(Selected()); }
+    private void OnRemove(object sender, RoutedEventArgs e)
+    {
+        if (_filter == "History") Session.ForgetHistory(Selected().Select(i => i.Id));
+        else if (_filter != "Trash") Session.Remove(Selected());
+    }
     private void OnClear(object sender, RoutedEventArgs e)
     {
         var saved = Session.State.Panels.SelectMany(p => p.ClipIds).ToHashSet();
-        Session.Remove(Session.State.Items.Where(i => !i.IsPinned && !saved.Contains(i.Id)).ToList());
+        Session.Remove(Session.State.Items.Where(i => !i.HistoryOnly && !i.IsPinned && !saved.Contains(i.Id)).ToList());
     }
     private void OnOpen(object sender, MouseButtonEventArgs e)
     {

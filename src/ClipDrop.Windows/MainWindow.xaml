@@ -16,7 +16,7 @@
  </ContextMenu></Window.ContextMenu>
  <Border x:Name="LibrarySurface" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid Background="{DynamicResource Surface}" Margin="12,0,8,0">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="Library" FontWeight="SemiBold" FontSize="15"/><TextBlock x:Name="CountLabel" Margin="8,2,0,0" Foreground="{DynamicResource Muted}"/></StackPanel>
@@ -35,10 +35,15 @@
   <DockPanel Grid.Row="2" Margin="10,0,10,8" LastChildFill="True">
    <Button x:Name="AllFilter" Content="All" Tag="All" Click="OnFilter" Padding="8,4" FontSize="12"/>
    <Button x:Name="PinnedFilter" Content="Pinned" Tag="Pinned" Click="OnFilter" Padding="8,4" FontSize="12"/>
+   <Button x:Name="HistoryFilter" Content="History" Tag="History" Click="OnFilter" Padding="8,4" FontSize="12" ToolTip="All saved and used clips"/>
    <Button x:Name="TrashFilter" Content="Trash" Tag="Trash" Click="OnFilter" Padding="8,4" FontSize="12"/>
    <ComboBox x:Name="GroupFilter" Margin="5,2,2,2" SelectionChanged="OnGroupFilter" ToolTip="Filter by group" AutomationProperties.Name="Group filter"/>
   </DockPanel>
-  <Grid Grid.Row="3" Margin="12,0,12,4">
+  <DockPanel x:Name="HistoryTools" Grid.Row="3" Margin="12,0,12,6" Visibility="Collapsed" LastChildFill="False">
+   <Button x:Name="ClearHistoryButton" DockPanel.Dock="Right" Content="Clear…" Click="OnClearHistory" FontSize="11" Padding="7,3" ToolTip="Clear History · saved Library and panel clips stay available" AutomationProperties.Name="Clear history"/>
+   <CheckBox x:Name="HistoryCapture" Content="Auto-save clipboard" Click="OnHistoryCapture" FontSize="11" VerticalAlignment="Center" ToolTip="Capture new copies locally while ClipDrop is running. Off by default; app-marked private copies are skipped. Rapid changes may coalesce." AutomationProperties.Name="Auto-save clipboard"/>
+  </DockPanel>
+  <Grid Grid.Row="4" Margin="12,0,12,4">
    <ListBox x:Name="ItemList" SelectionMode="Extended" PreviewMouseLeftButtonDown="OnItemDown" PreviewMouseLeftButtonUp="OnItemUp" PreviewMouseMove="OnItemMove" SelectionChanged="OnSelection" MouseDoubleClick="OnOpen" PreviewMouseRightButtonDown="OnItemRightDown" ContextMenuOpening="OnClipMenu"
     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Shelf items">
     <ListBox.ContextMenu><ContextMenu/></ListBox.ContextMenu>
@@ -59,20 +64,21 @@
    </StackPanel>
    <Border x:Name="DropCue" Visibility="Collapsed" Background="{DynamicResource Selected}" BorderBrush="{DynamicResource Ink}" BorderThickness="1" CornerRadius="6" IsHitTestVisible="False" Opacity="0.95"><TextBlock Text="Save to Library" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18"/></Border>
   </Grid>
-  <Border x:Name="EditPanel" Grid.Row="4" Visibility="Collapsed" Background="{DynamicResource Raised}" CornerRadius="8" Padding="10" Margin="12,0,12,8"><StackPanel>
+  <Border x:Name="EditPanel" Grid.Row="5" Visibility="Collapsed" Background="{DynamicResource Raised}" CornerRadius="8" Padding="10" Margin="12,0,12,8"><StackPanel>
    <TextBlock Text="Name" FontSize="11" Margin="0,0,0,4"/><TextBox x:Name="NameEditor" MaxLength="120" AutomationProperties.Name="Item name"/>
    <TextBlock Text="Group" FontSize="11" Margin="0,7,0,4"/><TextBox x:Name="GroupEditor" MaxLength="40" AutomationProperties.Name="Item group"/>
    <StackPanel Orientation="Horizontal" Margin="0,7,0,0"><Button Content="Save" Click="OnSaveEdit"/><Button Content="Cancel" Click="OnCancelEdit"/></StackPanel>
   </StackPanel></Border>
-  <DockPanel Grid.Row="5" Margin="10,2,10,6">
+  <DockPanel Grid.Row="6" Margin="10,2,10,6">
    <Button x:Name="RestoreButton" Content="Restore selected" Click="OnRestore" Visibility="Collapsed" ToolTip="Restore selection from Trash"/>
    <WrapPanel x:Name="ActiveActions" Visibility="Collapsed">
     <Button x:Name="DragSelectedButton" Content="Drag selected" PreviewMouseLeftButtonDown="OnBatchDown" PreviewMouseMove="OnBatchMove" PreviewMouseLeftButtonUp="OnBatchUp" Click="OnDragHint" ToolTip="Drag this button or any selected row to transfer the whole selection" AutomationProperties.Name="Drag selected clips" Cursor="Hand" Background="{DynamicResource Selected}"/>
     <Button x:Name="PasteButton" Content="Paste" Click="OnPasteSelected" ToolTip="Paste selected into previous app · Enter" AutomationProperties.Name="Paste selection"/>
+    <Button x:Name="AddHistoryButton" Content="To panel" Click="OnAddHistory" Visibility="Collapsed" ToolTip="Add selection back to this panel"/>
     <Button x:Name="SelectionMoreButton" Content="More" Click="OnSelectionMenu" ToolTip="Copy, keep, delete and other selection actions" AutomationProperties.Name="Selection actions"/>
    </WrapPanel>
   </DockPanel>
-  <Grid Grid.Row="6" Margin="14,0,14,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+  <Grid Grid.Row="7" Margin="14,0,14,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="{DynamicResource Muted}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" AutomationProperties.LiveSetting="Polite"/>
    <TextBlock Grid.Column="1" Text="Ctrl+Alt+L" Foreground="{DynamicResource Muted}" FontSize="11" Margin="8,0,0,0"/>
   </Grid>

@@ -63,6 +63,7 @@ public partial class DockWindow : Window
             }
         };
         Strip.SaveRequested += OnSave; Strip.LibraryRequested += OnLibrary;
+        Strip.AppendRequested += (_, _) => Session.AppendClipboard(PanelId);
         Strip.PinRequested += OnUseItem; Strip.PinLoaded += OnPinLoaded; Strip.ImageLoaded += OnThumbnailLoaded;
         Strip.PinDown += OnItemDown; Strip.PinUp += OnItemUp; Strip.PinMove += OnItemMove; Strip.PinMenu += OnPinMenu;
         _ = new WindowDrag(this, () => { _feedback.IsOpen = false; _moving = true; UpdatePresence(); }, () => {
@@ -285,9 +286,10 @@ public partial class DockWindow : Window
             {
                 if (DropIndex(e) is int index)
                 {
-                    var center = Strip.CenterAt(e.GetPosition(Strip.PinnedItems));
+                    var center = Strip.CenterAt(e.GetPosition(Strip.PinnedItems)); var slot = Strip.PinIndex(index);
+                    Session.RestoreHistoryForDrop(own.Items);
                     if (center is not null) Session.Stack(own.Items, center.Item.Id, PanelId);
-                    else Session.Reorder(own.Items, Strip.PinIndex(index), PanelId);
+                    else Session.Reorder(own.Items, slot, PanelId);
                     e.Effects = DragDropEffects.Copy;
                 }
             }

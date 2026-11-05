@@ -283,7 +283,7 @@ public sealed class SettingsWindow : Window
         diagnostics.Click += (_, _) => { try { Clipboard.SetText(report()); diagnostics.Content = "Copied"; } catch (System.Runtime.InteropServices.ExternalException) { diagnostics.Content = "Clipboard busy · retry"; } }; actions.Children.Add(diagnostics);
         var folder = new Button { Content = "Data folder" };
         folder.Click += (_, _) => { try { Process.Start(new ProcessStartInfo(dataRoot) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message, "ClipDrop"); } }; actions.Children.Add(folder);
-        Hint("Assets and exports remain on disk for reliable transfers.\nNo clipboard monitoring or accounts. Public image URLs can be fetched after an explicit drop; turn this off in Dock.");
+        Hint("Assets and exports remain on disk for reliable transfers.\nClipboard auto-save is opt-in in Library → History. No accounts. Public image URLs can be fetched after an explicit drop; turn this off in Dock.");
         if (_help.TryGetValue(_section, out var lastHelp) && lastHelp.Parent is Expander lastDetails)
         { _section.Children.Remove(lastDetails); _section.Children.Add(lastDetails); }
         RebuildPresets(); ShowSection("Style");

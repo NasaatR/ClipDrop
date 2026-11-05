@@ -25,7 +25,7 @@ public static class PinOrdering
         var result = pins.Where(i => !selected.Contains(i.Id)).ToList(); result.InsertRange(adjusted, moving);
         if (pins.Select(i => i.Id).SequenceEqual(result.Select(i => i.Id))) return false;
         var next = Next(state);
-        foreach (var item in result) { item.IsPinned = true; item.PinOrder = next++; }
+        foreach (var item in result) { item.IsPinned = true; item.HistoryOnly = false; item.PinOrder = next++; }
         return true;
     }
     public static long Next(ShelfState state) => state.Items.Concat(state.Trash.Select(t => t.Item)).Select(i => i.PinOrder).DefaultIfEmpty().Max() + 1;

@@ -8,7 +8,7 @@
  <Canvas><Border x:Name="Surface" Margin="10" Background="{DynamicResource DockBackground}" BorderBrush="{DynamicResource DockOutline}" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}"/></Canvas>
  <Border ToolTip="Double-click free space for Library · right-click for options · drag free space to move" x:Name="Body" Margin="10" Background="{x:Null}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="{DynamicResource DockRadius}" Padding="12,8" ToolTipService.InitialShowDelay="600">
   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-   <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" ToolTip="Save clipboard · right-click for Library and options" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><views:AppIcon Kind="Save" /></Button>
+   <Button x:Name="SaveButton" Style="{StaticResource DockButton}" Click="OnSave" PreviewMouseRightButtonUp="OnAppend" ToolTip="Click: save · right-click: add to last stack · Shift+right-click: options" AutomationProperties.Name="Save clipboard" Background="{DynamicResource Selected}"><views:AppIcon Kind="Save" /></Button>
    <StackPanel x:Name="Details" Orientation="Horizontal" VerticalAlignment="Center">
    <TextBlock x:Name="PanelTitle" MaxWidth="90" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="4,0,7,0" Visibility="Collapsed"/>
    <Border x:Name="Divider" Width="1" Background="{DynamicResource DockOutline}" Margin="6,7"/>

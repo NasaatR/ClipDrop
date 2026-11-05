@@ -49,6 +49,7 @@ internal static class UsageProbe
         { session.Paster = sent; Await(session.PasteAsync(new[] { a, b })); }
         session.Paster = null;
         check(!state.Items.Contains(a) && state.Items.Contains(b) && state.Trash.Single().Item == a, "A dispatched group paste archives only the unprotected member");
+        check(ClipHistory.Entries(new StateStore(store.Root).Load()).Any(i => i.Id == a.Id), "A dispatched native paste remains available in persistent History");
         check(new StateStore(store.Root).Load().Trash.Single().Item.Id == a.Id, "Automatic removal is persisted immediately in recoverable Trash");
         var dock = new DockWindow(session, () => { }, () => { }); dock.ShowDock();
         var mirror = new DockWindow(session, () => { }, () => { }); mirror.ShowDock(); mirror.Top += 90;
@@ -84,7 +85,7 @@ internal static class UsageProbe
             check(dock.Pins.Items.Cast<ItemRow>().Count(r => r.Selected) == 4 && Clipboard.GetText() == "Selection must not paste", "Native Ctrl/Shift-click selects a range without copying or pasting");
             var strip = (DockStrip)dock.FindName("Strip");
             UiProbe.Click((Button)strip.FindName("DoneButton"));
-            UiProbe.RightClick(dock.QuickSave); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Select")); UiProbe.Click(Pin(dock, d)); UiProbe.Click(Pin(dock, e));
+            UiProbe.RightClick(dock.QuickSave, System.Windows.Input.ModifierKeys.Shift); UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Select")); UiProbe.Click(Pin(dock, d)); UiProbe.Click(Pin(dock, e));
             check(dock.Pins.Items.Cast<ItemRow>().Count(r => r.Selected) == 2 && Clipboard.GetText() == "Selection must not paste", "Selection mode lets plain clicks choose multiple clips without insertion");
             render((FrameworkElement)dock.Content, Path.Combine(output, "dock-selection.png"));
             var trashBefore = state.Trash.Count;

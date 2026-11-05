@@ -16,7 +16,7 @@ namespace ClipDrop.Windows.Views;
 public partial class DockStrip : UserControl
 {
     public event RoutedEventHandler? SaveRequested, LibraryRequested, PinRequested, PinLoaded, ImageLoaded, KeepRequested, SelectionRequested, DoneRequested;
-    public event MouseButtonEventHandler? PinDown, PinUp, PinMenu;
+    public event MouseButtonEventHandler? PinDown, PinUp, PinMenu, AppendRequested;
     public event MouseEventHandler? PinMove;
     private readonly ObservableCollection<ItemRow> _rows = new();
     private double _slot = 40;
@@ -176,6 +176,11 @@ public partial class DockStrip : UserControl
     private void OnSelection(object sender, RoutedEventArgs e) => SelectionRequested?.Invoke(sender, e);
     private void OnSelectionRight(object sender, MouseButtonEventArgs e) { e.Handled = true; SelectionRequested?.Invoke(sender, new RoutedEventArgs()); }
     private void OnDone(object sender, RoutedEventArgs e) => DoneRequested?.Invoke(sender, e);
+    private void OnAppend(object sender, MouseButtonEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) return;
+        if (AppendRequested is not null) { e.Handled = true; AppendRequested.Invoke(sender, e); }
+    }
     private void OnSave(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(sender, e);
     private void OnLibrary(object sender, RoutedEventArgs e) => LibraryRequested?.Invoke(sender, e);
     public void SetPanelName(string name, bool independent = false)

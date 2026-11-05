@@ -120,7 +120,8 @@ public static partial class BackupArchive
         // The final no-overwrite move also closes a check/publication race.
         if (File.Exists(output) || Directory.Exists(output)) throw new IOException("A file already exists. Choose a new backup filename.");
         var references = References(root, state);
-        var manifest = new Manifest { FormatVersion = 1, DataSchema = state.SchemaVersion, SourceRoot = root, CreatedUtc = DateTimeOffset.UtcNow };
+        using var snapshotDocument = JsonDocument.Parse(snapshot);
+        var manifest = new Manifest { FormatVersion = 1, DataSchema = snapshotDocument.RootElement.GetProperty("SchemaVersion").GetInt32(), SourceRoot = root, CreatedUtc = DateTimeOffset.UtcNow };
         var temporary = output + "." + Guid.NewGuid().ToString("N") + ".backup-tmp";
         long total = snapshot.Length; var files = 0; var reported = Stopwatch.StartNew();
         progress?.Invoke(new("Creating", 0, references.Length, 0));
@@ -219,8 +220,10 @@ public static partial class BackupArchive
             manifest.Entries.Select(e => e.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != manifest.Entries.Count || manifest.Entries.Sum(e => e.Length) > MaximumTotal)
             throw new InvalidDataException("Invalid backup manifest.");
         var metadata = archive.GetEntry("shelf.json") ?? throw new InvalidDataException("Library metadata is missing.");
-        var state = StateStore.ReadSnapshot(ReadEntry(metadata, MaximumMetadata));
-        if (state.SchemaVersion != manifest.DataSchema) throw new InvalidDataException("Backup data schema does not match its manifest.");
+        var metadataBytes = ReadEntry(metadata, MaximumMetadata);
+        using var metadataDocument = JsonDocument.Parse(metadataBytes);
+        if (!metadataDocument.RootElement.TryGetProperty("SchemaVersion", out var dataSchema) || !dataSchema.TryGetInt32(out var schema) || schema != manifest.DataSchema) throw new InvalidDataException("Backup data schema does not match its manifest.");
+        var state = StateStore.ReadSnapshot(metadataBytes);
         var references = References(manifest.SourceRoot, state).ToDictionary(r => r.Name, StringComparer.OrdinalIgnoreCase);
         var names = references.Keys.Append("shelf.json").ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (names.Count != manifest.Entries.Count || !names.SetEquals(manifest.Entries.Select(e => e.Name)) || archive.Entries.Count != manifest.Entries.Count + 1)

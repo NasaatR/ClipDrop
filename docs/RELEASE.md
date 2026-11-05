@@ -1,8 +1,8 @@
-ClipDrop 1.6 Preview — compact settings, global colors and persistent appearance preview.
+ClipDrop 1.7 Preview — saved/clipboard History and right-click collect.
 
-- Smaller Settings window with inline fields, usable full-width sliders on narrow windows, compact navigation and expandable Help & details.
-- Style starts with App theme, shared background and accent. Choose quick swatches, More colors for the Windows picker, exact HEX or Auto. Text contrast follows the chosen background. Existing Dock/Library overrides remain until Use shared colors everywhere is selected.
-- Dock and Library samples stay visible while scrolling appearance controls. Idle/compact previews and the independent Downloads layout preview remain available. Saved styles and restart preserve the shared background; reset shared colors keeps theme/layout.
-- Check restore plan now calculates unique owned assets and bytes needed by selected add/replace/restore actions, using the freshly verified archive. Kept clips, external originals and settings icons are excluded. This remains read-only preflight: restoration is not yet available.
+- Library → History keeps saved and used clips together, including Trash. Search, timestamps, multiple selection, Copy/Paste/drag, To panel, Delete selected history and Clear… confirmation reuse the original clipboard payloads. Clearing History preserves saved Library/Trash/panel clips; unused auto-only records are removed from metadata. No original/exported file is deleted.
+- Left Save captures normally. Right Save adds to the last tile/stack in that panel, inheriting keep-after-use. Repeat to collect. Shift+right-click Save or right-click free space opens options; left dragging and double-click Library remain.
+- Auto-save clipboard is opt-in/off by default in History: one native event listener, 180ms coalescing, bounded busy retries, own-copy suppression and Windows private-format exclusions. Auto captures stay out of All/dock; duplicates update time. No automatic expiry. The existing5,000 active-item limit pauses capture with a message; clear unused history and enable again. Rapid intermediate clipboard changes may be superseded before capture.
+- Schema8 migrates1–7 with immutable original backups. History/pause survive restart; old archive manifests validate against their original schema before read migration. Backup restore execution remains planned.
 
-Native1.6.0/display1.6 Preview/tagv1.6. Exit through the tray and install over the previous version. App/data/Chrome identities and schema7 stay unchanged; recent1.5 and historical upgrade gates remain required. No new dependency or permission. Issued versions are preserved.
+Native1.7.0/display1.7 Preview/tagv1.7. Quit through the tray, then install over the current version. App/data/Chrome identities stay fixed. Historical and recent1.6 upgrade checks remain required. No new dependency, account or network permission. Issued release bytes are preserved.

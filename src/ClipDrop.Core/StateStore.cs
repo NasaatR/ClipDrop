@@ -99,13 +99,17 @@ public sealed class StateStore
         originalVersion = state.SchemaVersion;
         if (state.SchemaVersion == 1) state.SchemaVersion = ShelfState.CurrentSchema;
         else if (!document.RootElement.TryGetProperty("Trash", out _)) throw new InvalidDataException("The saved trash structure is incomplete.");
-        if (originalVersion is 1 or 2 or 3 or 4 or 5 or 6) state.SchemaVersion = ShelfState.CurrentSchema;
+        if (originalVersion is 1 or 2 or 3 or 4 or 5 or 6 or 7) state.SchemaVersion = ShelfState.CurrentSchema;
         if (state.SchemaVersion != ShelfState.CurrentSchema || state.Settings is null || state.Items is null || state.Trash is null)
             throw new InvalidDataException("Invalid shelf structure.");
         if (state.Trash.Any(t => t is null || t.Item is null || !Guid.TryParse(t.Batch, out _))) throw new InvalidDataException("Invalid trash entry.");
         var all = state.Items.Concat(state.Trash.Select(t => t.Item)).ToArray();
         if (all.Any(i => i is null || !Guid.TryParse(i.Id, out _) || i.Title is null || i.Group is null || i.Group.Length > 40 || i.Content is null || !Enum.IsDefined(i.Kind)))
             throw new InvalidDataException("Invalid shelf item.");
+        if (originalVersion >= 8 && document.RootElement.GetProperty("Items").EnumerateArray()
+            .Concat(document.RootElement.GetProperty("Trash").EnumerateArray().Select(t => t.GetProperty("Item")))
+            .Any(i => !i.TryGetProperty("InHistory", out _) || !i.TryGetProperty("HistoryOnly", out _) || !i.TryGetProperty("LastSavedUtc", out _)))
+            throw new InvalidDataException("The saved history structure is incomplete.");
         if (originalVersion is 1 or 2) PinOrdering.Migrate(state);
         if (all.Select(i => i.Id).Distinct().Count() != all.Length) throw new InvalidDataException("Duplicate shelf identities.");
         foreach (var item in all)

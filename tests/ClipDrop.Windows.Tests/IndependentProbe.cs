@@ -80,7 +80,7 @@ internal static class IndependentProbe
             check(list.Items.Cast<ItemRow>().Select(r => r.Item.Id).SequenceEqual(new[] { b.Id }),
                 "Library invoked from an independent window scopes its panel filter to that set");
             library.Hide();
-            UiProbe.RightClick(one.QuickSave);
+            UiProbe.RightClick(one.QuickSave, System.Windows.Input.ModifierKeys.Shift);
             UiProbe.Click(one.ContextMenu.Items.OfType<MenuItem>().Single(m => m.Tag as string == "CloseWindow")); UiProbe.Pump();
             check(coordinator.IndependentViews.Count == 1 && first.Window.ClosedUtc is not null && first.ClosedUtc is null && state.Items.Count == 4,
                 "Close window removes only its HWND and retains a restorable named set and all payloads");

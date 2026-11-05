@@ -55,8 +55,8 @@ internal static class CollectProbe
                 Descendants<AppIcon>(dock).Where(i => i.DataContext is not ItemRow).All(i => i.Kind == "Save"),
                 "The resting dock exposes only Save and clip content, without a move grip or permanent utility buttons");
             render((FrameworkElement)dock.Content, Path.Combine(output, "dock-save-only.png"));
-            UiProbe.RightClick(dock.QuickSave);
-            check(dock.ContextMenu.IsOpen && dock.ContextMenu.Items.OfType<MenuItem>().Any(i => i.Tag as string == "Settings"), "Right-click Save opens Library, panels and settings without extra toolbar icons");
+            UiProbe.RightClick(dock.QuickSave, System.Windows.Input.ModifierKeys.Shift);
+            check(dock.ContextMenu.IsOpen && dock.ContextMenu.Items.OfType<MenuItem>().Any(i => i.Tag as string == "Settings"), "Shift-right-click Save opens Library, panels and settings without extra toolbar icons");
             render(dock.ContextMenu, Path.Combine(output, "dock-actions.png"));
             UiProbe.Click(dock.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Tag as string == "Library"));
             check(library.IsVisible, "Library opens from the actual Save context menu");

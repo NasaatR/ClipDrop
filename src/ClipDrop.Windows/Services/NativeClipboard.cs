@@ -35,6 +35,28 @@ public sealed class NativeClipboard : IDisposable
         "Ole Private Data", "DataObject", "Preferred DropEffect", "Performed DropEffect", "Logical Performed DropEffect", "Paste Succeeded", "InShellDragLoop", "DragWindow", "FileGroupDescriptorW", "FileGroupDescriptor", "FileContents"
     };
     public NativeClipboard(AssetStore assets) { _assets = assets; }
+    public bool ExcludedFromHistory()
+    {
+        if (!OpenClipboard(_owner.Handle)) throw new ExternalException("Clipboard is busy.");
+        try
+        {
+            uint format = 0;
+            for (var count = 0; count < 128 && (format = EnumClipboardFormats(format)) != 0; count++)
+            {
+                if (format < 0xC000) continue;
+                var buffer = new StringBuilder(256); GetClipboardFormatName(format, buffer, buffer.Capacity);
+                var name = buffer.ToString();
+                if (name == "ExcludeClipboardContentFromMonitorProcessing" || name == "Clipboard Viewer Ignore") return true;
+                if (name != "CanIncludeInClipboardHistory") continue;
+                var handle = GetClipboardData(format);
+                if (handle == IntPtr.Zero || GlobalSize(handle).ToUInt64() < 4) return true;
+                var pointer = GlobalLock(handle); if (pointer == IntPtr.Zero) return true;
+                try { if (Marshal.ReadInt32(pointer) == 0) return true; } finally { GlobalUnlock(handle); }
+            }
+            return false;
+        }
+        finally { CloseClipboard(); }
+    }
     public ClipboardSnapshot? Capture()
     {
         var snapshot = new ClipboardSnapshot();

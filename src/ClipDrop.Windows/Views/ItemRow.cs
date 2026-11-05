@@ -22,6 +22,8 @@ public sealed class ItemRow : System.ComponentModel.INotifyPropertyChanged
     public string SelectName => "Select clip: " + Title;
     public bool IsVideo => MediaFiles.IsVideo(Item.FilePath);
     public string IconKey => IsVideo ? "Video" : IsImage ? "Image" : Item.Kind.ToString();
+    private bool _historyMode;
+    public void SetHistoryMode(bool value) { if (_historyMode == value) return; _historyMode = value; Notify(nameof(Details)); }
     private bool _selected;
     private int _dropMark;
     public bool Selected { get => _selected; set { if (_selected == value) return; _selected = value; Notify(nameof(Selected)); } }
@@ -31,11 +33,11 @@ public sealed class ItemRow : System.ComponentModel.INotifyPropertyChanged
     public string KeepName => KeepHelp + ": " + Title;
     public string KeepHelp => Item.KeepAfterUse ? "Keep after use · on" : "Keep after use · off";
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
-    private (string Title, string Group, string Content, string? Path, ItemKind Kind, bool Keep, int Formats) _metadata;
+    private (string Title, string Group, string Content, string? Path, ItemKind Kind, bool Keep, int Formats, DateTimeOffset? Saved) _metadata;
     private void Notify(string? name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
     public void Refresh()
     {
-        var metadata = (Item.Title, Item.Group, Item.Content, Item.FilePath, Item.Kind, KeepAfterUse, Item.Clipboard?.Formats.Count ?? 0);
+        var metadata = (Item.Title, Item.Group, Item.Content, Item.FilePath, Item.Kind, KeepAfterUse, Item.Clipboard?.Formats.Count ?? 0, Item.LastSavedUtc);
         if (_metadata == metadata) return;
         _metadata = metadata; Notify(null);
     }
@@ -46,7 +48,7 @@ public sealed class ItemRow : System.ComponentModel.INotifyPropertyChanged
         ItemKind.Folder => "Folder",
         _ => Path.GetExtension(Item.FilePath ?? "").TrimStart('.').ToUpperInvariant() + " file"
     };
-    public string Details => TypeDetails + (Item.Group.Length > 0 ? " · " + Item.Group : "");
+    public string Details => (_historyMode ? (Item.LastSavedUtc ?? Item.CreatedUtc).ToLocalTime().ToString("g") + " · " : "") + TypeDetails + (Item.Group.Length > 0 ? " · " + Item.Group : "");
     public string Help => Item.FilePath ?? Item.Content;
     private bool _missing, _checking;
     private DateTimeOffset _lastCheck;
