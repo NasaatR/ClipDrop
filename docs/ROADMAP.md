@@ -960,3 +960,91 @@ boundary and interruption/rollback tests before exposing Restore. Then content v
 Next: continue5a2b2b2b2 owned-asset destination validation/rebasing and staging,
 then recoverable restore commit. History extensions (per-app exclusion UI, richer
 source/type filters) follow actual feedback. Send to Figma remains planned.
+
+
+## Planned ShareX integration — research, 2026-11-06
+
+Scope: design the automatic screenshot handoff requested by the owner. No app
+integration or ShareX configuration is changed by this research-only update.
+Candidate next delivery:1.8 Preview; current published installer remains1.7.
+
+**Decision:** use ShareX's built-in After capture → Perform actions contract,
+passing the saved image path to a short-lived ClipDrop receiver. Keep both apps
+independently updatable. Do not fork ShareX, embed its libraries, scrape its UI,
+modify its live JSON configuration or route screenshots through a web uploader.
+A watched folder may be a later fallback; the primary flow must support custom
+save paths without relying on the default Screenshots directory.
+
+Verified source: released ShareX v22.2.0 and ExternalProgram from v18.0.1;
+ClipDrop source e45e29070603100faf40d21042ff7f0be9fe35f4/schema8.
+- [Official Actions instructions](https://getsharex.com/actions): save the image
+  to a file, enable Perform actions and the action, pass `"$input"`; supports
+  a hidden window. This is a one-time setup, not another click per screenshot.
+- [ExternalProgram.cs, v22.2.0](https://github.com/ShareX/ShareX/blob/v22.2.0/ShareX.HelpersLib/ExternalProgram.cs):
+  Run parses the input/output arguments, starts the process with
+  UseShellExecute=false and calls WaitForExit. The receiver must terminate after
+  durable handoff; starting the normal persistent UI in that same process would
+  block ShareX until ClipDrop exits. Nonzero exit code alone is not surfaced by
+  this Run implementation; ClipDrop needs its own bounded error/status reporting.
+- [WorkerTask.cs, v22.2.0](https://github.com/ShareX/ShareX/blob/v22.2.0/ShareX/WorkerTask.cs):
+  image clipboard copy can precede saving/file actions; active actions run in
+  order and may replace Info.FilePath. Place the receiver after wanted image
+  processors. DoFileJobs can also run during FileUpload when its advanced flag
+  is enabled: scope setup to capture workflows and test an ordinary image upload.
+- [TaskSettings.cs](https://github.com/ShareX/ShareX/blob/v22.2.0/ShareX/TaskSettings.cs):
+  custom tasks can override inherited Actions/AfterCapture settings. Preserve
+  existing hotkeys, editing, upload and action choices; never overwrite silently.
+
+### First slice: prove the receiving boundary
+
+- [ ] Add an explicit receiver mode or small installed helper. A proposed CLI
+  such as `--import-sharex <file>` is a DESIGN ONLY and is not accepted by1.7.
+  The current1.7 secondary launch only signals Show; it cannot deliver a path.
+- [ ] Validate image bytes/type/size and local path; handle Unicode/spaces,
+  incomplete/locked/missing/renamed files, read errors and bounded concurrent
+  requests. Treat input as data, never execute it or construct shell commands.
+- [ ] Make an owned, original-encoding copy so deleting the ShareX original does
+  not break History. Keep the source untouched. Use atomic durable handoff,
+  idempotent receipt and bounded queue/backpressure; a crash/restart must not
+  turn an accepted screenshot into a silent loss or an endless duplicate.
+- [ ] Receiver exits promptly after the durable handoff. Wake/start the existing
+  desktop app in background through an authenticated current-user channel; only
+  the main session writes Library state. Do not steal foreground or open Library.
+  Distinguish queued from persisted; expose recoverable errors locally.
+
+### Second slice: History collection and normal clip behavior
+
+- [ ] Store typed capture origin separately from editable Group and SourceUrl.
+  Migrate/version state and archives without guessing a source for old clips.
+- [ ] Show a compact saved source view: History → Screenshots → ShareX. It is a
+  collection/filter over canonical clips, not a second payload copy or a move of
+  ShareX's physical folder. Search, multi-select, clear/remove, Copy/Paste/drag,
+  To panel and keep-after-use must retain their1.7 semantics.
+- [ ] Default integration saves to the active dock AND History, appending on the
+  right. Offer History only in settings; changing target must not lose receipts.
+- [ ] Suppress repeat handoffs and reconcile clipboard/direct capture carefully.
+  Existing SameContent compares paths and native clipboard identity, not decoded
+  image equivalence; newly cached images have GUID paths. Test PNG, JPEG/WebP
+  re-encoding, metadata differences and rapid captures. Preserve native formats;
+  do not merge ambiguous distinct screenshots or broadly drop ShareX OCR/text.
+
+### Third slice: one-time connection UX and release gate
+
+- [ ] Compact Settings integration page: actual installed receiver path, copyable
+  arguments, supported ShareX capture-task instructions, pause, destination and
+  last successful receipt/error. No permanent new dock toolbar buttons.
+- [ ] Setup uses Save image to file + Perform actions, hidden receiver, image-only
+  filter, empty output extension and Delete input disabled. Register the action
+  for the intended screenshot workflows; preserve custom task overrides/actions.
+- [ ] Pause must stop new screenshot imports, including a closed app; do not
+  secretly accumulate private screenshots in a pending spool while paused.
+- [ ] Native bridge tests plus a real ShareX capture: app open/closed, region/
+  window/fullscreen, edited shot, custom path, rapid shots, duplicate event,
+  clipboard auto-save on/off, image upload not intended as capture, pause,
+  restart/corrupt receipt/full storage and update of each app. Verify History
+  dark/light/narrow states, source metadata in backups, installer upgrade and
+  unchanged clipboard/Chrome flows. Only then publish a new installer.
+
+Existing1.7 Auto-save clipboard can already retain ShareX's copied images in the
+general History, but does not identify a ShareX source or auto-pin them. It is an
+interim option, not the proposed direct integration or a shipped ShareX folder.
